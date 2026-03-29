@@ -27,8 +27,8 @@ public struct ProcessCodexLoginRunner: CodexLoginRunning {
 
     public static func makeProcess() -> Process {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-lc", "codex login"]
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/script")
+        process.arguments = ["-q", "/dev/null", "/bin/zsh", "-lc", "codex login"]
         return process
     }
 

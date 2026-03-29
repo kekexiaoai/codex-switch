@@ -74,11 +74,11 @@ final class CodexLoginCoordinatorTests: XCTestCase {
         XCTAssertEqual(ProcessCodexLoginRunner.result(forExitStatus: 1), .failure)
     }
 
-    func testProcessLoginRunnerUsesLoginShellToResolveCodexCLI() {
+    func testProcessLoginRunnerUsesPseudoTerminalWrappedLoginShellToResolveCodexCLI() {
         let process = ProcessCodexLoginRunner.makeProcess()
 
-        XCTAssertEqual(process.executableURL?.path, "/bin/zsh")
-        XCTAssertEqual(process.arguments, ["-lc", "codex login"])
+        XCTAssertEqual(process.executableURL?.path, "/usr/bin/script")
+        XCTAssertEqual(process.arguments, ["-q", "/dev/null", "/bin/zsh", "-lc", "codex login"])
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
