@@ -12,3 +12,4 @@ xcuserdata/
 *.swp
 *.lock
 build/
+dist/

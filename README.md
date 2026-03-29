@@ -34,3 +34,8 @@ This repository is initialized with a planning-first scaffold. The first impleme
 - Swift 5.7+
 - macOS 12+ supported
 - macOS 13+ may use `MenuBarExtra` behind a runtime availability check
+
+## Local Packaging
+
+- Build a double-clickable app bundle: `./scripts/package-macos-app.sh`
+- Output bundle: `dist/Codex Switch.app`
