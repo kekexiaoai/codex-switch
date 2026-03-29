@@ -1,105 +1,24 @@
 import SwiftUI
 
 public struct MenuBarPanelView: View {
-    private struct PreferredHeightKey: PreferenceKey {
-        static var defaultValue: CGFloat = 0
-
-        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-            value = nextValue()
-        }
-    }
-
     @ObservedObject private var viewModel: MenuBarViewModel
     @State private var isShowingAddAccountOptions = false
-    private let onPreferredHeightChange: ((CGFloat) -> Void)?
 
-    public init(
-        viewModel: MenuBarViewModel,
-        onPreferredHeightChange: ((CGFloat) -> Void)? = nil
-    ) {
+    public init(viewModel: MenuBarViewModel) {
         self.viewModel = viewModel
-        self.onPreferredHeightChange = onPreferredHeightChange
     }
 
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 12) {
-                headerSection
-
-                if let removalFeedback = viewModel.removalFeedback {
-                    feedbackBanner(removalFeedback)
-                }
-
-                Divider()
-
-                ForEach(viewModel.summaries) { summary in
-                    UsageSummaryCard(summary: summary)
-                }
-
-                Divider()
-
-                Text("Switch Account")
-                    .font(.headline)
-
-                ForEach(viewModel.accountRows) { account in
-                    AccountRowView(
-                        account: account,
-                        pendingRemovalMessage: pendingRemovalMessage(for: account.id),
-                        onSelect: {
-                            Task {
-                                try? await viewModel.switchToAccount(id: account.id)
-                            }
-                        },
-                        onRemove: {
-                            viewModel.requestRemoveAccount(id: account.id)
-                        },
-                        onConfirmRemove: {
-                            Task {
-                                await viewModel.performPendingAccountRemoval()
-                            }
-                        },
-                        onCancelRemove: {
-                            viewModel.cancelPendingAccountRemoval()
-                        }
-                    )
-                }
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    addAccountMenu
-                    actionRow(title: "Status Page", systemImage: "waveform.path.ecg") {
-                        viewModel.openStatusPage()
-                    }
-                    actionRow(
-                        title: viewModel.showEmails ? "Hide Emails" : "Show Emails",
-                        systemImage: viewModel.showEmails ? "eye" : "eye.slash"
-                    ) {
-                        Task {
-                            await viewModel.toggleShowEmails()
-                        }
-                    }
-                    actionRow(title: "Settings", systemImage: "gearshape") {
-                        viewModel.openSettings()
-                    }
-                    actionRow(title: "Quit", systemImage: "power") {
-                        viewModel.quit()
-                    }
-                }
-            }
-            .padding(16)
-            .background(
-                GeometryReader { proxy in
-                    Color.clear.preference(key: PreferredHeightKey.self, value: proxy.size.height)
-                }
-            )
+            panelContent
         }
         .frame(width: 360)
-        .onPreferenceChange(PreferredHeightKey.self) { height in
-            guard height > 0 else {
-                return
+        .overlay(alignment: .bottom) {
+            if let removalFeedback = viewModel.removalFeedback {
+                feedbackBanner(removalFeedback)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
             }
-            onPreferredHeightChange?(height)
         }
         .alert(item: Binding(
             get: { viewModel.alertMessage },
@@ -113,6 +32,70 @@ public struct MenuBarPanelView: View {
                 }
             )
         }
+    }
+
+    private var panelContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            headerSection
+
+            Divider()
+
+            ForEach(viewModel.summaries) { summary in
+                UsageSummaryCard(summary: summary)
+            }
+
+            Divider()
+
+            Text("Switch Account")
+                .font(.headline)
+
+            ForEach(viewModel.accountRows) { account in
+                AccountRowView(
+                    account: account,
+                    pendingRemovalMessage: pendingRemovalMessage(for: account.id),
+                    onSelect: {
+                        Task {
+                            try? await viewModel.switchToAccount(id: account.id)
+                        }
+                    },
+                    onRemove: {
+                        viewModel.requestRemoveAccount(id: account.id)
+                    },
+                    onConfirmRemove: {
+                        Task {
+                            await viewModel.performPendingAccountRemoval()
+                        }
+                    },
+                    onCancelRemove: {
+                        viewModel.cancelPendingAccountRemoval()
+                    }
+                )
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                addAccountMenu
+                actionRow(title: "Status Page", systemImage: "waveform.path.ecg") {
+                    viewModel.openStatusPage()
+                }
+                actionRow(
+                    title: viewModel.showEmails ? "Hide Emails" : "Show Emails",
+                    systemImage: viewModel.showEmails ? "eye" : "eye.slash"
+                ) {
+                    Task {
+                        await viewModel.toggleShowEmails()
+                    }
+                }
+                actionRow(title: "Settings", systemImage: "gearshape") {
+                    viewModel.openSettings()
+                }
+                actionRow(title: "Quit", systemImage: "power") {
+                    viewModel.quit()
+                }
+            }
+        }
+        .padding(16)
     }
 
     private var headerSection: some View {

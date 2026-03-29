@@ -38,7 +38,7 @@ final class StatusItemControllerTests: XCTestCase {
         )
     }
 
-    func testMenuBarPanelContentShrinksWhenAccountCountDrops() async {
+    func testHostingControllerReportsSmallerHeightWhenAccountCountDrops() async {
         let service = SnapshotSequenceMenuBarService(
             snapshots: [
                 makeSnapshot(accountCount: 8),
@@ -46,8 +46,10 @@ final class StatusItemControllerTests: XCTestCase {
             ]
         )
         let viewModel = MenuBarViewModel(service: service)
-        let hostingController = NSHostingController(
-            rootView: MenuBarShellView(viewModel: viewModel)
+        var reportedHeights: [CGFloat] = []
+        let hostingController = MenuBarHostingController(
+            rootView: MenuBarShellView(viewModel: viewModel),
+            onHeightChange: { reportedHeights.append($0) }
         )
 
         _ = hostingController.view
@@ -60,13 +62,15 @@ final class StatusItemControllerTests: XCTestCase {
 
         await viewModel.refresh()
         await Task.yield()
-        hostingController.view.layoutSubtreeIfNeeded()
-        let expandedHeight = hostingController.view.fittingSize.height
+        hostingController.scheduleHeightRefresh()
+        await Task.yield()
+        let expandedHeight = reportedHeights.last ?? 0
 
         await viewModel.refresh()
         await Task.yield()
-        hostingController.view.layoutSubtreeIfNeeded()
-        let shrunkenHeight = hostingController.view.fittingSize.height
+        hostingController.scheduleHeightRefresh()
+        await Task.yield()
+        let shrunkenHeight = reportedHeights.last ?? 0
 
         XCTAssertGreaterThan(expandedHeight, 0)
         XCTAssertLessThan(shrunkenHeight, expandedHeight)

@@ -1,5 +1,62 @@
 import AppKit
+import Combine
 import SwiftUI
+
+@MainActor
+final class MenuBarHostingController: NSHostingController<MenuBarShellView> {
+    private let onHeightChange: (CGFloat) -> Void
+    private var lastReportedHeight: CGFloat = 0
+
+    init(
+        rootView: MenuBarShellView,
+        onHeightChange: @escaping (CGFloat) -> Void
+    ) {
+        self.onHeightChange = onHeightChange
+        super.init(rootView: rootView)
+    }
+
+    @MainActor @preconcurrency required dynamic init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var preferredContentSize: NSSize {
+        didSet {
+            reportPreferredHeight(preferredContentSize.height)
+        }
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        reportMeasuredHeight()
+    }
+
+    func scheduleHeightRefresh() {
+        DispatchQueue.main.async { [weak self] in
+            self?.view.invalidateIntrinsicContentSize()
+            self?.view.needsLayout = true
+            self?.view.layoutSubtreeIfNeeded()
+            self?.reportMeasuredHeight()
+        }
+    }
+
+    private func reportMeasuredHeight() {
+        let measuredHeight = preferredContentSize.height > 0
+            ? preferredContentSize.height
+            : view.fittingSize.height
+        reportPreferredHeight(measuredHeight)
+    }
+
+    private func reportPreferredHeight(_ height: CGFloat) {
+        guard height > 0 else {
+            return
+        }
+        guard abs(height - lastReportedHeight) > 0.5 else {
+            return
+        }
+        lastReportedHeight = height
+        onHeightChange(height)
+    }
+}
 
 @MainActor
 final class PopoverOutsideClickMonitor {
@@ -158,6 +215,7 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let viewModel: MenuBarViewModel
     private let settingsDefaults: UserDefaults
+    private var viewModelChangeCancellable: AnyCancellable?
     private var preferredContentHeight: CGFloat = StatusItemController.minPopoverHeight
     private lazy var outsideClickMonitor = PopoverOutsideClickMonitor(
         watchedWindows: { [weak self] in
@@ -204,18 +262,25 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.delegate = self
         popover.behavior = .transient
         popover.contentSize = Self.preferredPopoverContentSize(forContentHeight: preferredContentHeight)
-        let hostingController = NSHostingController(
-            rootView: MenuBarShellView(
-                viewModel: viewModel,
-                onPreferredHeightChange: { [weak self] height in
+        let hostingController = MenuBarHostingController(
+            rootView: MenuBarShellView(viewModel: viewModel),
+            onHeightChange: { [weak self] height in
                     self?.updatePopoverContentSize(forContentHeight: height)
-                }
-            )
+            }
         )
         if #available(macOS 13.0, *) {
             hostingController.sizingOptions = [.preferredContentSize]
         }
         popover.contentViewController = hostingController
+        viewModelChangeCancellable = viewModel.objectWillChange.sink { [weak self, weak hostingController] _ in
+            guard let self, let hostingController else {
+                return
+            }
+            guard self.popover.isShown else {
+                return
+            }
+            hostingController.scheduleHeightRefresh()
+        }
 
         if let button = statusItem.button {
             button.title = ""
