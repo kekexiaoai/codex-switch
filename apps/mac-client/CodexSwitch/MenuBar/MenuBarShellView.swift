@@ -2,12 +2,18 @@ import SwiftUI
 
 public struct MenuBarShellView: View {
     @StateObject private var viewModel: MenuBarViewModel
+    private let onPreferredHeightChange: ((CGFloat) -> Void)?
 
-    public init(viewModel: MenuBarViewModel = .preview) {
+    public init(
+        viewModel: MenuBarViewModel = .preview,
+        onPreferredHeightChange: ((CGFloat) -> Void)? = nil
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.onPreferredHeightChange = onPreferredHeightChange
     }
 
     public init(environment: AppEnvironment) {
+        self.onPreferredHeightChange = nil
         _viewModel = StateObject(
             wrappedValue: MenuBarViewModel(
                 service: EnvironmentMenuBarService(environment: environment),
@@ -23,7 +29,10 @@ public struct MenuBarShellView: View {
     }
 
     public var body: some View {
-        MenuBarPanelView(viewModel: viewModel)
+        MenuBarPanelView(
+            viewModel: viewModel,
+            onPreferredHeightChange: onPreferredHeightChange
+        )
             .task {
                 await viewModel.refresh()
             }

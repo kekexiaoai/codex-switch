@@ -3,14 +3,65 @@ import Combine
 import SwiftUI
 
 @MainActor
+final class MenuBarPopoverDiagnosticsLogger {
+    private let logFileURL: URL
+    private let fileManager: FileManager
+    private let timeFormatter: CodexUserFacingTimeFormatter
+    private let lock = NSLock()
+
+    init(
+        paths: CodexPaths,
+        fileManager: FileManager = .default,
+        timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter()
+    ) {
+        self.logFileURL = paths.diagnosticsDirectoryURL.appendingPathComponent("menubar-popover.log")
+        self.fileManager = fileManager
+        self.timeFormatter = timeFormatter
+    }
+
+    func log(_ message: String) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        do {
+            try fileManager.createDirectory(
+                at: logFileURL.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+
+            let line = "\(timeFormatter.logTimestamp(from: Date())) \(message)\n"
+            let data = Data(line.utf8)
+
+            if !fileManager.fileExists(atPath: logFileURL.path) {
+                try data.write(to: logFileURL, options: .atomic)
+                return
+            }
+
+            let handle = try FileHandle(forWritingTo: logFileURL)
+            defer { try? handle.close() }
+            try handle.seekToEnd()
+            try handle.write(contentsOf: data)
+        } catch {
+            // Diagnostics logging must never break the product flow.
+        }
+    }
+}
+
+@MainActor
 final class MenuBarHostingController: NSHostingController<MenuBarShellView> {
+    private let contentWidth: CGFloat
     private let onHeightChange: (CGFloat) -> Void
+    private let diagnosticsLogger: MenuBarPopoverDiagnosticsLogger?
     private var lastReportedHeight: CGFloat = 0
 
     init(
         rootView: MenuBarShellView,
+        contentWidth: CGFloat,
+        diagnosticsLogger: MenuBarPopoverDiagnosticsLogger? = nil,
         onHeightChange: @escaping (CGFloat) -> Void
     ) {
+        self.contentWidth = contentWidth
+        self.diagnosticsLogger = diagnosticsLogger
         self.onHeightChange = onHeightChange
         super.init(rootView: rootView)
     }
@@ -19,30 +70,39 @@ final class MenuBarHostingController: NSHostingController<MenuBarShellView> {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override var preferredContentSize: NSSize {
-        didSet {
-            reportPreferredHeight(preferredContentSize.height)
-        }
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        reportMeasuredHeight()
     }
 
     override func viewDidAppear() {
         super.viewDidAppear()
+        diagnosticsLogger?.log("hostingController viewDidAppear frameHeight=\(view.frame.height)")
         reportMeasuredHeight()
     }
 
     func scheduleHeightRefresh() {
         DispatchQueue.main.async { [weak self] in
-            self?.view.invalidateIntrinsicContentSize()
-            self?.view.needsLayout = true
-            self?.view.layoutSubtreeIfNeeded()
-            self?.reportMeasuredHeight()
+            guard let self else {
+                return
+            }
+            self.view.frame.size.width = self.contentWidth
+            self.view.invalidateIntrinsicContentSize()
+            self.view.needsLayout = true
+            self.view.layoutSubtreeIfNeeded()
+            self.diagnosticsLogger?.log("scheduleHeightRefresh immediate frameHeight=\(self.view.frame.height)")
+            self.reportMeasuredHeight()
+            DispatchQueue.main.async { [weak self] in
+                self?.diagnosticsLogger?.log("scheduleHeightRefresh deferred frameHeight=\(self?.view.frame.height ?? 0)")
+                self?.reportMeasuredHeight()
+            }
         }
     }
 
     private func reportMeasuredHeight() {
-        let measuredHeight = preferredContentSize.height > 0
-            ? preferredContentSize.height
-            : view.fittingSize.height
+        view.frame.size.width = contentWidth
+        let measuredHeight = view.fittingSize.height
+        diagnosticsLogger?.log("reportMeasuredHeight measured=\(measuredHeight) last=\(lastReportedHeight)")
         reportPreferredHeight(measuredHeight)
     }
 
@@ -54,6 +114,7 @@ final class MenuBarHostingController: NSHostingController<MenuBarShellView> {
             return
         }
         lastReportedHeight = height
+        diagnosticsLogger?.log("reportPreferredHeight accepted=\(height)")
         onHeightChange(height)
     }
 }
@@ -215,7 +276,8 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let viewModel: MenuBarViewModel
     private let settingsDefaults: UserDefaults
-    private var viewModelChangeCancellable: AnyCancellable?
+    private let diagnosticsLogger: MenuBarPopoverDiagnosticsLogger?
+    private var contentChangeCancellables: Set<AnyCancellable> = []
     private var preferredContentHeight: CGFloat = StatusItemController.minPopoverHeight
     private lazy var outsideClickMonitor = PopoverOutsideClickMonitor(
         watchedWindows: { [weak self] in
@@ -234,6 +296,7 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         actionHandler: (any MenuBarActionHandling)? = nil
     ) {
         self.settingsDefaults = environment.settingsDefaults
+        self.diagnosticsLogger = environment.codexPaths.map { MenuBarPopoverDiagnosticsLogger(paths: $0) }
         self.viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(environment: environment),
             accountRepository: environment.accountRepository,
@@ -263,24 +326,24 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.behavior = .transient
         popover.contentSize = Self.preferredPopoverContentSize(forContentHeight: preferredContentHeight)
         let hostingController = MenuBarHostingController(
-            rootView: MenuBarShellView(viewModel: viewModel),
-            onHeightChange: { [weak self] height in
+            rootView: MenuBarShellView(
+                viewModel: viewModel,
+                onPreferredHeightChange: { [weak self] height in
+                    self?.diagnosticsLogger?.log("swiftui preferredHeight=\(height)")
                     self?.updatePopoverContentSize(forContentHeight: height)
+                }
+            ),
+            contentWidth: Self.popoverWidth,
+            diagnosticsLogger: diagnosticsLogger,
+            onHeightChange: { [weak self] height in
+                    self?.diagnosticsLogger?.log("appkit measuredHeight=\(height)")
             }
         )
         if #available(macOS 13.0, *) {
             hostingController.sizingOptions = [.preferredContentSize]
         }
         popover.contentViewController = hostingController
-        viewModelChangeCancellable = viewModel.objectWillChange.sink { [weak self, weak hostingController] _ in
-            guard let self, let hostingController else {
-                return
-            }
-            guard self.popover.isShown else {
-                return
-            }
-            hostingController.scheduleHeightRefresh()
-        }
+        bindContentSizeUpdates(to: hostingController)
 
         if let button = statusItem.button {
             button.title = ""
@@ -305,10 +368,12 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
                 guard let self else {
                     return
                 }
+                self.diagnosticsLogger?.log("togglePopover open requested currentPopoverHeight=\(self.popover.contentSize.height)")
                 await self.viewModel.refresh()
                 guard !self.popover.isShown else {
                     return
                 }
+                hostingController()?.scheduleHeightRefresh()
                 MenuBarPopoverPresenter(
                     activateApp: { NSApp.activate(ignoringOtherApps: true) },
                     showPopover: { [popover] in
@@ -325,6 +390,7 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
                         outsideClickMonitor.start()
                     }
                 ).present()
+                hostingController()?.scheduleHeightRefresh()
             }
         }
     }
@@ -341,14 +407,22 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private func updatePopoverContentSize(forContentHeight height: CGFloat) {
         preferredContentHeight = height
         let nextSize = Self.preferredPopoverContentSize(forContentHeight: height)
-        guard popover.contentSize != nextSize else {
+        diagnosticsLogger?.log("updatePopoverContentSize requested contentHeight=\(height) clampedHeight=\(nextSize.height) currentPopoverHeight=\(popover.contentSize.height)")
+        let sizeChanged = popover.contentSize != nextSize
+        guard sizeChanged || popover.isShown else {
             return
         }
         popover.contentViewController?.preferredContentSize = nextSize
         popover.contentSize = nextSize
 
         if let window = popover.contentViewController?.view.window {
-            window.setContentSize(nextSize)
+            let targetFrame = window.frameRect(forContentRect: NSRect(origin: .zero, size: nextSize))
+            var nextFrame = window.frame
+            let deltaHeight = targetFrame.height - nextFrame.height
+            nextFrame.origin.y -= deltaHeight
+            nextFrame.size = targetFrame.size
+            diagnosticsLogger?.log("updatePopoverContentSize applyingWindowFrame oldHeight=\(window.frame.height) newHeight=\(nextFrame.height)")
+            window.setFrame(nextFrame, display: true)
             window.layoutIfNeeded()
         }
     }
@@ -356,6 +430,32 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private func currentStatusItemImage() -> NSImage? {
         let style = UserDefaultsMenuBarIconStyleStore(defaults: settingsDefaults).menuBarIconStyle()
         return Self.statusItemImage(style: style)
+    }
+
+    private func bindContentSizeUpdates(to hostingController: MenuBarHostingController) {
+        let contentPublishers: [AnyPublisher<Void, Never>] = [
+            viewModel.$accountRows.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            viewModel.$addAccountProgress.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            viewModel.$pendingAccountRemoval.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            viewModel.$removalFeedback.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+        ]
+
+        Publishers.MergeMany(contentPublishers)
+            .sink { [weak self, weak hostingController] in
+                guard let self, let hostingController else {
+                    return
+                }
+                guard self.popover.isShown else {
+                    return
+                }
+                self.diagnosticsLogger?.log("bindContentSizeUpdates triggered whileShown=true")
+                hostingController.scheduleHeightRefresh()
+            }
+            .store(in: &contentChangeCancellables)
+    }
+
+    private func hostingController() -> MenuBarHostingController? {
+        popover.contentViewController as? MenuBarHostingController
     }
 
     @objc

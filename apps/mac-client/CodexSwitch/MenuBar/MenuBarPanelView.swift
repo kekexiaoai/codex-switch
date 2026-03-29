@@ -3,9 +3,14 @@ import SwiftUI
 public struct MenuBarPanelView: View {
     @ObservedObject private var viewModel: MenuBarViewModel
     @State private var isShowingAddAccountOptions = false
+    private let onPreferredHeightChange: ((CGFloat) -> Void)?
 
-    public init(viewModel: MenuBarViewModel) {
+    public init(
+        viewModel: MenuBarViewModel,
+        onPreferredHeightChange: ((CGFloat) -> Void)? = nil
+    ) {
         self.viewModel = viewModel
+        self.onPreferredHeightChange = onPreferredHeightChange
     }
 
     public var body: some View {
@@ -13,6 +18,9 @@ public struct MenuBarPanelView: View {
             panelContent
         }
         .frame(width: 360)
+        .overlay(alignment: .topLeading) {
+            measuredPanelContent
+        }
         .overlay(alignment: .bottom) {
             if let removalFeedback = viewModel.removalFeedback {
                 feedbackBanner(removalFeedback)
@@ -35,6 +43,34 @@ public struct MenuBarPanelView: View {
     }
 
     private var panelContent: some View {
+        contentBody
+            .padding(16)
+    }
+
+    private var measuredPanelContent: some View {
+        contentBody
+            .padding(16)
+            .frame(width: 360)
+            .fixedSize(horizontal: false, vertical: true)
+            .background(measurementReader)
+            .opacity(0.001)
+            .allowsHitTesting(false)
+    }
+
+    private var measurementReader: some View {
+        GeometryReader { proxy in
+            let height = proxy.size.height
+            Color.clear
+                .task(id: height) {
+                    guard height > 0 else {
+                        return
+                    }
+                    onPreferredHeightChange?(height)
+                }
+        }
+    }
+
+    private var contentBody: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerSection
 
@@ -95,7 +131,6 @@ public struct MenuBarPanelView: View {
                 }
             }
         }
-        .padding(16)
     }
 
     private var headerSection: some View {

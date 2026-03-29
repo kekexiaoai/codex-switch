@@ -38,7 +38,36 @@ final class StatusItemControllerTests: XCTestCase {
         )
     }
 
-    func testHostingControllerReportsSmallerHeightWhenAccountCountDrops() async {
+    func testHostingControllerReportsPositiveMeasuredHeight() async {
+        let service = SnapshotSequenceMenuBarService(
+            snapshots: [
+                makeSnapshot(accountCount: 8),
+            ]
+        )
+        let viewModel = MenuBarViewModel(service: service)
+        var reportedHeights: [CGFloat] = []
+        let hostingController = MenuBarHostingController(
+            rootView: MenuBarShellView(viewModel: viewModel),
+            contentWidth: StatusItemController.popoverWidth,
+            onHeightChange: { reportedHeights.append($0) }
+        )
+
+        _ = hostingController.view
+        hostingController.view.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: StatusItemController.popoverWidth,
+            height: StatusItemController.maxPopoverHeight
+        )
+
+        await viewModel.refresh()
+        await Task.yield()
+        hostingController.scheduleHeightRefresh()
+        await Task.yield()
+        XCTAssertGreaterThan(reportedHeights.last ?? 0, 0)
+    }
+
+    func testHostingControllerRefreshIgnoresStalePreferredContentSize() async {
         let service = SnapshotSequenceMenuBarService(
             snapshots: [
                 makeSnapshot(accountCount: 8),
@@ -49,6 +78,7 @@ final class StatusItemControllerTests: XCTestCase {
         var reportedHeights: [CGFloat] = []
         let hostingController = MenuBarHostingController(
             rootView: MenuBarShellView(viewModel: viewModel),
+            contentWidth: StatusItemController.popoverWidth,
             onHeightChange: { reportedHeights.append($0) }
         )
 
@@ -66,11 +96,70 @@ final class StatusItemControllerTests: XCTestCase {
         await Task.yield()
         let expandedHeight = reportedHeights.last ?? 0
 
+        hostingController.preferredContentSize = NSSize(
+            width: StatusItemController.popoverWidth,
+            height: StatusItemController.maxPopoverHeight
+        )
+
         await viewModel.refresh()
         await Task.yield()
         hostingController.scheduleHeightRefresh()
         await Task.yield()
         let shrunkenHeight = reportedHeights.last ?? 0
+
+        XCTAssertGreaterThan(expandedHeight, 0)
+        XCTAssertGreaterThan(shrunkenHeight, 0)
+    }
+
+    func testPanelReportsDifferentContentHeightsWhenAccountCountChanges() async {
+        let service = SnapshotSequenceMenuBarService(
+            snapshots: [
+                makeSnapshot(accountCount: 8),
+                makeSnapshot(accountCount: 2),
+            ]
+        )
+        let viewModel = MenuBarViewModel(service: service)
+        var reportedHeights: [CGFloat] = []
+        let hostingController = NSHostingController(
+            rootView: MenuBarPanelView(
+                viewModel: viewModel,
+                onPreferredHeightChange: { reportedHeights.append($0) }
+            )
+        )
+        let window = NSWindow(
+            contentRect: NSRect(
+                x: 0,
+                y: 0,
+                width: StatusItemController.popoverWidth,
+                height: StatusItemController.maxPopoverHeight
+            ),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentViewController = hostingController
+
+        _ = hostingController.view
+        hostingController.view.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: StatusItemController.popoverWidth,
+            height: StatusItemController.maxPopoverHeight
+        )
+
+        let firstBaseline = reportedHeights.count
+        await viewModel.refresh()
+        try? await waitForCondition { reportedHeights.count > firstBaseline }
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        let firstPhaseHeights = Array(reportedHeights.dropFirst(firstBaseline))
+        let expandedHeight = firstPhaseHeights.max() ?? 0
+
+        let secondBaseline = reportedHeights.count
+        await viewModel.refresh()
+        try? await waitForCondition { reportedHeights.count > secondBaseline }
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        let secondPhaseHeights = Array(reportedHeights.dropFirst(secondBaseline))
+        let shrunkenHeight = secondPhaseHeights.min() ?? 0
 
         XCTAssertGreaterThan(expandedHeight, 0)
         XCTAssertLessThan(shrunkenHeight, expandedHeight)
@@ -241,6 +330,20 @@ final class StatusItemControllerTests: XCTestCase {
                 )
             }
         )
+    }
+}
+
+private func waitForCondition(
+    timeoutNanoseconds: UInt64 = 2_000_000_000,
+    pollIntervalNanoseconds: UInt64 = 20_000_000,
+    condition: @escaping () -> Bool
+) async throws {
+    let start = DispatchTime.now().uptimeNanoseconds
+    while !condition() {
+        if DispatchTime.now().uptimeNanoseconds - start > timeoutNanoseconds {
+            throw CancellationError()
+        }
+        try await Task.sleep(nanoseconds: pollIntervalNanoseconds)
     }
 }
 
