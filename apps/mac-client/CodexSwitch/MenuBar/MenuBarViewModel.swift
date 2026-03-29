@@ -36,6 +36,7 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var summaries: [UsageSummaryModel] = []
     @Published public private(set) var accountRows: [AccountRowModel] = []
     @Published public private(set) var showEmails = false
+    @Published public private(set) var isPerformingAddAccountAction = false
     @Published public private(set) var alertMessage: MenuBarAlertMessage?
 
     private let service: any MenuBarSnapshotService
@@ -142,6 +143,13 @@ public final class MenuBarViewModel: ObservableObject {
     }
 
     public func performAddAccountAction(_ action: AddAccountAction) async {
+        guard !isPerformingAddAccountAction else {
+            return
+        }
+
+        isPerformingAddAccountAction = true
+        defer { isPerformingAddAccountAction = false }
+
         do {
             let existingAccountIDs = try await knownAccountIDs()
             let importedAccount: Account?

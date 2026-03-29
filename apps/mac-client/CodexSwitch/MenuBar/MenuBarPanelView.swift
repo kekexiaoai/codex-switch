@@ -140,6 +140,7 @@ public struct MenuBarPanelView: View {
                                 await viewModel.performAddAccountAction(action)
                             }
                         }
+                        .disabled(viewModel.isPerformingAddAccountAction)
                     }
                 }
             }

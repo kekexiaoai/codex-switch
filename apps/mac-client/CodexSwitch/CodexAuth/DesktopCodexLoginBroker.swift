@@ -82,7 +82,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
                 redirectURI: redirectURI
             )
         }
-        self.logger = logger ?? CodexDiagnosticsFileLogger(paths: CodexPaths())
+        self.logger = logger ?? NullCodexDiagnosticsLogger()
         self.now = now
         self.loginTimeoutNanoseconds = loginTimeoutNanoseconds
         self.wait = wait

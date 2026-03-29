@@ -394,6 +394,56 @@ final class MenuBarViewModelTests: XCTestCase {
         )
     }
 
+    func testAddAccountActionIgnoresConcurrentLoginRequests() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        try sampleAuthData(email: "concurrent@example.com", tier: "pro").write(to: paths.authFileURL)
+
+        let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
+        let repository = AccountRepository(catalog: archivedAccountStore)
+        let controller = ActiveAccountController(
+            activeAccountID: nil,
+            switcher: CodexAccountSwitcher(
+                archivedAccountStore: archivedAccountStore,
+                fileStore: fileStore
+            ),
+            usageService: StubUsageRefreshService()
+        )
+        let runner = SlowCountingCodexLoginRunner()
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(
+                environment: AppEnvironment(
+                    accountStore: MockAccountStore(),
+                    usageService: MockUsageService(),
+                    accountRepository: repository,
+                    activeAccountController: controller,
+                    accountImporter: CodexAuthImporter(fileStore: fileStore),
+                    runtimeMode: .live
+                )
+            ),
+            accountRepository: repository,
+            activeAccountController: controller,
+            accountImporter: CodexAuthImporter(fileStore: fileStore),
+            loginCoordinator: CodexLoginCoordinator(
+                runner: runner,
+                importer: CodexAuthImporter(fileStore: fileStore),
+                fileStore: fileStore
+            )
+        )
+
+        let firstTask = Task { await viewModel.performAddAccountAction(.loginInBrowser) }
+        let secondTask = Task { await viewModel.performAddAccountAction(.loginInBrowser) }
+        await firstTask.value
+        await secondTask.value
+        let invocationCount = await runner.invocationCount()
+        XCTAssertEqual(invocationCount, 1)
+    }
+
     func testAddAccountMenuExposesThreeChoices() {
         XCTAssertEqual(
             MenuBarViewModel.AddAccountAction.allCases.map { "\($0.title)|\($0.systemImageName)" },
@@ -447,5 +497,19 @@ private struct ThrowingCodexLoginRunner: CodexLoginRunning {
 
     func runLogin() async throws -> CodexLoginResult {
         throw error
+    }
+}
+
+private actor SlowCountingCodexLoginRunner: CodexLoginRunning {
+    private var count = 0
+
+    func runLogin() async throws -> CodexLoginResult {
+        count += 1
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        return .success
+    }
+
+    func invocationCount() -> Int {
+        count
     }
 }
