@@ -51,11 +51,13 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var isPerformingAddAccountAction = false
     @Published public private(set) var addAccountProgress: AddAccountProgressState?
     @Published public private(set) var alertMessage: MenuBarAlertMessage?
+    @Published public private(set) var pendingAccountRemoval: AccountRemovalConfirmation?
 
     private let service: any MenuBarSnapshotService
     private let accountRepository: AccountRepository?
     private let activeAccountController: ActiveAccountController?
     private let accountImporter: CodexAuthImporter?
+    private let accountRemover: (any AccountRemoving)?
     private let loginCoordinator: CodexLoginCoordinator?
     private let backupAuthPicker: (any BackupAuthPicking)?
     private let emailVisibilityStore: (any EmailVisibilityMutating)?
@@ -70,6 +72,7 @@ public final class MenuBarViewModel: ObservableObject {
         accountRepository: AccountRepository? = nil,
         activeAccountController: ActiveAccountController? = nil,
         accountImporter: CodexAuthImporter? = nil,
+        accountRemover: (any AccountRemoving)? = nil,
         loginCoordinator: CodexLoginCoordinator? = nil,
         backupAuthPicker: (any BackupAuthPicking)? = nil,
         emailVisibilityStore: (any EmailVisibilityMutating)? = nil,
@@ -79,6 +82,7 @@ public final class MenuBarViewModel: ObservableObject {
         self.accountRepository = accountRepository
         self.activeAccountController = activeAccountController
         self.accountImporter = accountImporter
+        self.accountRemover = accountRemover
         self.loginCoordinator = loginCoordinator
         self.backupAuthPicker = backupAuthPicker
         self.emailVisibilityStore = emailVisibilityStore
@@ -252,6 +256,52 @@ public final class MenuBarViewModel: ObservableObject {
 
     public func dismissAlert() {
         alertMessage = nil
+    }
+
+    public func requestRemoveAccount(id: String) {
+        guard let account = accountRows.first(where: { $0.id == id }) else {
+            return
+        }
+
+        let isActive = account.isActive
+        pendingAccountRemoval = AccountRemovalConfirmation(
+            accountID: id,
+            title: "Remove Account?",
+            message: isActive
+                ? "Remove \(account.emailMask) from archived accounts? Because it is currently active, Codex Switch will switch to another archived account when available, or clear the current Codex session."
+                : "Remove \(account.emailMask) from archived accounts? This only deletes the archived copy stored on this Mac."
+        )
+    }
+
+    public func cancelPendingAccountRemoval() {
+        pendingAccountRemoval = nil
+    }
+
+    public func confirmPendingAccountRemoval() async throws {
+        guard let pendingAccountRemoval else {
+            return
+        }
+
+        defer {
+            self.pendingAccountRemoval = nil
+        }
+
+        guard let accountRemover else {
+            return
+        }
+
+        let result = try await accountRemover.removeArchivedAccount(
+            id: pendingAccountRemoval.accountID,
+            activeAccountID: activeAccountController?.currentActiveAccountID()
+        )
+        activeAccountController?.syncActiveAccountID(result.nextActiveAccountID)
+        await refresh()
+        alertMessage = MenuBarAlertMessage(
+            title: "Account Removed",
+            message: result.nextActiveAccountID == nil
+                ? "The archived account was removed and there is no remaining active account."
+                : "The archived account was removed."
+        )
     }
 
     private func isCurrentAddAccountOperation(_ operationID: UUID?) -> Bool {

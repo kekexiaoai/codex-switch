@@ -3,32 +3,64 @@ import SwiftUI
 public struct AccountRowView: View {
     private let account: AccountRowModel
     private let onSelect: (() -> Void)?
+    private let onRemove: (() -> Void)?
 
-    public init(account: AccountRowModel, onSelect: (() -> Void)? = nil) {
+    public init(
+        account: AccountRowModel,
+        onSelect: (() -> Void)? = nil,
+        onRemove: (() -> Void)? = nil
+    ) {
         self.account = account
         self.onSelect = onSelect
+        self.onRemove = onRemove
     }
 
     public var body: some View {
-        Button(action: { onSelect?() }) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(account.emailMask)
-                        .font(.headline)
-                    Spacer()
-                    Text(account.tierLabel)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+        HStack(alignment: .top, spacing: 10) {
+            Button(action: { onSelect?() }) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(account.emailMask)
+                            .font(.headline)
+                        if account.isActive {
+                            Label("Active", systemImage: "checkmark.circle.fill")
+                                .font(.caption.weight(.semibold))
+                                .labelStyle(.titleAndIcon)
+                                .foregroundColor(Color(nsColor: .systemGreen))
+                        }
+                        Spacer()
+                        Text(account.tierLabel)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
 
-                HStack(spacing: 12) {
-                    metric(label: "5h", percent: account.fiveHourPercent)
-                    metric(label: "wk", percent: account.weeklyPercent)
+                    HStack(spacing: 12) {
+                        metric(label: "5h", percent: account.fiveHourPercent)
+                        metric(label: "wk", percent: account.weeklyPercent)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            if let onRemove {
+                Button(role: .destructive, action: onRemove) {
+                    Image(systemName: "trash")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help("Remove Account")
             }
         }
-        .buttonStyle(.plain)
-        .padding(.vertical, 4)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(account.isActive ? Color.accentColor.opacity(0.10) : Color.primary.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(account.isActive ? Color.accentColor.opacity(0.20) : Color.primary.opacity(0.08), lineWidth: 1)
+        )
     }
 
     private func metric(label: String, percent: Int) -> some View {

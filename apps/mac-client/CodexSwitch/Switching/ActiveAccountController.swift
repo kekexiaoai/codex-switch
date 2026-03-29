@@ -32,4 +32,8 @@ public final class ActiveAccountController: ObservableObject {
     public func currentActiveAccountID() -> String? {
         activeAccountID
     }
+
+    public func syncActiveAccountID(_ accountID: String?) {
+        activeAccountID = accountID
+    }
 }

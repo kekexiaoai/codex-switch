@@ -20,13 +20,13 @@ public struct CodexUsageResolver {
         authData: Data,
         mode: CodexUsageSourceMode
     ) async throws -> CodexUsageSnapshot {
-        logger.log("usage_refresh_started mode=\(mode.rawValue) account=\(account.id)")
+        logger.log("usage_refresh_started mode=\(mode.rawValue) account=\(account.id)\(accountLogLabel(for: account))")
         switch mode {
         case .automatic:
             if let authContext = try? parseAuthContext(from: authData),
                let accessToken = authContext.accessToken,
                !accessToken.isEmpty {
-                logger.log("usage_refresh_api_started account=\(account.id)")
+                logger.log("usage_refresh_api_started account=\(account.id)\(accountLogLabel(for: account))")
                 do {
                     let snapshot = try await apiClient.fetchUsage(
                         for: account,
@@ -34,15 +34,15 @@ public struct CodexUsageResolver {
                         accountID: authContext.transportAccountID
                     )
                     try scanner.saveCachedSnapshot(snapshot)
-                    logger.log("usage_refresh_api_succeeded account=\(account.id)")
+                    logger.log("usage_refresh_api_succeeded account=\(account.id)\(accountLogLabel(for: account))")
                     return snapshot
                 } catch let error as CodexUsageAPIClient.Error {
-                    logger.log("usage_refresh_api_failed account=\(account.id) reason=\(error.logValue)")
+                    logger.log("usage_refresh_api_failed account=\(account.id)\(accountLogLabel(for: account)) reason=\(error.logValue)")
                 } catch {
-                    logger.log("usage_refresh_api_failed account=\(account.id) reason=unknown")
+                    logger.log("usage_refresh_api_failed account=\(account.id)\(accountLogLabel(for: account)) reason=unknown")
                 }
             } else {
-                logger.log("usage_refresh_api_skipped account=\(account.id) reason=missing_access_token")
+                logger.log("usage_refresh_api_skipped account=\(account.id)\(accountLogLabel(for: account)) reason=missing_access_token")
             }
 
             return logLocalRefresh(
@@ -85,9 +85,17 @@ public struct CodexUsageResolver {
         account: Account
     ) -> CodexUsageSnapshot {
         logger.log(
-            "usage_refresh_local_succeeded mode=\(mode.rawValue) account=\(account.id) source=\(result.source.rawValue)"
+            "usage_refresh_local_succeeded mode=\(mode.rawValue) account=\(account.id)\(accountLogLabel(for: account)) source=\(result.source.rawValue)"
         )
         return result.snapshot
+    }
+
+    private func accountLogLabel(for account: Account) -> String {
+        guard !account.emailMask.isEmpty else {
+            return ""
+        }
+
+        return " label=\(account.emailMask)"
     }
 }
 

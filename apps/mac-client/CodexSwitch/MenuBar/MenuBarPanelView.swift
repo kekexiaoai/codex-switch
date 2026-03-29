@@ -24,11 +24,17 @@ public struct MenuBarPanelView: View {
                 .font(.headline)
 
             ForEach(viewModel.accountRows) { account in
-                AccountRowView(account: account) {
-                    Task {
-                        try? await viewModel.switchToAccount(id: account.id)
+                AccountRowView(
+                    account: account,
+                    onSelect: {
+                        Task {
+                            try? await viewModel.switchToAccount(id: account.id)
+                        }
+                    },
+                    onRemove: {
+                        viewModel.requestRemoveAccount(id: account.id)
                     }
-                }
+                )
             }
 
             Divider()
@@ -72,6 +78,31 @@ public struct MenuBarPanelView: View {
                     viewModel.dismissAlert()
                 }
             )
+        }
+        .confirmationDialog(
+            viewModel.pendingAccountRemoval?.title ?? "Remove Account?",
+            isPresented: Binding(
+                get: { viewModel.pendingAccountRemoval != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.cancelPendingAccountRemoval()
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove Account", role: .destructive) {
+                Task {
+                    try? await viewModel.confirmPendingAccountRemoval()
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                viewModel.cancelPendingAccountRemoval()
+            }
+        } message: {
+            if let message = viewModel.pendingAccountRemoval?.message {
+                Text(message)
+            }
         }
     }
 

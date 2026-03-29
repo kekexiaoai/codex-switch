@@ -60,7 +60,8 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
                         emailMask: account.displayEmail(showFullEmail: showFullEmails),
                         tierLabel: account.tier.rawValue.capitalized,
                         fiveHourPercent: snapshot?.fiveHour.percentUsed ?? (environment.runtimeMode == .live ? 0 : 56),
-                        weeklyPercent: snapshot?.weekly.percentUsed ?? (environment.runtimeMode == .live ? 0 : 13)
+                        weeklyPercent: snapshot?.weekly.percentUsed ?? (environment.runtimeMode == .live ? 0 : 13),
+                        isActive: account.id == activeAccountID
                     )
                 )
             }
@@ -71,7 +72,8 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
                     emailMask: account,
                     tierLabel: environment.runtimeMode == .live ? "Live" : "Preview",
                     fiveHourPercent: environment.runtimeMode == .live ? 42 : 56,
-                    weeklyPercent: environment.runtimeMode == .live ? 24 : 13
+                    weeklyPercent: environment.runtimeMode == .live ? 24 : 13,
+                    isActive: index == 0
                 )
             }
         }

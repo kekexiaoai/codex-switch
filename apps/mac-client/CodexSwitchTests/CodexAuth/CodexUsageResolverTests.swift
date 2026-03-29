@@ -217,10 +217,10 @@ final class CodexUsageResolverTests: XCTestCase {
         )
 
         XCTAssertEqual(logger.entries, [
-            "usage_refresh_started mode=automatic account=google-oauth2|123",
-            "usage_refresh_api_started account=google-oauth2|123",
-            "usage_refresh_api_failed account=google-oauth2|123 reason=unauthorized",
-            "usage_refresh_local_succeeded mode=automatic account=google-oauth2|123 source=rollout_logs",
+            "usage_refresh_started mode=automatic account=google-oauth2|123 label=a•••@example.com",
+            "usage_refresh_api_started account=google-oauth2|123 label=a•••@example.com",
+            "usage_refresh_api_failed account=google-oauth2|123 label=a•••@example.com reason=unauthorized",
+            "usage_refresh_local_succeeded mode=automatic account=google-oauth2|123 label=a•••@example.com source=rollout_logs",
         ])
     }
 
@@ -270,8 +270,8 @@ final class CodexUsageResolverTests: XCTestCase {
         XCTAssertEqual(snapshot.fiveHour, cachedSnapshot.fiveHour)
         XCTAssertEqual(snapshot.weekly, cachedSnapshot.weekly)
         XCTAssertEqual(logger.entries, [
-            "usage_refresh_started mode=localOnly account=google-oauth2|123",
-            "usage_refresh_local_succeeded mode=localOnly account=google-oauth2|123 source=cache",
+            "usage_refresh_started mode=localOnly account=google-oauth2|123 label=a•••@example.com",
+            "usage_refresh_local_succeeded mode=localOnly account=google-oauth2|123 label=a•••@example.com source=cache",
         ])
     }
 

@@ -20,19 +20,38 @@ public struct AccountRowModel: Identifiable, Equatable {
     public let tierLabel: String
     public let fiveHourPercent: Int
     public let weeklyPercent: Int
+    public let isActive: Bool
 
     public init(
         id: String,
         emailMask: String,
         tierLabel: String,
         fiveHourPercent: Int,
-        weeklyPercent: Int
+        weeklyPercent: Int,
+        isActive: Bool = false
     ) {
         self.id = id
         self.emailMask = emailMask
         self.tierLabel = tierLabel
         self.fiveHourPercent = fiveHourPercent
         self.weeklyPercent = weeklyPercent
+        self.isActive = isActive
+    }
+}
+
+public struct AccountRemovalConfirmation: Identifiable, Equatable {
+    public let accountID: String
+    public let title: String
+    public let message: String
+
+    public var id: String {
+        accountID
+    }
+
+    public init(accountID: String, title: String, message: String) {
+        self.accountID = accountID
+        self.title = title
+        self.message = message
     }
 }
 

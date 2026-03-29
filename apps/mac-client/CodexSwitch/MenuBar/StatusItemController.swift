@@ -138,6 +138,7 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
             accountRepository: environment.accountRepository,
             activeAccountController: environment.activeAccountController,
             accountImporter: environment.accountImporter,
+            accountRemover: environment.codexPaths.map { CodexArchivedAccountStore(fileStore: CodexAuthFileStore(paths: $0)) },
             loginCoordinator: environment.loginCoordinator,
             backupAuthPicker: OpenPanelBackupAuthPicker(),
             emailVisibilityStore: environment.emailVisibilityProvider as? any EmailVisibilityMutating,

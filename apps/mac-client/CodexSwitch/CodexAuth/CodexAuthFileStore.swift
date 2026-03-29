@@ -73,6 +73,19 @@ public struct CodexAuthFileStore {
         .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
+    public func removeArchive(filename: String) throws {
+        let url = paths.accountsDirectoryURL.appendingPathComponent(filename)
+        guard fileManager.fileExists(atPath: url.path) else {
+            throw CodexAuthError.authFileUnreadable
+        }
+
+        do {
+            try fileManager.removeItem(at: url)
+        } catch {
+            throw CodexAuthError.activeAuthReplacementFailed
+        }
+    }
+
     public func replaceActiveAuth(with data: Data) throws {
         do {
             try fileManager.createDirectory(at: paths.baseDirectory, withIntermediateDirectories: true)
@@ -84,6 +97,36 @@ public struct CodexAuthFileStore {
             try fileManager.moveItem(at: tempURL, to: paths.authFileURL)
         } catch {
             throw CodexAuthError.activeAuthReplacementFailed
+        }
+    }
+
+    public func clearActiveAuth() throws {
+        guard fileManager.fileExists(atPath: paths.authFileURL.path) else {
+            return
+        }
+
+        do {
+            try fileManager.removeItem(at: paths.authFileURL)
+        } catch {
+            throw CodexAuthError.activeAuthReplacementFailed
+        }
+    }
+
+    public func loadUsageCache() throws -> CodexUsageCache {
+        guard fileManager.fileExists(atPath: paths.usageCacheURL.path) else {
+            return CodexUsageCache()
+        }
+
+        return try JSONDecoder().decode(CodexUsageCache.self, from: Data(contentsOf: paths.usageCacheURL))
+    }
+
+    public func saveUsageCache(_ cache: CodexUsageCache) throws {
+        do {
+            try fileManager.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(cache)
+            try data.write(to: paths.usageCacheURL, options: .atomic)
+        } catch {
+            throw CodexAuthError.archiveWriteFailed
         }
     }
 

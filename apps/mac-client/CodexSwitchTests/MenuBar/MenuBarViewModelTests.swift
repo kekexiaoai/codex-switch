@@ -714,6 +714,121 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(emailVisibilityToggleSystemImage(showEmails: false), "eye.slash")
     }
 
+    func testRequestRemoveAccountCreatesConfirmation() async throws {
+        let metadataStore = InMemoryAccountMetadataStore(
+            accounts: [
+                Account(id: "acct-1", emailMask: "a••••@example.com", email: "a@example.com", tier: .team),
+            ]
+        )
+        let repository = AccountRepository(
+            metadataStore: metadataStore,
+            credentialStore: InMemoryCredentialStore()
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(
+                environment: AppEnvironment(
+                    accountStore: MockAccountStore(),
+                    usageService: MockUsageService(),
+                    accountRepository: repository,
+                    runtimeMode: .live
+                )
+            ),
+            accountRepository: repository
+        )
+
+        await viewModel.refresh()
+        viewModel.requestRemoveAccount(id: "acct-1")
+
+        XCTAssertEqual(viewModel.pendingAccountRemoval?.accountID, "acct-1")
+        XCTAssertEqual(viewModel.pendingAccountRemoval?.title, "Remove Account?")
+    }
+
+    func testCancelRemoveAccountKeepsAccountsUnchanged() async throws {
+        let metadataStore = InMemoryAccountMetadataStore(
+            accounts: [
+                Account(id: "acct-1", emailMask: "a••••@example.com", email: "a@example.com", tier: .team),
+            ]
+        )
+        let repository = AccountRepository(
+            metadataStore: metadataStore,
+            credentialStore: InMemoryCredentialStore()
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(
+                environment: AppEnvironment(
+                    accountStore: MockAccountStore(),
+                    usageService: MockUsageService(),
+                    accountRepository: repository,
+                    runtimeMode: .live
+                )
+            ),
+            accountRepository: repository
+        )
+
+        await viewModel.refresh()
+        viewModel.requestRemoveAccount(id: "acct-1")
+        viewModel.cancelPendingAccountRemoval()
+
+        XCTAssertNil(viewModel.pendingAccountRemoval)
+        XCTAssertEqual(viewModel.accountRows.map(\.id), ["acct-1"])
+    }
+
+    func testConfirmRemoveAccountDeletesAccountAndFallsBackToNextActiveAccount() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        let alexData = try sampleAuthData(email: "alex@example.com", tier: "team")
+        let bethData = try sampleAuthData(email: "beth@example.com", tier: "pro")
+        let alexFilename = CodexArchiveNaming.archiveFilename(for: "alex@example.com")
+        let bethFilename = CodexArchiveNaming.archiveFilename(for: "beth@example.com")
+        try fileStore.writeArchive(data: alexData, filename: alexFilename)
+        try fileStore.writeArchive(data: bethData, filename: bethFilename)
+        try fileStore.saveMetadataCache(
+            CodexAccountMetadataCache(entries: [
+                alexFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)),
+                bethFilename: CodexAccountMetadataEntry(source: .backupImport, lastImportedAt: Date(timeIntervalSince1970: 1_711_585_800)),
+            ])
+        )
+        try fileStore.replaceActiveAuth(with: alexData)
+
+        let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
+        let repository = AccountRepository(catalog: archivedAccountStore)
+        let controller = ActiveAccountController(
+            activeAccountID: "subject-alex@example.com",
+            switcher: CodexAccountSwitcher(
+                archivedAccountStore: archivedAccountStore,
+                fileStore: fileStore
+            ),
+            usageService: StubUsageRefreshService()
+        )
+        let environment = AppEnvironment(
+            accountStore: MockAccountStore(),
+            usageService: MockUsageService(),
+            accountRepository: repository,
+            activeAccountController: controller,
+            runtimeMode: .live
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment),
+            accountRepository: repository,
+            activeAccountController: controller,
+            accountRemover: archivedAccountStore
+        )
+
+        await viewModel.refresh()
+        viewModel.requestRemoveAccount(id: "subject-alex@example.com")
+        try await viewModel.confirmPendingAccountRemoval()
+
+        XCTAssertNil(viewModel.pendingAccountRemoval)
+        XCTAssertEqual(controller.currentActiveAccountID(), "subject-beth@example.com")
+        XCTAssertEqual(viewModel.accountRows.map(\.id), ["subject-beth@example.com"])
+        XCTAssertEqual(viewModel.alertMessage?.title, "Account Removed")
+    }
+
     private func sampleAuthData(email: String, tier: String) throws -> Data {
         let payload = [
             "sub": "subject-\(email)",
