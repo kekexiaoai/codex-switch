@@ -106,7 +106,9 @@ final class CodexLoginCoordinatorTests: XCTestCase {
         let result = try await runner.runLogin()
 
         XCTAssertEqual(result, .success)
-        XCTAssertEqual(try Data(contentsOf: paths.authFileURL), authData)
+        let savedData = try Data(contentsOf: paths.authFileURL)
+        XCTAssertEqual(try jsonObject(from: savedData) as? NSDictionary, try jsonObject(from: authData) as? NSDictionary)
+        XCTAssertTrue(String(decoding: savedData, as: UTF8.self).contains("\n"))
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
@@ -134,6 +136,10 @@ final class CodexLoginCoordinatorTests: XCTestCase {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+
+    private func jsonObject(from data: Data) throws -> Any {
+        try JSONSerialization.jsonObject(with: data)
     }
 }
 

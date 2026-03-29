@@ -55,7 +55,8 @@ final class ActiveAccountControllerTests: XCTestCase {
         try await switcher.activateAccount(id: "subject-alex@example.com")
 
         let activeData = try Data(contentsOf: paths.authFileURL)
-        XCTAssertEqual(activeData, archivedData)
+        XCTAssertEqual(try jsonObject(from: activeData) as? NSDictionary, try jsonObject(from: archivedData) as? NSDictionary)
+        XCTAssertTrue(String(decoding: activeData, as: UTF8.self).contains("\n"))
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
@@ -83,6 +84,10 @@ final class ActiveAccountControllerTests: XCTestCase {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+
+    private func jsonObject(from data: Data) throws -> Any {
+        try JSONSerialization.jsonObject(with: data)
     }
 }
 

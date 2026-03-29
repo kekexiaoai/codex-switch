@@ -32,7 +32,10 @@ public struct CodexAuthFileStore {
     public func writeArchive(data: Data, filename: String) throws {
         do {
             try fileManager.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
-            try data.write(to: paths.accountsDirectoryURL.appendingPathComponent(filename), options: .atomic)
+            try formattedAuthData(data).write(
+                to: paths.accountsDirectoryURL.appendingPathComponent(filename),
+                options: .atomic
+            )
         } catch {
             throw CodexAuthError.archiveWriteFailed
         }
@@ -74,7 +77,7 @@ public struct CodexAuthFileStore {
         do {
             try fileManager.createDirectory(at: paths.baseDirectory, withIntermediateDirectories: true)
             let tempURL = paths.baseDirectory.appendingPathComponent(".auth.json.tmp")
-            try data.write(to: tempURL, options: .atomic)
+            try formattedAuthData(data).write(to: tempURL, options: .atomic)
             if fileManager.fileExists(atPath: paths.authFileURL.path) {
                 try fileManager.removeItem(at: paths.authFileURL)
             }
@@ -82,5 +85,10 @@ public struct CodexAuthFileStore {
         } catch {
             throw CodexAuthError.activeAuthReplacementFailed
         }
+    }
+
+    private func formattedAuthData(_ data: Data) throws -> Data {
+        let object = try JSONSerialization.jsonObject(with: data)
+        return try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
     }
 }

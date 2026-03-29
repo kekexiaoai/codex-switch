@@ -365,9 +365,10 @@ private final class BlockingOAuthCallbackServer: OAuthCallbackServing {
 
         while true {
             if didStop() {
+                try Task.checkCancellation()
                 break
             }
-            try? await Task.sleep(nanoseconds: 10_000_000)
+            try await Task.sleep(nanoseconds: 10_000_000)
         }
 
         throw CodexAuthError.loginFailed
