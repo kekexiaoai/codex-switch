@@ -9,6 +9,11 @@ public protocol EmailVisibilityProviding {
     func showEmails() -> Bool
 }
 
+public protocol UsageSettingsProviding {
+    func usageRefreshEnabled() -> Bool
+    func usageSourceMode() -> CodexUsageSourceMode
+}
+
 public protocol EmailVisibilityMutating: EmailVisibilityProviding {
     func setShowEmails(_ enabled: Bool)
 }
@@ -28,6 +33,28 @@ public struct UserDefaultsEmailVisibilityStore: EmailVisibilityProviding {
 extension UserDefaultsEmailVisibilityStore: EmailVisibilityMutating {
     public func setShowEmails(_ enabled: Bool) {
         defaults.set(enabled, forKey: SettingsViewModel.showEmailsKey)
+    }
+}
+
+public struct UserDefaultsUsageSettingsStore: UsageSettingsProviding {
+    private let defaults: UserDefaults
+
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    public func usageRefreshEnabled() -> Bool {
+        if defaults.object(forKey: SettingsViewModel.usageRefreshEnabledKey) == nil {
+            return true
+        }
+
+        return defaults.bool(forKey: SettingsViewModel.usageRefreshEnabledKey)
+    }
+
+    public func usageSourceMode() -> CodexUsageSourceMode {
+        CodexUsageSourceMode(
+            rawValue: defaults.string(forKey: SettingsViewModel.usageSourceModeKey) ?? CodexUsageSourceMode.automatic.rawValue
+        ) ?? .automatic
     }
 }
 

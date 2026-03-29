@@ -64,6 +64,106 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.accountRows.first?.fiveHourPercent, 42)
     }
 
+    func testEnvironmentBackedServiceReportsUsageRefreshDisabled() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.UsageDisabled")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.UsageDisabled")
+        defaults.set(false, forKey: SettingsViewModel.usageRefreshEnabledKey)
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let archiveFilename = CodexArchiveNaming.archiveFilename(for: "fixture@example.com")
+        try FileManager.default.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
+        try sampleAuthData(email: "fixture@example.com", tier: "team").write(
+            to: paths.accountsDirectoryURL.appendingPathComponent(archiveFilename)
+        )
+        let metadata = CodexAccountMetadataCache(entries: [
+            archiveFilename: CodexAccountMetadataEntry(
+                source: .currentAuth,
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+            ),
+        ])
+        try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
+        let usageCache = CodexUsageCache(entries: [
+            "subject-fixture@example.com": CodexUsageSnapshot(
+                accountID: "subject-fixture@example.com",
+                updatedAt: Date(timeIntervalSince1970: 1_711_584_800),
+                fiveHour: CodexUsageWindow(percentUsed: 42, resetsAt: Date(timeIntervalSince1970: 1_711_591_000)),
+                weekly: CodexUsageWindow(percentUsed: 24, resetsAt: Date(timeIntervalSince1970: 1_711_900_000))
+            ),
+        ])
+        try JSONEncoder().encode(usageCache).write(to: paths.usageCacheURL)
+
+        let environment = try AppEnvironment.live(
+            configuration: RuntimeConfiguration(
+                paths: paths,
+                loginRunner: StubCodexLoginRunner(result: .success),
+                settingsDefaults: defaults
+            )
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment)
+        )
+
+        await viewModel.refresh()
+
+        XCTAssertEqual(viewModel.updatedText, "Usage refresh disabled")
+        XCTAssertEqual(viewModel.accountRows.first?.fiveHourPercent, 42)
+    }
+
+    func testEnvironmentBackedServiceLabelsLocalOnlyUsageMode() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.UsageLocalOnly")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.UsageLocalOnly")
+        defaults.set(CodexUsageSourceMode.localOnly.rawValue, forKey: SettingsViewModel.usageSourceModeKey)
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let archiveFilename = CodexArchiveNaming.archiveFilename(for: "fixture@example.com")
+        try FileManager.default.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
+        try sampleAuthData(email: "fixture@example.com", tier: "team").write(
+            to: paths.accountsDirectoryURL.appendingPathComponent(archiveFilename)
+        )
+        let metadata = CodexAccountMetadataCache(entries: [
+            archiveFilename: CodexAccountMetadataEntry(
+                source: .currentAuth,
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+            ),
+        ])
+        try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
+        let usageCache = CodexUsageCache(entries: [
+            "subject-fixture@example.com": CodexUsageSnapshot(
+                accountID: "subject-fixture@example.com",
+                updatedAt: Date(timeIntervalSince1970: 1_711_584_800),
+                fiveHour: CodexUsageWindow(percentUsed: 42, resetsAt: Date(timeIntervalSince1970: 1_711_591_000)),
+                weekly: CodexUsageWindow(percentUsed: 24, resetsAt: Date(timeIntervalSince1970: 1_711_900_000))
+            ),
+        ])
+        try JSONEncoder().encode(usageCache).write(to: paths.usageCacheURL)
+
+        let environment = try AppEnvironment.live(
+            configuration: RuntimeConfiguration(
+                paths: paths,
+                loginRunner: StubCodexLoginRunner(result: .success),
+                settingsDefaults: defaults
+            )
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment)
+        )
+
+        await viewModel.refresh()
+
+        XCTAssertTrue(viewModel.updatedText.hasPrefix("Updated "))
+        XCTAssertTrue(viewModel.updatedText.contains("(Local Only)"))
+    }
+
     func testSwitchingAccountRefreshesHeaderState() async throws {
         let metadataStore = InMemoryAccountMetadataStore(
             accounts: [

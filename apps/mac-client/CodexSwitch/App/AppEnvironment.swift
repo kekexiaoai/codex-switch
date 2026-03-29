@@ -43,17 +43,27 @@ public struct LiveAccountStore: AccountStore {
 
 public struct LiveUsageService: UsageService {
     private let configuration: RuntimeConfiguration
+    private let settingsProvider: any UsageSettingsProviding
 
-    public init(configuration: RuntimeConfiguration) {
+    public init(
+        configuration: RuntimeConfiguration,
+        settingsProvider: any UsageSettingsProviding = UserDefaultsUsageSettingsStore()
+    ) {
         self.configuration = configuration
+        self.settingsProvider = settingsProvider
     }
 
     public func refreshUsage() -> String {
-        guard let cache = try? loadUsageCache(), let latest = cache.entries.values.max(by: { $0.updatedAt < $1.updatedAt }) else {
-            return "No usage data"
+        guard settingsProvider.usageRefreshEnabled() else {
+            return "Usage refresh disabled"
         }
 
-        return "Updated \(ISO8601DateFormatter().string(from: latest.updatedAt))"
+        let statusSuffix = settingsProvider.usageSourceMode() == .localOnly ? " (Local Only)" : ""
+        guard let cache = try? loadUsageCache(), let latest = cache.entries.values.max(by: { $0.updatedAt < $1.updatedAt }) else {
+            return "No usage data\(statusSuffix)"
+        }
+
+        return "Updated \(ISO8601DateFormatter().string(from: latest.updatedAt))\(statusSuffix)"
     }
 
     public func usageSnapshot(for accountID: String) -> CodexUsageSnapshot? {
@@ -78,13 +88,16 @@ public enum RuntimeMode: Equatable {
 public struct RuntimeConfiguration {
     public let paths: CodexPaths
     public let loginRunner: (any CodexLoginRunning)?
+    public let settingsDefaults: UserDefaults
 
     public init(
         paths: CodexPaths = CodexPaths(),
-        loginRunner: (any CodexLoginRunning)? = nil
+        loginRunner: (any CodexLoginRunning)? = nil,
+        settingsDefaults: UserDefaults = .standard
     ) {
         self.paths = paths
         self.loginRunner = loginRunner
+        self.settingsDefaults = settingsDefaults
     }
 }
 
@@ -168,7 +181,10 @@ public final class AppEnvironment {
 
         return AppEnvironment(
             accountStore: LiveAccountStore(configuration: configuration),
-            usageService: LiveUsageService(configuration: configuration),
+            usageService: LiveUsageService(
+                configuration: configuration,
+                settingsProvider: UserDefaultsUsageSettingsStore(defaults: configuration.settingsDefaults)
+            ),
             accountRepository: repository,
             activeAccountController: controller,
             accountImporter: importer,
@@ -177,10 +193,10 @@ public final class AppEnvironment {
                 importer: importer,
                 fileStore: fileStore
             ),
-            settingsDefaults: .standard,
+            settingsDefaults: configuration.settingsDefaults,
             settingsActionHandler: LiveSettingsActionHandler(paths: configuration.paths),
             launchAtLoginController: LiveLaunchAtLoginController(),
-            emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
+            emailVisibilityProvider: UserDefaultsEmailVisibilityStore(defaults: configuration.settingsDefaults),
             runtimeMode: .live,
             codexPaths: configuration.paths
         )
