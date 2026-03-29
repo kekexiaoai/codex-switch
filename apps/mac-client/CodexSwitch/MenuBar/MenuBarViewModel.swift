@@ -45,6 +45,8 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var headerEmail = ""
     @Published public private(set) var headerTier = ""
     @Published public private(set) var updatedText = ""
+    @Published public private(set) var usageSourceText = ""
+    @Published public private(set) var recentEvents: [String] = []
     @Published public private(set) var summaries: [UsageSummaryModel] = []
     @Published public private(set) var accountRows: [AccountRowModel] = []
     @Published public private(set) var showEmails = false
@@ -105,6 +107,8 @@ public final class MenuBarViewModel: ObservableObject {
         headerEmail = snapshot.headerEmail
         headerTier = snapshot.headerTier
         updatedText = snapshot.headerStatusText
+        usageSourceText = snapshot.usageSourceText
+        recentEvents = snapshot.recentEvents
         summaries = snapshot.summaries
         accountRows = snapshot.accounts
     }

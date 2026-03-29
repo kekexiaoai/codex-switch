@@ -15,6 +15,37 @@ final class MenuBarViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.headerEmail, "a••••@gmail.com")
         XCTAssertEqual(viewModel.accountRows.count, 5)
+        XCTAssertEqual(viewModel.usageSourceText, "API")
+        XCTAssertEqual(viewModel.recentEvents.count, 2)
+    }
+
+    func testMenuBarViewModelAppliesRecentEventsFromSnapshot() async {
+        let viewModel = MenuBarViewModel(
+            service: SnapshotMenuBarService(
+                snapshot: MenuBarSnapshot(
+                    headerEmail: "active@example.com",
+                    headerTier: "TEAM",
+                    updatedText: "Updated just now",
+                    headerStatusText: "08:13 Auto",
+                    usageSourceText: "Local Logs",
+                    recentEvents: [
+                        "2026-03-29T13:45:09+08:00 usage_refresh_local_succeeded",
+                        "2026-03-29T13:46:12+08:00 login_import_succeeded",
+                    ],
+                    summaries: [],
+                    accounts: []
+                )
+            )
+        )
+
+        await viewModel.refresh()
+
+        XCTAssertEqual(viewModel.updatedText, "08:13 Auto")
+        XCTAssertEqual(viewModel.usageSourceText, "Local Logs")
+        XCTAssertEqual(viewModel.recentEvents, [
+            "2026-03-29T13:45:09+08:00 usage_refresh_local_succeeded",
+            "2026-03-29T13:46:12+08:00 login_import_succeeded",
+        ])
     }
 
     func testEnvironmentBackedServiceLoadsLiveSnapshot() async throws {
@@ -1050,5 +1081,17 @@ private actor BlockingMenuBarSnapshotService: MenuBarSnapshotService {
         }
 
         return fastSnapshot
+    }
+}
+
+private struct SnapshotMenuBarService: MenuBarSnapshotService {
+    let snapshot: MenuBarSnapshot
+
+    func loadSnapshot() async -> MenuBarSnapshot {
+        snapshot
+    }
+
+    func loadSnapshot(triggerUsageRefresh: Bool) async -> MenuBarSnapshot {
+        snapshot
     }
 }

@@ -9,63 +9,60 @@ public struct MenuBarPanelView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            headerSection
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 12) {
+                headerSection
 
-            Divider()
+                Divider()
 
-            ForEach(viewModel.summaries) { summary in
-                UsageSummaryCard(summary: summary)
-            }
+                ForEach(viewModel.summaries) { summary in
+                    UsageSummaryCard(summary: summary)
+                }
 
-            Divider()
+                Divider()
 
-            Text("Switch Account")
-                .font(.headline)
+                Text("Switch Account")
+                    .font(.headline)
 
-            ForEach(viewModel.accountRows) { account in
-                AccountRowView(
-                    account: account,
-                    onSelect: {
-                        Task {
-                            try? await viewModel.switchToAccount(id: account.id)
+                ForEach(viewModel.accountRows) { account in
+                    AccountRowView(
+                        account: account,
+                        onSelect: {
+                            Task {
+                                try? await viewModel.switchToAccount(id: account.id)
+                            }
+                        },
+                        onRemove: {
+                            viewModel.requestRemoveAccount(id: account.id)
                         }
-                    },
-                    onRemove: {
-                        viewModel.requestRemoveAccount(id: account.id)
-                    }
-                )
-            }
+                    )
+                }
 
-            Divider()
+                Divider()
 
-            VStack(alignment: .leading, spacing: 10) {
-                addAccountMenu
-                actionRow(title: "Refresh Usage", systemImage: "arrow.clockwise") {
-                    Task {
-                        await viewModel.refresh()
+                VStack(alignment: .leading, spacing: 8) {
+                    addAccountMenu
+                    actionRow(title: "Status Page", systemImage: "waveform.path.ecg") {
+                        viewModel.openStatusPage()
                     }
-                }
-                actionRow(title: "Status Page", systemImage: "waveform.path.ecg") {
-                    viewModel.openStatusPage()
-                }
-                actionRow(
-                    title: viewModel.showEmails ? "Hide Emails" : "Show Emails",
-                    systemImage: viewModel.showEmails ? "eye" : "eye.slash"
-                ) {
-                    Task {
-                        await viewModel.toggleShowEmails()
+                    actionRow(
+                        title: viewModel.showEmails ? "Hide Emails" : "Show Emails",
+                        systemImage: viewModel.showEmails ? "eye" : "eye.slash"
+                    ) {
+                        Task {
+                            await viewModel.toggleShowEmails()
+                        }
                     }
-                }
-                actionRow(title: "Settings", systemImage: "gearshape") {
-                    viewModel.openSettings()
-                }
-                actionRow(title: "Quit", systemImage: "power") {
-                    viewModel.quit()
+                    actionRow(title: "Settings", systemImage: "gearshape") {
+                        viewModel.openSettings()
+                    }
+                    actionRow(title: "Quit", systemImage: "power") {
+                        viewModel.quit()
+                    }
                 }
             }
+            .padding(16)
         }
-        .padding(20)
         .frame(width: 360)
         .alert(item: Binding(
             get: { viewModel.alertMessage },
@@ -108,17 +105,44 @@ public struct MenuBarPanelView: View {
 
     private var headerSection: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text("Codex")
                     .font(.title2.weight(.semibold))
-                Text(viewModel.updatedText)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
                 Text(viewModel.headerEmail)
                     .font(.subheadline.weight(.medium))
-                    .padding(.top, 2)
+                    .padding(.top, 1)
+                HStack(spacing: 6) {
+                    Label(viewModel.updatedText, systemImage: "clock")
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
+
+                    if !viewModel.usageSourceText.isEmpty {
+                        Text(viewModel.usageSourceText)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(Color.primary.opacity(0.06))
+                            )
+                    }
+
+                    Button {
+                        Task {
+                            await viewModel.refresh()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Refresh Usage")
+                }
             }
 
             Spacer()
@@ -137,7 +161,7 @@ public struct MenuBarPanelView: View {
         action: @escaping () -> Void = {}
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 Image(systemName: systemImage)
                     .frame(width: 16)
                     .foregroundColor(.secondary)
@@ -228,8 +252,8 @@ public struct MenuBarPanelView: View {
 private struct MenuBarActionRowButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .padding(.vertical, 6)
-            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 6)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(configuration.isPressed ? Color.primary.opacity(0.12) : Color.clear)

@@ -8,13 +8,13 @@ public struct UsageSummaryCard: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(summary.title)
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text("\(summary.percentUsed)%")
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundColor(.secondary)
             }
 
@@ -22,7 +22,7 @@ public struct UsageSummaryCard: View {
                 .tint(Color(nsColor: .systemTeal))
 
             Text(summary.resetText)
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundColor(.secondary)
         }
     }

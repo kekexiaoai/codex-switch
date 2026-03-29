@@ -48,7 +48,7 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Settings")
                     .font(.title2.weight(.semibold))

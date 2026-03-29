@@ -71,6 +71,9 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         } else {
             usageSourceText = activeSnapshot?.sourceLabel ?? "Unavailable"
         }
+        let recentEvents = environment.codexPaths.map {
+            CodexDiagnosticsLogReader(paths: $0).recentSafeEvents(limit: 3)
+        } ?? []
 
         var accountRows: [AccountRowModel]
         if let repositoryAccounts {
@@ -112,6 +115,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
             updatedText: usageText,
             headerStatusText: headerStatusText(for: cachedUsage.latestSnapshot, settings: usageSettings),
             usageSourceText: usageSourceText,
+            recentEvents: recentEvents,
             summaries: activeSnapshot.map { snapshot in
                 [
                     UsageSummaryModel(
@@ -195,6 +199,10 @@ public struct MockMenuBarService: MenuBarSnapshotService {
             updatedText: "Updated 10 seconds ago",
             headerStatusText: "10:15 Auto",
             usageSourceText: "API",
+            recentEvents: [
+                "2026-03-29T13:45:09+08:00 usage_refresh_local_succeeded mode=automatic account=preview-account source=rollout_logs",
+                "2026-03-29T13:46:12+08:00 login_import_succeeded account=preview-account",
+            ],
             summaries: [
                 UsageSummaryModel(
                     id: "5h",

@@ -12,6 +12,7 @@ CONTENTS_PATH="$APP_BUNDLE_PATH/Contents"
 MACOS_PATH="$CONTENTS_PATH/MacOS"
 FRAMEWORKS_PATH="$CONTENTS_PATH/Frameworks"
 RESOURCES_PATH="$CONTENTS_PATH/Resources"
+ICON_SOURCE_PATH="$ROOT_DIR/packaging/icons/AppIcon.icns"
 
 mkdir -p "$DERIVED_DATA_PATH"
 
@@ -28,6 +29,10 @@ mkdir -p "$MACOS_PATH" "$FRAMEWORKS_PATH" "$RESOURCES_PATH"
 cp "$ROOT_DIR/packaging/Info.plist" "$CONTENTS_PATH/Info.plist"
 cp "$BUILD_PRODUCTS_PATH/CodexSwitchApp" "$MACOS_PATH/CodexSwitchApp"
 cp -R "$BUILD_PRODUCTS_PATH/CodexSwitchKit.framework" "$FRAMEWORKS_PATH/"
+
+if [[ -f "$ICON_SOURCE_PATH" ]]; then
+  cp "$ICON_SOURCE_PATH" "$RESOURCES_PATH/AppIcon.icns"
+fi
 
 chmod +x "$MACOS_PATH/CodexSwitchApp"
 

@@ -56,7 +56,7 @@ public struct StatusWindowView: View {
     }
 
     public var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
                 Text("Status Page")
                     .font(.title2.weight(.semibold))
