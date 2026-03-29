@@ -4,15 +4,16 @@
 
 **Goal:** Build a standalone macOS menu bar client that manages multiple accounts, displays usage snapshots, and supports fast account switching without depending on the `codex-auth` project.
 
-**Architecture:** The app will be a native SwiftUI `MenuBarExtra` application with a small domain layer for accounts and usage, a local persistence layer backed by Keychain plus Application Support, and a refresh/switch engine that isolates side effects from the UI. We will implement the first usable version with mock-backed flows first, then swap in the real integration layer behind protocols so the UI and tests stay stable.
+**Architecture:** The app will use a compatibility-first menu bar shell: `NSStatusItem + NSPopover` on macOS 12, with an optional `MenuBarExtra` wrapper on macOS 13+ behind availability checks. Shared UI, domain, persistence, and switching logic stay independent from the shell implementation so both paths render the same content and behavior. We will implement the first usable version with mock-backed flows first, then swap in the real integration layer behind protocols so the UI and tests stay stable.
 
-**Tech Stack:** SwiftUI, AppKit interop where needed, Swift Concurrency, XCTest, Keychain Services, UserDefaults/Application Support, Xcode project
+**Tech Stack:** SwiftUI, AppKit (`NSStatusItem`, `NSPopover`), conditional `MenuBarExtra` for macOS 13+, Swift Concurrency, XCTest, Keychain Services, UserDefaults/Application Support, Xcode project
 
 ### Task 1: Repository and App Project Bootstrap
 
 **Files:**
 - Create: `apps/mac-client/CodexSwitch.xcodeproj`
 - Create: `apps/mac-client/CodexSwitch/App/CodexSwitchApp.swift`
+- Create: `apps/mac-client/CodexSwitch/App/MenuBarHosting.swift`
 - Create: `apps/mac-client/CodexSwitch/App/AppEnvironment.swift`
 - Create: `apps/mac-client/CodexSwitchTests/CodexSwitchTests.swift`
 
@@ -65,7 +66,8 @@ git commit -m "chore: bootstrap macOS menu bar app project"
 ### Task 2: Menu Bar Shell and Mock UI
 
 **Files:**
-- Create: `apps/mac-client/CodexSwitch/MenuBar/MenuBarScene.swift`
+- Create: `apps/mac-client/CodexSwitch/MenuBar/StatusItemController.swift`
+- Create: `apps/mac-client/CodexSwitch/MenuBar/MenuBarShellView.swift`
 - Create: `apps/mac-client/CodexSwitch/MenuBar/MenuBarPanelView.swift`
 - Create: `apps/mac-client/CodexSwitch/MenuBar/UsageSummaryCard.swift`
 - Create: `apps/mac-client/CodexSwitch/MenuBar/AccountRowView.swift`
@@ -85,11 +87,16 @@ func testMenuBarViewModelFormatsCurrentAccountSummary() async {
 **Step 2: Run test to verify it fails**
 
 Run: `xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS' -only-testing:CodexSwitchTests/MenuBarViewModelTests`
-Expected: FAIL because the view model and menu bar scene are not implemented.
+Expected: FAIL because the view model and menu bar shell are not implemented.
 
 **Step 3: Write minimal implementation**
 
 ```swift
+enum MenuBarHostKind {
+    case statusItemPopover
+    case menuBarExtra
+}
+
 @MainActor
 final class MenuBarViewModel: ObservableObject {
     @Published private(set) var headerEmail = ""
@@ -289,6 +296,7 @@ git commit -m "feat: add settings and packaging checklist"
 
 **Files:**
 - Modify: `apps/mac-client/CodexSwitch/App/AppEnvironment.swift`
+- Modify: `apps/mac-client/CodexSwitch/App/MenuBarHosting.swift`
 - Modify: `apps/mac-client/CodexSwitch/Switching/SwitchCommandRunner.swift`
 - Modify: `apps/mac-client/CodexSwitch/Switching/UsageRefreshService.swift`
 - Test: `apps/mac-client/CodexSwitchTests/Integration/RealIntegrationSmokeTests.swift`
@@ -338,5 +346,5 @@ git commit -m "feat: wire mac client to real account integration"
 - Keep v1 menu content focused: current account, usage cards, switch list, add account, status, show emails, settings, quit.
 - Treat account switching and usage refresh as separate protocols from day one so mock-first and live modes remain swappable.
 - Do not couple UI state directly to Keychain or shell execution APIs.
-- When we generate the Xcode project, target a deployment version that supports `MenuBarExtra`.
-
+- Target `macOS 12` as the deployment floor.
+- Implement a runtime host switch so `macOS 13+` can adopt `MenuBarExtra` without forking the menu panel UI.
