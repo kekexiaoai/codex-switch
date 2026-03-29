@@ -175,6 +175,102 @@ final class CodexUsageResolverTests: XCTestCase {
         XCTAssertEqual(snapshot.weekly.percentUsed, 18)
     }
 
+    func testAutomaticModeLogsRemoteFailureThenLocalFallback() async throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let sessionDirectory = try makeCurrentSessionDirectory(paths: paths)
+        let logURL = sessionDirectory.appendingPathComponent("rollout-2026-03-29.jsonl")
+        try Data(
+            #"""
+            {"timestamp":"2026-03-29T08:00:00Z","email":"alex@example.com","rate_limits":{"five_hour":{"used_percent":61,"resets_at":"2026-03-29T10:30:00Z"},"weekly":{"used_percent":22,"resets_at":"2026-04-02T00:00:00Z"}}}
+            """#.utf8
+        ).write(to: logURL)
+
+        let authData = try sampleAuthData(
+            email: "alex@example.com",
+            accountID: "google-oauth2|123",
+            tier: "team",
+            accessToken: "access-token",
+            transportAccountID: "chatgpt-account-id"
+        )
+        try authData.write(to: paths.authFileURL)
+        let account = Account(
+            id: "google-oauth2|123",
+            emailMask: "a•••@example.com",
+            email: "alex@example.com",
+            tier: .team
+        )
+        let logger = InMemoryDiagnosticsLogger()
+        let resolver = CodexUsageResolver(
+            scanner: CodexUsageScanner(paths: paths),
+            apiClient: CodexUsageAPIClient(
+                transport: { _ in
+                    throw CodexUsageAPIClient.Error.unauthorized
+                }
+            ),
+            logger: logger
+        )
+
+        _ = try await resolver.refreshUsage(
+            for: account,
+            authData: authData,
+            mode: .automatic
+        )
+
+        XCTAssertEqual(logger.entries, [
+            "usage_refresh_started mode=automatic account=google-oauth2|123",
+            "usage_refresh_api_started account=google-oauth2|123",
+            "usage_refresh_api_failed account=google-oauth2|123 reason=unauthorized",
+            "usage_refresh_local_succeeded mode=automatic account=google-oauth2|123 source=rollout_logs",
+        ])
+    }
+
+    func testLocalOnlyModeLogsCacheHit() async throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let cachedSnapshot = CodexUsageSnapshot(
+            accountID: "google-oauth2|123",
+            updatedAt: Date(timeIntervalSince1970: 1_711_584_800),
+            fiveHour: CodexUsageWindow(percentUsed: 40, resetsAt: Date(timeIntervalSince1970: 1_711_591_000)),
+            weekly: CodexUsageWindow(percentUsed: 22, resetsAt: Date(timeIntervalSince1970: 1_711_900_000))
+        )
+        let cache = CodexUsageCache(entries: [
+            "google-oauth2|123": cachedSnapshot,
+        ])
+        try FileManager.default.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
+        try JSONEncoder().encode(cache).write(to: paths.usageCacheURL)
+        let authData = try sampleAuthData(
+            email: "alex@example.com",
+            accountID: "google-oauth2|123",
+            tier: "team",
+            accessToken: "access-token",
+            transportAccountID: "chatgpt-account-id"
+        )
+        try authData.write(to: paths.authFileURL)
+        let account = Account(
+            id: "google-oauth2|123",
+            emailMask: "a•••@example.com",
+            email: "alex@example.com",
+            tier: .team
+        )
+        let logger = InMemoryDiagnosticsLogger()
+        let resolver = CodexUsageResolver(
+            scanner: CodexUsageScanner(paths: paths),
+            apiClient: CodexUsageAPIClient(),
+            logger: logger
+        )
+
+        let snapshot = try await resolver.refreshUsage(
+            for: account,
+            authData: authData,
+            mode: .localOnly
+        )
+
+        XCTAssertEqual(snapshot, cachedSnapshot)
+        XCTAssertEqual(logger.entries, [
+            "usage_refresh_started mode=localOnly account=google-oauth2|123",
+            "usage_refresh_local_succeeded mode=localOnly account=google-oauth2|123 source=cache",
+        ])
+    }
+
     private func sampleAuthData(
         email: String,
         accountID: String,
@@ -229,5 +325,13 @@ private actor Counter {
 
     func increment() {
         value += 1
+    }
+}
+
+private final class InMemoryDiagnosticsLogger: CodexDiagnosticsLogging {
+    private(set) var entries: [String] = []
+
+    func log(_ message: String) {
+        entries.append(message)
     }
 }

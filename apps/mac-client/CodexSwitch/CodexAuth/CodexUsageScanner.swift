@@ -32,6 +32,21 @@ public struct CodexUsageCache: Codable, Equatable {
     }
 }
 
+public enum CodexUsageScanSource: String, Equatable {
+    case rolloutLogs = "rollout_logs"
+    case cache
+}
+
+public struct CodexUsageScanResult: Equatable {
+    public let snapshot: CodexUsageSnapshot
+    public let source: CodexUsageScanSource
+
+    public init(snapshot: CodexUsageSnapshot, source: CodexUsageScanSource) {
+        self.snapshot = snapshot
+        self.source = source
+    }
+}
+
 public struct CodexUsageScanner {
     private let paths: CodexPaths
     private let fileManager: FileManager
@@ -51,13 +66,17 @@ public struct CodexUsageScanner {
     }
 
     public func refreshUsage(for account: Account) throws -> CodexUsageSnapshot {
+        try refreshUsageResult(for: account).snapshot
+    }
+
+    public func refreshUsageResult(for account: Account) throws -> CodexUsageScanResult {
         if let snapshot = try loadLatestSnapshot(for: account) {
             try saveCachedSnapshot(snapshot)
-            return snapshot
+            return CodexUsageScanResult(snapshot: snapshot, source: .rolloutLogs)
         }
 
         if let cached = try loadCachedSnapshot(for: account.id) {
-            return cached
+            return CodexUsageScanResult(snapshot: cached, source: .cache)
         }
 
         throw CodexAuthError.noUsageData

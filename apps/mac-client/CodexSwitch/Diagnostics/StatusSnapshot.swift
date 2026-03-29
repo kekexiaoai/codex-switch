@@ -125,10 +125,10 @@ public extension StatusSnapshot {
             diagnosticsLogPath: "~/.codex/codex-switch-login.log"
         ),
         diagnostics: DiagnosticsSummary(
-            statusText: "Recent browser login activity",
+            statusText: "Recent diagnostics activity",
             recentEvents: [
                 "2026-03-28T11:41:22Z browser_login_started",
-                "2026-03-28T11:45:09Z token_exchange_succeeded",
+                "2026-03-29T13:45:09Z usage_refresh_local_succeeded mode=automatic account=preview-account source=rollout_logs",
             ]
         )
     )

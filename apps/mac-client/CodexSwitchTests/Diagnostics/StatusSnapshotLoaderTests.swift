@@ -81,7 +81,7 @@ final class StatusSnapshotLoaderTests: XCTestCase {
         XCTAssertEqual(snapshot.paths.accountsDirectoryPath, paths.accountsDirectoryURL.path)
         XCTAssertEqual(snapshot.paths.diagnosticsLogPath, paths.loginDiagnosticsLogURL.path)
         XCTAssertEqual(snapshot.accountInventoryStatusText, "2 archived accounts")
-        XCTAssertEqual(snapshot.diagnostics.statusText, "No browser login diagnostics yet")
+        XCTAssertEqual(snapshot.diagnostics.statusText, "No diagnostics yet")
     }
 
     func testLoaderProvidesStableEmptyStateWithoutAccountsOrUsage() async {
@@ -115,7 +115,7 @@ final class StatusSnapshotLoaderTests: XCTestCase {
         XCTAssertEqual(snapshot.accountInventoryStatusText, "No archived accounts")
         XCTAssertTrue(snapshot.summaries.isEmpty)
         XCTAssertEqual(snapshot.usageStatusText, "No usage data")
-        XCTAssertEqual(snapshot.diagnostics.statusText, "No browser login diagnostics yet")
+        XCTAssertEqual(snapshot.diagnostics.statusText, "No diagnostics yet")
         XCTAssertTrue(snapshot.diagnostics.recentEvents.isEmpty)
     }
 }

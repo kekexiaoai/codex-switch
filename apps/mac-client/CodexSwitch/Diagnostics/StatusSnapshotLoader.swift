@@ -73,7 +73,7 @@ public struct StatusSnapshotLoader {
                 diagnosticsLogPath: paths.loginDiagnosticsLogURL.path
             ),
             diagnostics: StatusSnapshot.DiagnosticsSummary(
-                statusText: diagnosticsEvents.isEmpty ? "No browser login diagnostics yet" : "Recent browser login activity",
+                statusText: diagnosticsEvents.isEmpty ? "No diagnostics yet" : "Recent diagnostics activity",
                 recentEvents: diagnosticsEvents
             )
         )

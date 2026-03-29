@@ -19,6 +19,7 @@ This repository is initialized with a planning-first scaffold. The first impleme
 
 - `apps/mac-client/`: macOS app project and source files
 - `docs/plans/`: implementation plans and design notes
+- `docs/usage-refresh.md`: current usage refresh triggers, source modes, and diagnostics events
 - `tests/`: shared testing notes and future cross-target helpers
 
 ## Near-Term Milestones
