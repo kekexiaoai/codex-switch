@@ -21,4 +21,38 @@ final class CodexSwitchTests: XCTestCase {
 
         XCTAssertTrue(host == .statusItemPopover || host == .menuBarExtra)
     }
+
+    @MainActor
+    func testAppEnvironmentCreatesSettingsViewModelWithConfiguredActionHandler() throws {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Environment.Settings")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Environment.Settings")
+        let handler = RecordingSettingsEnvironmentActionHandler()
+        let environment = AppEnvironment(
+            accountStore: MockAccountStore(),
+            usageService: MockUsageService(),
+            settingsDefaults: defaults,
+            settingsActionHandler: handler,
+            runtimeMode: .preview,
+            codexPaths: nil
+        )
+
+        let viewModel = environment.makeSettingsViewModel()
+        viewModel.requestDestructiveAction(.clearDiagnosticsLog)
+        try viewModel.confirmPendingAction()
+
+        XCTAssertEqual(handler.destructiveActions, [.clearDiagnosticsLog])
+    }
+}
+
+private final class RecordingSettingsEnvironmentActionHandler: SettingsActionHandling {
+    private(set) var destructiveActions: [SettingsDestructiveAction] = []
+
+    func performDestructiveAction(_ action: SettingsDestructiveAction) throws -> SettingsActionMessage {
+        destructiveActions.append(action)
+        return SettingsActionMessage(title: "Done", message: "Done")
+    }
+
+    func performUtilityAction(_ action: SettingsUtilityAction) throws -> SettingsActionMessage {
+        SettingsActionMessage(title: "Done", message: "Done")
+    }
 }

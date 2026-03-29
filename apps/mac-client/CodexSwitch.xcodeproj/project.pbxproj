@@ -272,7 +272,9 @@
             "OBJ_1033",
             "OBJ_1034",
             "OBJ_1035",
-            "OBJ_1036"
+            "OBJ_1036",
+            "OBJ_3007",
+            "OBJ_3008"
          );
       };
       "OBJ_124" = {
@@ -519,6 +521,42 @@
          isa = "PBXBuildFile";
          fileRef = "OBJ_1030";
       };
+      "OBJ_3001" = {
+         isa = "PBXFileReference";
+         path = "SettingsActions.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_3002" = {
+         isa = "PBXFileReference";
+         path = "LiveSettingsActionHandler.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_3003" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_3001";
+      };
+      "OBJ_3004" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_3002";
+      };
+      "OBJ_3005" = {
+         isa = "PBXFileReference";
+         path = "SettingsActionHandlerTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_3006" = {
+         isa = "PBXFileReference";
+         path = "SettingsViewTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_3007" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_3005";
+      };
+      "OBJ_3008" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_3006";
+      };
       "OBJ_131" = {
          isa = "PBXFrameworksBuildPhase";
          files = (
@@ -729,7 +767,9 @@
          isa = "PBXGroup";
          children = (
             "OBJ_36",
-            "OBJ_37"
+            "OBJ_37",
+            "OBJ_3001",
+            "OBJ_3002"
          );
          name = "Settings";
          path = "Settings";
@@ -901,7 +941,9 @@
       "OBJ_52" = {
          isa = "PBXGroup";
          children = (
-            "OBJ_53"
+            "OBJ_53",
+            "OBJ_3005",
+            "OBJ_3006"
          );
          name = "Settings";
          path = "Settings";
@@ -1263,7 +1305,9 @@
             "OBJ_105",
             "OBJ_106",
             "OBJ_1022",
-            "OBJ_2002"
+            "OBJ_2002",
+            "OBJ_3003",
+            "OBJ_3004"
          );
       };
       "OBJ_84" = {

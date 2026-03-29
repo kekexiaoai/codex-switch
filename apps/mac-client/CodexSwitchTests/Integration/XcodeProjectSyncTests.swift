@@ -17,6 +17,8 @@ final class XcodeProjectSyncTests: XCTestCase {
             "CodexUsageScanner.swift",
             "DesktopCodexLoginBroker.swift",
             "CodexAccountSwitcher.swift",
+            "SettingsActions.swift",
+            "LiveSettingsActionHandler.swift",
         ]
 
         let missingFilenames = requiredFilenames.filter { !projectContents.contains($0) }

@@ -95,6 +95,8 @@ public final class AppEnvironment {
     public let activeAccountController: ActiveAccountController?
     public let accountImporter: CodexAuthImporter?
     public let loginCoordinator: CodexLoginCoordinator?
+    public let settingsDefaults: UserDefaults
+    public let settingsActionHandler: any SettingsActionHandling
     public let emailVisibilityProvider: (any EmailVisibilityProviding)?
     public let runtimeMode: RuntimeMode
     public let codexPaths: CodexPaths?
@@ -106,6 +108,8 @@ public final class AppEnvironment {
         activeAccountController: ActiveAccountController? = nil,
         accountImporter: CodexAuthImporter? = nil,
         loginCoordinator: CodexLoginCoordinator? = nil,
+        settingsDefaults: UserDefaults = .standard,
+        settingsActionHandler: any SettingsActionHandling = NoopSettingsActionHandler(),
         emailVisibilityProvider: (any EmailVisibilityProviding)? = UserDefaultsEmailVisibilityStore(),
         runtimeMode: RuntimeMode,
         codexPaths: CodexPaths? = nil
@@ -116,6 +120,8 @@ public final class AppEnvironment {
         self.activeAccountController = activeAccountController
         self.accountImporter = accountImporter
         self.loginCoordinator = loginCoordinator
+        self.settingsDefaults = settingsDefaults
+        self.settingsActionHandler = settingsActionHandler
         self.emailVisibilityProvider = emailVisibilityProvider
         self.runtimeMode = runtimeMode
         self.codexPaths = codexPaths
@@ -128,6 +134,8 @@ public final class AppEnvironment {
         activeAccountController: nil,
         accountImporter: nil,
         loginCoordinator: nil,
+        settingsDefaults: .standard,
+        settingsActionHandler: NoopSettingsActionHandler(),
         emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
         runtimeMode: .preview,
         codexPaths: nil
@@ -165,9 +173,19 @@ public final class AppEnvironment {
                 importer: importer,
                 fileStore: fileStore
             ),
+            settingsDefaults: .standard,
+            settingsActionHandler: LiveSettingsActionHandler(paths: configuration.paths),
             emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
             runtimeMode: .live,
             codexPaths: configuration.paths
+        )
+    }
+
+    @MainActor
+    public func makeSettingsViewModel() -> SettingsViewModel {
+        SettingsViewModel(
+            defaults: settingsDefaults,
+            actionHandler: settingsActionHandler
         )
     }
 
