@@ -6,9 +6,14 @@ public protocol MenuBarSnapshotService {
 
 public struct EnvironmentMenuBarService: MenuBarSnapshotService {
     private let environment: AppEnvironment
+    private let timeFormatter: CodexUserFacingTimeFormatter
 
-    public init(environment: AppEnvironment) {
+    public init(
+        environment: AppEnvironment,
+        timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter()
+    ) {
         self.environment = environment
+        self.timeFormatter = timeFormatter
     }
 
     public func loadSnapshot() async -> MenuBarSnapshot {
@@ -82,13 +87,13 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
                         id: "5h",
                         title: "5 Hours",
                         percentUsed: snapshot.fiveHour.percentUsed,
-                        resetText: "Resets \(ISO8601DateFormatter().string(from: snapshot.fiveHour.resetsAt))"
+                        resetText: "Resets \(timeFormatter.displayTimestamp(from: snapshot.fiveHour.resetsAt))"
                     ),
                     UsageSummaryModel(
                         id: "weekly",
                         title: "Weekly",
                         percentUsed: snapshot.weekly.percentUsed,
-                        resetText: "Resets \(ISO8601DateFormatter().string(from: snapshot.weekly.resetsAt))"
+                        resetText: "Resets \(timeFormatter.displayTimestamp(from: snapshot.weekly.resetsAt))"
                     ),
                 ]
             } ?? [

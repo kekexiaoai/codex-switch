@@ -21,15 +21,18 @@ public struct CodexUsageRefreshService: UsageRefreshing {
     private let fileStore: CodexAuthFileStore
     private let resolver: CodexUsageResolver
     private let settingsProvider: any UsageSettingsProviding
+    private let timeFormatter: CodexUserFacingTimeFormatter
 
     public init(
         fileStore: CodexAuthFileStore,
         resolver: CodexUsageResolver,
-        settingsProvider: any UsageSettingsProviding = UserDefaultsUsageSettingsStore()
+        settingsProvider: any UsageSettingsProviding = UserDefaultsUsageSettingsStore(),
+        timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter()
     ) {
         self.fileStore = fileStore
         self.resolver = resolver
         self.settingsProvider = settingsProvider
+        self.timeFormatter = timeFormatter
     }
 
     public func refresh(reason: UsageRefreshReason) async throws -> [UsageSummaryModel] {
@@ -61,13 +64,13 @@ public struct CodexUsageRefreshService: UsageRefreshing {
                 id: "5h",
                 title: "5 Hours",
                 percentUsed: snapshot.fiveHour.percentUsed,
-                resetText: "Resets \(ISO8601DateFormatter().string(from: snapshot.fiveHour.resetsAt))"
+                resetText: "Resets \(timeFormatter.displayTimestamp(from: snapshot.fiveHour.resetsAt))"
             ),
             UsageSummaryModel(
                 id: "weekly",
                 title: "Weekly",
                 percentUsed: snapshot.weekly.percentUsed,
-                resetText: "Resets \(ISO8601DateFormatter().string(from: snapshot.weekly.resetsAt))"
+                resetText: "Resets \(timeFormatter.displayTimestamp(from: snapshot.weekly.resetsAt))"
             ),
         ]
     }

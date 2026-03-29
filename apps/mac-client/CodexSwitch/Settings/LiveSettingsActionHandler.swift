@@ -22,6 +22,7 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
     private let fileManager: FileManager
     private let openResource: ResourceOpener
     private let now: () -> Date
+    private let timeFormatter: CodexUserFacingTimeFormatter
 
     public init(
         paths: CodexPaths,
@@ -29,12 +30,14 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         openResource: @escaping ResourceOpener = { url in
             NSWorkspace.shared.open(url)
         },
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter()
     ) {
         self.paths = paths
         self.fileManager = fileManager
         self.openResource = openResource
         self.now = now
+        self.timeFormatter = timeFormatter
     }
 
     public func performDestructiveAction(_ action: SettingsDestructiveAction) throws -> SettingsActionMessage {
@@ -100,12 +103,14 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         let diagnosticsReader = CodexDiagnosticsLogReader(paths: paths, fileManager: fileManager)
         let events = diagnosticsReader.recentSafeEvents(limit: 50)
         let exportDirectory = paths.baseDirectory.appendingPathComponent("exports", isDirectory: true)
-        let exportURL = exportDirectory.appendingPathComponent("diagnostics-summary-\(Self.filenameTimestampFormatter.string(from: now())).txt")
+        let currentTime = now()
+        let exportURL = exportDirectory.appendingPathComponent("diagnostics-summary-\(timeFormatter.filenameTimestamp(from: currentTime)).txt")
 
         let body = """
         Codex Switch Diagnostics Summary
-        Generated: \(Self.summaryTimestampFormatter.string(from: now()))
-        Base Directory: \(paths.baseDirectory.path)
+        Generated: \(timeFormatter.displayTimestamp(from: currentTime))
+        Codex Directory: \(paths.baseDirectory.path)
+        Diagnostics Directory: \(paths.diagnosticsDirectoryURL.path)
 
         Recent Safe Events:
         \(events.isEmpty ? "- No diagnostics events captured." : events.map { "- \($0)" }.joined(separator: "\n"))
@@ -133,19 +138,4 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
 
         try fileManager.removeItem(at: url)
     }
-
-    private static let filenameTimestampFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
-        return formatter
-    }()
-
-    private static let summaryTimestampFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter
-    }()
 }

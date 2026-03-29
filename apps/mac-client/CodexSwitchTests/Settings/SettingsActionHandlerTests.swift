@@ -37,6 +37,10 @@ final class SettingsActionHandlerTests: XCTestCase {
     }
 
     func testLiveSettingsActionHandlerExportsSanitizedDiagnosticsSummaryAndOpensResources() throws {
+        let originalTimeZone = NSTimeZone.default
+        NSTimeZone.default = TimeZone(secondsFromGMT: 8 * 3600)!
+        defer { NSTimeZone.default = originalTimeZone }
+
         let baseDirectory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         let paths = CodexPaths(baseDirectory: baseDirectory)
@@ -61,7 +65,8 @@ final class SettingsActionHandlerTests: XCTestCase {
             openResource: { url in
                 openedURLs.append(url)
                 return true
-            }
+            },
+            now: { Date(timeIntervalSince1970: 1_743_230_582) }
         )
 
         _ = try handler.performUtilityAction(.openCodexDirectory)
@@ -75,6 +80,11 @@ final class SettingsActionHandlerTests: XCTestCase {
 
         let exportURL = openedURLs[2]
         let contents = try String(contentsOf: exportURL, encoding: .utf8)
+        XCTAssertEqual(exportURL.lastPathComponent, "diagnostics-summary-20250329T144302.txt")
+        XCTAssertTrue(contents.contains("Generated: 2025-03-29 14:43:02 +08:00"))
+        XCTAssertTrue(contents.contains("Codex Directory: \(paths.baseDirectory.path)"))
+        XCTAssertTrue(contents.contains("Diagnostics Directory: \(paths.diagnosticsDirectoryURL.path)"))
+        XCTAssertFalse(contents.contains("Base Directory:"))
         XCTAssertTrue(contents.contains("browser_login_started"))
         XCTAssertTrue(contents.contains("usage_refresh_started"))
         XCTAssertFalse(contents.contains("access_token"))

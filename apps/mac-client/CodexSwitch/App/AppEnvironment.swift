@@ -45,11 +45,13 @@ public struct LiveUsageService: UsageService {
     private let configuration: RuntimeConfiguration
     private let settingsProvider: any UsageSettingsProviding
     private let resolver: CodexUsageResolver
+    private let timeFormatter: CodexUserFacingTimeFormatter
 
     public init(
         configuration: RuntimeConfiguration,
         settingsProvider: any UsageSettingsProviding = UserDefaultsUsageSettingsStore(),
-        resolver: CodexUsageResolver? = nil
+        resolver: CodexUsageResolver? = nil,
+        timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter()
     ) {
         self.configuration = configuration
         self.settingsProvider = settingsProvider
@@ -58,6 +60,7 @@ public struct LiveUsageService: UsageService {
             apiClient: CodexUsageAPIClient(transport: configuration.usageAPITransport),
             logger: CodexDiagnosticsFileLogger(paths: configuration.paths, category: .usageRefresh)
         )
+        self.timeFormatter = timeFormatter
     }
 
     public func refreshUsage() async -> String {
@@ -71,7 +74,7 @@ public struct LiveUsageService: UsageService {
             return "No usage data\(statusSuffix)"
         }
 
-        return "Updated \(ISO8601DateFormatter().string(from: latest.updatedAt))\(statusSuffix)"
+        return "Updated \(timeFormatter.displayTimestamp(from: latest.updatedAt))\(statusSuffix)"
     }
 
     public func usageSnapshot(for accountID: String) async -> CodexUsageSnapshot? {

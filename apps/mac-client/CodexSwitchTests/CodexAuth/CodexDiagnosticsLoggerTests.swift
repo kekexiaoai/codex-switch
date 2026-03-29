@@ -17,6 +17,10 @@ final class CodexDiagnosticsLoggerTests: XCTestCase {
     }
 
     func testFileLoggerAppendsTimestampedEntriesToCodexLogFile() throws {
+        let originalTimeZone = NSTimeZone.default
+        NSTimeZone.default = TimeZone(secondsFromGMT: 8 * 3600)!
+        defer { NSTimeZone.default = originalTimeZone }
+
         let paths = CodexPaths(baseDirectory: tempDirectoryURL)
         let logger = CodexDiagnosticsFileLogger(
             paths: paths,
@@ -28,8 +32,8 @@ final class CodexDiagnosticsLoggerTests: XCTestCase {
         logger.log("callback_received")
 
         let contents = try String(contentsOf: paths.browserLoginDiagnosticsLogURL, encoding: .utf8)
-        XCTAssertTrue(contents.contains("2025-03-28T10:31:12Z browser_open_started"))
-        XCTAssertTrue(contents.contains("2025-03-28T10:31:12Z callback_received"))
+        XCTAssertTrue(contents.contains("2025-03-28T18:31:12+08:00 browser_open_started"))
+        XCTAssertTrue(contents.contains("2025-03-28T18:31:12+08:00 callback_received"))
     }
 
     func testLogReaderReturnsRecentSafeEventsAcrossSeparatedLogFiles() throws {

@@ -18,6 +18,10 @@ final class MenuBarViewModelTests: XCTestCase {
     }
 
     func testEnvironmentBackedServiceLoadsLiveSnapshot() async throws {
+        let originalTimeZone = NSTimeZone.default
+        NSTimeZone.default = TimeZone(secondsFromGMT: 8 * 3600)!
+        defer { NSTimeZone.default = originalTimeZone }
+
         let tempDirectoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
@@ -59,7 +63,11 @@ final class MenuBarViewModelTests: XCTestCase {
         await viewModel.refresh()
 
         XCTAssertEqual(viewModel.headerEmail, "f••••••@example.com")
-        XCTAssertTrue(viewModel.updatedText.hasPrefix("Updated "))
+        XCTAssertEqual(viewModel.updatedText, "Updated 2024-03-28 08:13:20 +08:00")
+        XCTAssertEqual(viewModel.summaries.map(\.resetText), [
+            "Resets 2024-03-28 09:56:40 +08:00",
+            "Resets 2024-03-31 23:46:40 +08:00",
+        ])
         XCTAssertEqual(viewModel.accountRows.count, 1)
         XCTAssertEqual(viewModel.accountRows.first?.fiveHourPercent, 42)
     }

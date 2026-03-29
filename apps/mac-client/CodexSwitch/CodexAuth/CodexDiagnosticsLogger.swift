@@ -1,5 +1,34 @@
 import Foundation
 
+public struct CodexUserFacingTimeFormatter {
+    public let timeZone: TimeZone
+
+    public init(timeZone: TimeZone = .current) {
+        self.timeZone = timeZone
+    }
+
+    public func displayTimestamp(from date: Date) -> String {
+        formatter(dateFormat: "yyyy-MM-dd HH:mm:ss ZZZZZ").string(from: date)
+    }
+
+    public func logTimestamp(from date: Date) -> String {
+        formatter(dateFormat: "yyyy-MM-dd'T'HH:mm:ssZZZZZ").string(from: date)
+    }
+
+    public func filenameTimestamp(from date: Date) -> String {
+        formatter(dateFormat: "yyyyMMdd'T'HHmmss").string(from: date)
+    }
+
+    private func formatter(dateFormat: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = dateFormat
+        return formatter
+    }
+}
+
 public protocol CodexDiagnosticsLogging {
     func log(_ message: String)
 }
@@ -19,13 +48,15 @@ public final class CodexDiagnosticsFileLogger: CodexDiagnosticsLogging {
     private let logFileURL: URL
     private let fileManager: FileManager
     private let now: () -> Date
+    private let timeFormatter: CodexUserFacingTimeFormatter
     private let lock = NSLock()
 
     public init(
         paths: CodexPaths,
         category: CodexDiagnosticsLogCategory = .browserLogin,
         fileManager: FileManager = .default,
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter()
     ) {
         switch category {
         case .browserLogin:
@@ -35,6 +66,7 @@ public final class CodexDiagnosticsFileLogger: CodexDiagnosticsLogging {
         }
         self.fileManager = fileManager
         self.now = now
+        self.timeFormatter = timeFormatter
     }
 
     public func log(_ message: String) {
@@ -47,7 +79,7 @@ public final class CodexDiagnosticsFileLogger: CodexDiagnosticsLogging {
                 withIntermediateDirectories: true
             )
 
-            let line = "\(Self.timestampFormatter.string(from: now())) \(message)\n"
+            let line = "\(timeFormatter.logTimestamp(from: now())) \(message)\n"
             let data = Data(line.utf8)
 
             if !fileManager.fileExists(atPath: logFileURL.path) {
@@ -64,12 +96,6 @@ public final class CodexDiagnosticsFileLogger: CodexDiagnosticsLogging {
         }
     }
 
-    private static let timestampFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter
-    }()
 }
 
 public struct CodexDiagnosticsLogReader {
