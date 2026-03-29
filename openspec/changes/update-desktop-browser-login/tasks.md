@@ -16,4 +16,4 @@
 ## 4. Verification
 - [x] 4.1 Add unit tests for desktop login broker success, cancellation, and timeout
 - [x] 4.2 Add coordinator regression tests for successful post-login import
-- [x] 4.3 Verify packaged macOS app behavior end to end without exposing Terminal
+- [ ] 4.3 Verify packaged macOS app behavior end to end without exposing Terminal
