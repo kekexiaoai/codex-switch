@@ -35,6 +35,11 @@ public struct MenuBarPanelView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 addAccountMenu
+                actionRow(title: "Refresh Usage", systemImage: "arrow.clockwise") {
+                    Task {
+                        await viewModel.refresh()
+                    }
+                }
                 actionRow(title: "Status Page", systemImage: "waveform.path.ecg") {
                     viewModel.openStatusPage()
                 }

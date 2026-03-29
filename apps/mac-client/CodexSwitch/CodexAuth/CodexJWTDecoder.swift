@@ -19,8 +19,31 @@ public struct CodexJWTDecoder {
             accountID: accountID,
             email: normalizedEmail,
             emailMask: Account.maskedEmail(normalizedEmail),
-            tier: AccountTier(rawValue: (payload.tier ?? payload.plan ?? "unknown").lowercased()) ?? .unknown
+            tier: resolveTier(from: payload)
         )
+    }
+
+    private func resolveTier(from payload: Payload) -> AccountTier {
+        let candidate = (
+            payload.tier ??
+            payload.plan ??
+            payload.openAIAuth?.chatgptPlanType ??
+            "unknown"
+        ).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if candidate.contains("team") {
+            return .team
+        }
+
+        if candidate.contains("pro") {
+            return .pro
+        }
+
+        if candidate.contains("plus") {
+            return .plus
+        }
+
+        return AccountTier(rawValue: candidate) ?? .unknown
     }
 
     private func decodePayload(_ payloadSegment: String) throws -> Payload {
@@ -51,5 +74,22 @@ private extension CodexJWTDecoder {
         let email: String
         let tier: String?
         let plan: String?
+        let openAIAuth: OpenAIAuthPayload?
+
+        enum CodingKeys: String, CodingKey {
+            case sub
+            case email
+            case tier
+            case plan
+            case openAIAuth = "https://api.openai.com/auth"
+        }
+    }
+
+    struct OpenAIAuthPayload: Decodable {
+        let chatgptPlanType: String?
+
+        enum CodingKeys: String, CodingKey {
+            case chatgptPlanType = "chatgpt_plan_type"
+        }
     }
 }

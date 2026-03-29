@@ -30,13 +30,28 @@ final class CodexAuthParsingTests: XCTestCase {
         XCTAssertEqual(claims.tier, .pro)
     }
 
+    func testJWTDecoderExtractsTierFromOpenAIAuthClaim() throws {
+        let idToken = makeJWT(payload: [
+            "sub": "google-oauth2|123",
+            "email": "alex@example.com",
+            "https://api.openai.com/auth": [
+                "chatgpt_plan_type": "team",
+            ],
+        ])
+
+        let claims = try CodexJWTDecoder().decode(idToken: idToken)
+
+        XCTAssertEqual(claims.accountID, "google-oauth2|123")
+        XCTAssertEqual(claims.tier, .team)
+    }
+
     func testArchiveFilenameUsesBase64URLEncodedEmail() {
         let archiveFilename = CodexArchiveNaming.archiveFilename(for: "alex@example.com")
 
         XCTAssertEqual(archiveFilename, "YWxleEBleGFtcGxlLmNvbQ.json")
     }
 
-    private func makeJWT(payload: [String: String]) -> String {
+    private func makeJWT(payload: [String: Any]) -> String {
         let header = #"{"alg":"none","typ":"JWT"}"#
         let payloadData = try! JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
         let payloadString = String(data: payloadData, encoding: .utf8)!

@@ -59,6 +59,7 @@ public struct LiveUsageService: UsageService {
         }
 
         let statusSuffix = settingsProvider.usageSourceMode() == .localOnly ? " (Local Only)" : ""
+        _ = refreshCurrentUsageIfPossible()
         guard let cache = try? loadUsageCache(), let latest = cache.entries.values.max(by: { $0.updatedAt < $1.updatedAt }) else {
             return "No usage data\(statusSuffix)"
         }
@@ -67,7 +68,11 @@ public struct LiveUsageService: UsageService {
     }
 
     public func usageSnapshot(for accountID: String) -> CodexUsageSnapshot? {
-        try? loadUsageCache().entries[accountID]
+        if let snapshot = try? loadUsageCache().entries[accountID] {
+            return snapshot
+        }
+
+        return refreshCurrentUsageIfPossible(matching: accountID)
     }
 
     private func loadUsageCache() throws -> CodexUsageCache {
@@ -77,6 +82,42 @@ public struct LiveUsageService: UsageService {
         }
 
         return try JSONDecoder().decode(CodexUsageCache.self, from: Data(contentsOf: url))
+    }
+
+    private func refreshCurrentUsageIfPossible(matching accountID: String? = nil) -> CodexUsageSnapshot? {
+        guard settingsProvider.usageRefreshEnabled() else {
+            return nil
+        }
+
+        guard let account = currentAuthAccount() else {
+            return nil
+        }
+
+        if let accountID, account.id != accountID {
+            return nil
+        }
+
+        return try? CodexUsageScanner(paths: configuration.paths).refreshUsage(for: account)
+    }
+
+    private func currentAuthAccount() -> Account? {
+        guard
+            let data = try? Data(contentsOf: configuration.paths.authFileURL),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let tokens = object["tokens"] as? [String: Any],
+            let idToken = tokens["id_token"] as? String,
+            let claims = try? CodexJWTDecoder().decode(idToken: idToken)
+        else {
+            return nil
+        }
+
+        return Account(
+            id: claims.accountID,
+            emailMask: claims.emailMask,
+            email: claims.email,
+            tier: claims.tier,
+            source: .currentAuth
+        )
     }
 }
 
