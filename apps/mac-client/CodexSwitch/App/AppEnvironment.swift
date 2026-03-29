@@ -97,6 +97,7 @@ public final class AppEnvironment {
     public let loginCoordinator: CodexLoginCoordinator?
     public let emailVisibilityProvider: (any EmailVisibilityProviding)?
     public let runtimeMode: RuntimeMode
+    public let codexPaths: CodexPaths?
 
     public init(
         accountStore: any AccountStore,
@@ -106,7 +107,8 @@ public final class AppEnvironment {
         accountImporter: CodexAuthImporter? = nil,
         loginCoordinator: CodexLoginCoordinator? = nil,
         emailVisibilityProvider: (any EmailVisibilityProviding)? = UserDefaultsEmailVisibilityStore(),
-        runtimeMode: RuntimeMode
+        runtimeMode: RuntimeMode,
+        codexPaths: CodexPaths? = nil
     ) {
         self.accountStore = accountStore
         self.usageService = usageService
@@ -116,6 +118,7 @@ public final class AppEnvironment {
         self.loginCoordinator = loginCoordinator
         self.emailVisibilityProvider = emailVisibilityProvider
         self.runtimeMode = runtimeMode
+        self.codexPaths = codexPaths
     }
 
     public static let preview = AppEnvironment(
@@ -126,7 +129,8 @@ public final class AppEnvironment {
         accountImporter: nil,
         loginCoordinator: nil,
         emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
-        runtimeMode: .preview
+        runtimeMode: .preview,
+        codexPaths: nil
     )
 
     @MainActor
@@ -162,7 +166,38 @@ public final class AppEnvironment {
                 fileStore: fileStore
             ),
             emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
-            runtimeMode: .live
+            runtimeMode: .live,
+            codexPaths: configuration.paths
+        )
+    }
+
+    public func makeStatusSnapshotLoader(
+        snapshotService: (any MenuBarSnapshotService)? = nil
+    ) -> StatusSnapshotLoader? {
+        guard let codexPaths else {
+            return nil
+        }
+
+        let environmentSnapshotService = snapshotService ?? EnvironmentMenuBarService(environment: self)
+        let activeAccountController = self.activeAccountController
+        let emailVisibilityProvider = self.emailVisibilityProvider
+
+        return StatusSnapshotLoader(
+            snapshotService: environmentSnapshotService,
+            accountRepository: accountRepository,
+            activeAccountIDProvider: {
+                await MainActor.run {
+                    activeAccountController?.currentActiveAccountID()
+                }
+            },
+            runtimeMode: runtimeMode,
+            paths: codexPaths,
+            showFullEmailProvider: {
+                emailVisibilityProvider?.showEmails() ?? false
+            },
+            diagnosticsReader: {
+                CodexDiagnosticsLogReader(paths: codexPaths).recentSafeEvents()
+            }
         )
     }
 

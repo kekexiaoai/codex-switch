@@ -83,6 +83,57 @@ final class StatusItemControllerTests: XCTestCase {
         XCTAssertEqual(removedMonitors.sorted(), ["global-monitor", "local-monitor"])
     }
 
+    func testStatusWindowPresenterReusesWindowControllerAndRefreshesSnapshotOnEachOpen() async {
+        let firstSnapshot = StatusSnapshot.preview
+        let secondSnapshot = StatusSnapshot(
+            activeAccount: firstSnapshot.activeAccount,
+            activeAccountStatusText: firstSnapshot.activeAccountStatusText,
+            archivedAccountCount: firstSnapshot.archivedAccountCount,
+            accountInventoryStatusText: firstSnapshot.accountInventoryStatusText,
+            updatedText: "Updated after refresh",
+            usageStatusText: "Updated after refresh",
+            summaries: firstSnapshot.summaries,
+            accountRows: firstSnapshot.accountRows,
+            runtimeModeLabel: firstSnapshot.runtimeModeLabel,
+            currentHostLabel: firstSnapshot.currentHostLabel,
+            preferredHostLabel: firstSnapshot.preferredHostLabel,
+            paths: firstSnapshot.paths,
+            diagnostics: firstSnapshot.diagnostics
+        )
+
+        var loadCount = 0
+        var makeCount = 0
+        var presentedControllers: [NSWindowController] = []
+        var renderedStatuses: [String] = []
+        let snapshotSequence = SnapshotSequence(snapshots: [firstSnapshot, secondSnapshot])
+        let presenter = StatusWindowPresenter(
+            loadSnapshot: {
+                await snapshotSequence.next()
+            },
+            makeWindowController: { snapshot in
+                makeCount += 1
+                renderedStatuses.append(snapshot.updatedText)
+                return NSWindowController(window: NSWindow())
+            },
+            updateWindowController: { _, snapshot in
+                renderedStatuses.append(snapshot.updatedText)
+            },
+            presentWindowController: { controller in
+                presentedControllers.append(controller)
+            }
+        )
+
+        await presenter.present()
+        await presenter.present()
+
+        loadCount = await snapshotSequence.loadCount
+        XCTAssertEqual(loadCount, 2)
+        XCTAssertEqual(makeCount, 1)
+        XCTAssertEqual(renderedStatuses, ["Updated 10 seconds ago", "Updated after refresh"])
+        XCTAssertEqual(presentedControllers.count, 2)
+        XCTAssertTrue(presentedControllers[0] === presentedControllers[1])
+    }
+
     private func mouseDownEvent() -> NSEvent {
         NSEvent.mouseEvent(
             with: .leftMouseDown,
@@ -95,5 +146,22 @@ final class StatusItemControllerTests: XCTestCase {
             clickCount: 1,
             pressure: 1
         )!
+    }
+}
+
+private actor SnapshotSequence {
+    private let snapshots: [StatusSnapshot]
+    private var nextIndex = 0
+    private(set) var loadCount = 0
+
+    init(snapshots: [StatusSnapshot]) {
+        self.snapshots = snapshots
+    }
+
+    func next() -> StatusSnapshot {
+        let index = min(nextIndex, snapshots.count - 1)
+        nextIndex += 1
+        loadCount += 1
+        return snapshots[index]
     }
 }

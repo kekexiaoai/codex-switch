@@ -592,7 +592,10 @@
          isa = "PBXGroup";
          children = (
             "OBJ_23",
-            "OBJ_24"
+            "OBJ_24",
+            "OBJ_2005",
+            "OBJ_2006",
+            "OBJ_2007"
          );
          name = "Diagnostics";
          path = "Diagnostics";
@@ -606,6 +609,21 @@
       "OBJ_24" = {
          isa = "PBXFileReference";
          path = "StatusWindowView.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_2005" = {
+         isa = "PBXFileReference";
+         path = "StatusSnapshot.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_2006" = {
+         isa = "PBXFileReference";
+         path = "StatusSnapshotLoader.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_2007" = {
+         isa = "PBXFileReference";
+         path = "StatusWindowPresenter.swift";
          sourceTree = "<group>";
       };
       "OBJ_25" = {
@@ -1227,6 +1245,9 @@
             "OBJ_90",
             "OBJ_91",
             "OBJ_92",
+            "OBJ_2008",
+            "OBJ_2009",
+            "OBJ_2010",
             "OBJ_93",
             "OBJ_94",
             "OBJ_95",
@@ -1290,6 +1311,18 @@
       "OBJ_92" = {
          isa = "PBXBuildFile";
          fileRef = "OBJ_24";
+      };
+      "OBJ_2008" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_2005";
+      };
+      "OBJ_2009" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_2006";
+      };
+      "OBJ_2010" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_2007";
       };
       "OBJ_93" = {
          isa = "PBXBuildFile";

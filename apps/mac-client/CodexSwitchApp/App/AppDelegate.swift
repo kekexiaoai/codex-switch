@@ -5,15 +5,27 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling {
     private var statusItemController: StatusItemController?
-    private var statusWindowController: NSWindowController?
+    private var statusWindowPresenter: StatusWindowPresenter?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        let environment = (try? AppEnvironment.live(configuration: RuntimeConfiguration())) ?? .preview
+        let configuration = RuntimeConfiguration()
+        let environment = (try? AppEnvironment.live(configuration: configuration)) ?? .preview
         let controller = StatusItemController(environment: environment, actionHandler: self)
         controller.install()
         statusItemController = controller
+        statusWindowPresenter = environment.makeStatusSnapshotLoader().map { loader in
+            StatusWindowPresenter(
+                loadSnapshot: {
+                    await loader.loadSnapshot()
+                }
+            )
+        } ?? StatusWindowPresenter(
+            loadSnapshot: {
+                StatusSnapshot.preview
+            }
+        )
     }
 
     func handle(_ action: MenuBarAction) {
@@ -28,15 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
     }
 
     private func openStatusWindow() {
-        let hostingController = NSHostingController(rootView: StatusWindowView())
-        let window = NSWindow(contentViewController: hostingController)
-        window.title = "Codex Switch Status"
-        window.setContentSize(NSSize(width: 440, height: 280))
-        window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        let controller = NSWindowController(window: window)
-        controller.showWindow(nil)
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        statusWindowController = controller
+        Task { @MainActor [statusWindowPresenter] in
+            await statusWindowPresenter?.present()
+        }
     }
 }
