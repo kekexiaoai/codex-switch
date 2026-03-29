@@ -1,6 +1,7 @@
 .DS_Store
 .build/
 .swiftpm/
+.codex-home/
 Packages/
 DerivedData/
 xcuserdata/
@@ -11,4 +12,3 @@ xcuserdata/
 *.swp
 *.lock
 build/
-
