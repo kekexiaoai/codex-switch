@@ -92,3 +92,44 @@ public struct StatusSnapshot: Equatable {
         self.diagnostics = diagnostics
     }
 }
+
+public extension StatusSnapshot {
+    static let preview = StatusSnapshot(
+        activeAccount: ActiveAccountSummary(
+            id: "preview-account",
+            displayEmail: "a••••@gmail.com",
+            tierLabel: "Team",
+            sourceLabel: "Browser Login",
+            archiveFilename: "preview.json",
+            lastImportedAt: .distantPast
+        ),
+        activeAccountStatusText: "a••••@gmail.com",
+        archivedAccountCount: 2,
+        accountInventoryStatusText: "2 archived accounts",
+        updatedText: "Updated 10 seconds ago",
+        usageStatusText: "Updated 10 seconds ago",
+        summaries: [
+            UsageSummaryModel(id: "5h", title: "5 Hours", percentUsed: 56, resetText: "Resets in 3h 16m"),
+            UsageSummaryModel(id: "weekly", title: "Weekly", percentUsed: 13, resetText: "Resets in 5d"),
+        ],
+        accountRows: [
+            AccountRowModel(id: "acct-1", emailMask: "a••••@gmail.com", tierLabel: "Team", fiveHourPercent: 56, weeklyPercent: 13),
+            AccountRowModel(id: "acct-2", emailMask: "b••••@gmail.com", tierLabel: "Pro", fiveHourPercent: 22, weeklyPercent: 31),
+        ],
+        runtimeModeLabel: "Preview",
+        currentHostLabel: "NSStatusItem + NSPopover",
+        preferredHostLabel: "MenuBarExtra",
+        paths: PathsSummary(
+            authFilePath: "~/.codex/auth.json",
+            accountsDirectoryPath: "~/.codex/accounts",
+            diagnosticsLogPath: "~/.codex/codex-switch-login.log"
+        ),
+        diagnostics: DiagnosticsSummary(
+            statusText: "Recent browser login activity",
+            recentEvents: [
+                "2026-03-28T11:41:22Z browser_login_started",
+                "2026-03-28T11:45:09Z token_exchange_succeeded",
+            ]
+        )
+    )
+}
