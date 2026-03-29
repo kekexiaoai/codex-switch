@@ -59,12 +59,7 @@ public struct CodexUsageScanner {
             return nil
         }
 
-        let logURLs = try fileManager.contentsOfDirectory(
-            at: paths.sessionsDirectoryURL,
-            includingPropertiesForKeys: nil
-        )
-        .filter { $0.lastPathComponent.hasPrefix("rollout-") && $0.pathExtension == "jsonl" }
-        .sorted { $0.lastPathComponent > $1.lastPathComponent }
+        let logURLs = try listRolloutLogURLs()
 
         for url in logURLs {
             let data = try Data(contentsOf: url)
@@ -93,8 +88,14 @@ public struct CodexUsageScanner {
             return nil
         }
 
-        guard entry.email.lowercased() == account.email?.lowercased() else {
-            return nil
+        if let email = entry.email {
+            guard email.lowercased() == account.email?.lowercased() else {
+                return nil
+            }
+        } else {
+            guard currentAuthMatchesAccount(account) else {
+                return nil
+            }
         }
 
         return CodexUsageSnapshot(
@@ -111,7 +112,38 @@ public struct CodexUsageScanner {
         )
     }
 
+    private func listRolloutLogURLs() throws -> [URL] {
+        guard let enumerator = fileManager.enumerator(
+            at: paths.sessionsDirectoryURL,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        return enumerator.compactMap { item in
+            guard let url = item as? URL else {
+                return nil
+            }
+
+            guard
+                url.lastPathComponent.hasPrefix("rollout-"),
+                url.pathExtension == "jsonl",
+                (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+            else {
+                return nil
+            }
+
+            return url
+        }
+        .sorted { $0.lastPathComponent > $1.lastPathComponent }
+    }
+
     private func decodeEntry(from object: [String: Any]) -> RolloutEntry? {
+        if let tokenCountEntry = decodeTokenCountEntry(from: object) {
+            return tokenCountEntry
+        }
+
         guard
             let timestampString = stringValue(in: object, paths: [["timestamp"], ["event_msg", "timestamp"]]),
             let timestamp = parseDate(timestampString),
@@ -126,6 +158,31 @@ public struct CodexUsageScanner {
         }
 
         return RolloutEntry(timestamp: timestamp, email: email, rateLimits: rateLimits)
+    }
+
+    private func decodeTokenCountEntry(from object: [String: Any]) -> RolloutEntry? {
+        guard
+            let type = object["type"] as? String,
+            type == "event_msg",
+            let timestampString = object["timestamp"] as? String,
+            let timestamp = parseDate(timestampString),
+            let payload = object["payload"] as? [String: Any],
+            let payloadType = payload["type"] as? String,
+            payloadType == "token_count",
+            let rateLimitsObject = payload["rate_limits"] as? [String: Any],
+            let primaryObject = rateLimitsObject["primary"] as? [String: Any],
+            let secondaryObject = rateLimitsObject["secondary"] as? [String: Any],
+            let fiveHour = decodeWindow(from: primaryObject),
+            let weekly = decodeWindow(from: secondaryObject)
+        else {
+            return nil
+        }
+
+        return RolloutEntry(
+            timestamp: timestamp,
+            email: nil,
+            rateLimits: RateLimits(fiveHour: fiveHour, weekly: weekly)
+        )
     }
 
     private func decodeRateLimits(from object: [String: Any]) -> RateLimits? {
@@ -143,9 +200,8 @@ public struct CodexUsageScanner {
 
     private func decodeWindow(from object: [String: Any]) -> Window? {
         guard
-            let usedPercent = object["used_percent"] as? Int,
-            let resetsAtString = object["resets_at"] as? String,
-            let resetsAt = parseDate(resetsAtString)
+            let usedPercent = intValue(object["used_percent"]),
+            let resetsAt = dateValue(object["resets_at"])
         else {
             return nil
         }
@@ -185,6 +241,34 @@ public struct CodexUsageScanner {
         return current
     }
 
+    private func intValue(_ value: Any?) -> Int? {
+        switch value {
+        case let intValue as Int:
+            return intValue
+        case let doubleValue as Double:
+            return Int(doubleValue.rounded())
+        case let number as NSNumber:
+            return Int(number.doubleValue.rounded())
+        default:
+            return nil
+        }
+    }
+
+    private func dateValue(_ value: Any?) -> Date? {
+        switch value {
+        case let string as String:
+            return parseDate(string)
+        case let intValue as Int:
+            return Date(timeIntervalSince1970: TimeInterval(intValue))
+        case let doubleValue as Double:
+            return Date(timeIntervalSince1970: doubleValue)
+        case let number as NSNumber:
+            return Date(timeIntervalSince1970: number.doubleValue)
+        default:
+            return nil
+        }
+    }
+
     private func parseDate(_ string: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -194,6 +278,20 @@ public struct CodexUsageScanner {
 
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: string)
+    }
+
+    private func currentAuthMatchesAccount(_ account: Account) -> Bool {
+        guard
+            let data = try? Data(contentsOf: paths.authFileURL),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let tokens = object["tokens"] as? [String: Any],
+            let idToken = tokens["id_token"] as? String,
+            let claims = try? CodexJWTDecoder().decode(idToken: idToken)
+        else {
+            return false
+        }
+
+        return claims.accountID == account.id || claims.email == account.email
     }
 
     private func loadCachedSnapshot(for accountID: String) throws -> CodexUsageSnapshot? {
@@ -224,7 +322,7 @@ public struct CodexUsageScanner {
 private extension CodexUsageScanner {
     struct RolloutEntry {
         let timestamp: Date
-        let email: String
+        let email: String?
         let rateLimits: RateLimits
     }
 
