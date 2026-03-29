@@ -54,9 +54,47 @@ final class MenuBarViewModelTests: XCTestCase {
         )
 
         await viewModel.refresh()
+        XCTAssertEqual(viewModel.accountRows.map(\.id), ["acct-1", "acct-2"])
         try await viewModel.switchToAccount(id: "acct-2")
 
         XCTAssertEqual(controller.currentActiveAccountID(), "acct-2")
         XCTAssertEqual(viewModel.headerEmail, "b@example.com")
+    }
+
+    func testAddDemoAccountAppendsAccountAndActivatesIt() async throws {
+        let metadataStore = InMemoryAccountMetadataStore(
+            accounts: [
+                Account(id: "acct-1", emailMask: "a@example.com", tier: .team),
+            ]
+        )
+        let credentialStore = InMemoryCredentialStore()
+        let repository = AccountRepository(
+            metadataStore: metadataStore,
+            credentialStore: credentialStore
+        )
+        let controller = ActiveAccountController(
+            activeAccountID: "acct-1",
+            switcher: StubSwitchCommandRunner(),
+            usageService: StubUsageRefreshService()
+        )
+        let environment = AppEnvironment(
+            accountStore: MockAccountStore(),
+            usageService: MockUsageService(),
+            accountRepository: repository,
+            activeAccountController: controller,
+            runtimeMode: .live
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment),
+            accountRepository: repository,
+            activeAccountController: controller
+        )
+
+        await viewModel.refresh()
+        try await viewModel.addDemoAccount()
+
+        XCTAssertEqual(viewModel.accountRows.count, 2)
+        XCTAssertEqual(controller.currentActiveAccountID(), "demo-2")
+        XCTAssertEqual(viewModel.headerEmail, "demo2@example.com")
     }
 }

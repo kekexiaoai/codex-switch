@@ -39,7 +39,15 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
                     resetText: "Usage source: \(usageText)"
                 ),
             ],
-            accounts: accounts.enumerated().map { index, account in
+            accounts: repositoryAccounts?.map { account in
+                AccountRowModel(
+                    id: account.id,
+                    emailMask: account.emailMask,
+                    tierLabel: account.tier.rawValue.capitalized,
+                    fiveHourPercent: environment.runtimeMode == .live ? 42 : 56,
+                    weeklyPercent: environment.runtimeMode == .live ? 24 : 13
+                )
+            } ?? accounts.enumerated().map { index, account in
                 AccountRowModel(
                     id: "env-\(index)",
                     emailMask: account,

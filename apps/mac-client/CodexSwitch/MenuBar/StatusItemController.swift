@@ -12,6 +12,7 @@ public final class StatusItemController: NSObject {
         self.environment = environment
         self.viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(environment: environment),
+            accountRepository: environment.accountRepository,
             activeAccountController: environment.activeAccountController
         )
         super.init()

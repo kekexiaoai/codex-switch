@@ -33,7 +33,11 @@ public struct MenuBarPanelView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 10) {
-                actionRow(title: "Add Account")
+                actionRow(title: "Add Account") {
+                    Task {
+                        try? await viewModel.addDemoAccount()
+                    }
+                }
                 actionRow(title: "Status Page")
                 actionRow(title: "Show Emails")
                 actionRow(title: "Settings")
@@ -64,8 +68,8 @@ public struct MenuBarPanelView: View {
         }
     }
 
-    private func actionRow(title: String) -> some View {
-        Button(action: {}) {
+    private func actionRow(title: String, action: @escaping () -> Void = {}) -> some View {
+        Button(action: action) {
             Text(title)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

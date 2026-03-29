@@ -11,6 +11,7 @@ public struct MenuBarShellView: View {
         _viewModel = StateObject(
             wrappedValue: MenuBarViewModel(
                 service: EnvironmentMenuBarService(environment: environment),
+                accountRepository: environment.accountRepository,
                 activeAccountController: environment.activeAccountController
             )
         )

@@ -9,15 +9,18 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var accountRows: [AccountRowModel] = []
 
     private let service: any MenuBarSnapshotService
+    private let accountRepository: AccountRepository?
     private let activeAccountController: ActiveAccountController?
 
     public static let preview = MenuBarViewModel(service: MockMenuBarService())
 
     public init(
         service: any MenuBarSnapshotService,
+        accountRepository: AccountRepository? = nil,
         activeAccountController: ActiveAccountController? = nil
     ) {
         self.service = service
+        self.accountRepository = accountRepository
         self.activeAccountController = activeAccountController
     }
 
@@ -32,6 +35,25 @@ public final class MenuBarViewModel: ObservableObject {
 
     public func switchToAccount(id: String) async throws {
         try await activeAccountController?.activateAccount(id: id)
+        await refresh()
+    }
+
+    public func addDemoAccount() async throws {
+        guard let accountRepository else {
+            return
+        }
+
+        let existingAccounts = try await accountRepository.loadAccounts()
+        let nextIndex = existingAccounts.count + 1
+        let accountID = "demo-\(nextIndex)"
+        let account = Account(
+            id: accountID,
+            emailMask: "demo\(nextIndex)@example.com",
+            tier: .plus
+        )
+
+        try await accountRepository.save(account: account, secret: "demo-secret-\(nextIndex)")
+        try await activeAccountController?.activateAccount(id: accountID)
         await refresh()
     }
 }
