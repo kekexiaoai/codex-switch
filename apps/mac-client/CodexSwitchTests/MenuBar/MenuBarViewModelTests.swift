@@ -346,7 +346,7 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.alertMessage?.title, "Browser Login Failed")
         XCTAssertEqual(
             viewModel.alertMessage?.message,
-            "Codex browser login did not complete. Make sure `codex login` works in Terminal, then try again."
+            "Codex browser login did not complete. A Terminal window was opened for login. Finish login there, then try Import Current Account if it was not imported automatically."
         )
     }
 

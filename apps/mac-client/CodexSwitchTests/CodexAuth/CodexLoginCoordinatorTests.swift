@@ -68,17 +68,47 @@ final class CodexLoginCoordinatorTests: XCTestCase {
         XCTAssertEqual(account.source, .browserLogin)
     }
 
+    func testLoginCoordinatorWaitsForUpdatedAuthWhenInteractiveLoginStarts() async throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        try FileManager.default.createDirectory(at: paths.baseDirectory, withIntermediateDirectories: true)
+        try sampleAuthData(email: "before@example.com", tier: "pro").write(to: paths.authFileURL)
+
+        let updatedAuthData = try sampleAuthData(email: "after@example.com", tier: "team")
+        let writeGate = AuthWriteGate()
+        let coordinator = CodexLoginCoordinator(
+            runner: StubCodexLoginRunner(result: .started),
+            importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths)),
+            fileStore: CodexAuthFileStore(paths: paths),
+            pollIntervalNanoseconds: 1,
+            maxPollAttempts: 2,
+            wait: { _ in
+                if await writeGate.shouldWriteUpdatedAuth() {
+                    try updatedAuthData.write(to: paths.authFileURL, options: .atomic)
+                }
+            }
+        )
+
+        let account = try await coordinator.loginAndImport()
+
+        XCTAssertEqual(account.id, "subject-after@example.com")
+        XCTAssertEqual(account.email, "after@example.com")
+        XCTAssertEqual(account.source, .browserLogin)
+    }
+
     func testProcessLoginRunnerMapsExitCodesToCoordinatorResults() {
         XCTAssertEqual(ProcessCodexLoginRunner.result(forExitStatus: 0), .success)
         XCTAssertEqual(ProcessCodexLoginRunner.result(forExitStatus: 130), .cancelled)
         XCTAssertEqual(ProcessCodexLoginRunner.result(forExitStatus: 1), .failure)
     }
 
-    func testProcessLoginRunnerUsesPseudoTerminalWrappedLoginShellToResolveCodexCLI() {
+    func testProcessLoginRunnerOpensTerminalForVisibleBrowserLoginFlow() {
         let process = ProcessCodexLoginRunner.makeProcess()
 
-        XCTAssertEqual(process.executableURL?.path, "/usr/bin/script")
-        XCTAssertEqual(process.arguments, ["-q", "/dev/null", "/bin/zsh", "-lc", "codex login"])
+        XCTAssertEqual(process.executableURL?.path, "/usr/bin/osascript")
+        XCTAssertEqual(process.arguments?.first, "-e")
+        XCTAssertTrue(process.arguments?.joined(separator: "\n").contains("tell application \"Terminal\"") == true)
+        XCTAssertTrue(process.arguments?.joined(separator: "\n").contains("codex login") == true)
+        XCTAssertTrue(process.arguments?.joined(separator: "\n").contains("exec codex") == true)
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
@@ -117,5 +147,18 @@ private struct AuthWritingCodexLoginRunner: CodexLoginRunning {
     func runLogin() async throws -> CodexLoginResult {
         try dataToWrite.write(to: authFileURL, options: .atomic)
         return result
+    }
+}
+
+private actor AuthWriteGate {
+    private var didWriteUpdatedAuth = false
+
+    func shouldWriteUpdatedAuth() -> Bool {
+        guard !didWriteUpdatedAuth else {
+            return false
+        }
+
+        didWriteUpdatedAuth = true
+        return true
     }
 }
