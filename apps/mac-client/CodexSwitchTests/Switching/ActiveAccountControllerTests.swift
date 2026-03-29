@@ -3,14 +3,28 @@ import XCTest
 
 @MainActor
 final class ActiveAccountControllerTests: XCTestCase {
-    func testSwitchingAccountMarksSelectionAndRefreshesUsage() async throws {
+    func testSwitchingAccountMarksSelectionWithoutBlockingOnSlowUsageRefresh() async throws {
         let controller = ActiveAccountController(
             switcher: StubSwitchCommandRunner(),
-            usageService: StubUsageRefreshService()
+            usageService: SlowUsageRefreshService()
         )
 
-        try await controller.activateAccount(id: "acct-2")
+        let completedBeforeTimeout = try await withThrowingTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                try await controller.activateAccount(id: "acct-2")
+                return true
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: 100_000_000)
+                return false
+            }
 
+            let first = try await group.next() ?? false
+            group.cancelAll()
+            return first
+        }
+
+        XCTAssertTrue(completedBeforeTimeout)
         XCTAssertEqual(controller.activeAccountID, "acct-2")
         XCTAssertEqual(controller.lastRefreshSource, "switch")
     }
@@ -96,5 +110,12 @@ private struct FailingUsageRefreshService: UsageRefreshing {
 
     func refresh(reason: UsageRefreshReason) async throws -> [UsageSummaryModel] {
         throw error
+    }
+}
+
+private struct SlowUsageRefreshService: UsageRefreshing {
+    func refresh(reason: UsageRefreshReason) async throws -> [UsageSummaryModel] {
+        try await Task.sleep(nanoseconds: 5_000_000_000)
+        return []
     }
 }

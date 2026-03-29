@@ -63,6 +63,7 @@ public final class MenuBarViewModel: ObservableObject {
     private let emailVisibilityStore: (any EmailVisibilityMutating)?
     private let actionHandler: (any MenuBarActionHandling)?
     private var addAccountTask: Task<Void, Never>?
+    private var switchUsageRefreshTask: Task<Void, Never>?
     private var activeAddAccountOperationID: UUID?
 
     public static let preview = MenuBarViewModel(service: MockMenuBarService())
@@ -91,18 +92,30 @@ public final class MenuBarViewModel: ObservableObject {
     }
 
     public func refresh() async {
-        let snapshot = await service.loadSnapshot()
+        await refresh(triggerUsageRefresh: true)
+    }
+
+    private func refresh(triggerUsageRefresh: Bool) async {
+        let snapshot = await service.loadSnapshot(triggerUsageRefresh: triggerUsageRefresh)
+        applySnapshot(snapshot)
+    }
+
+    private func applySnapshot(_ snapshot: MenuBarSnapshot) {
         showEmails = emailVisibilityStore?.showEmails() ?? showEmails
         headerEmail = snapshot.headerEmail
         headerTier = snapshot.headerTier
-        updatedText = snapshot.updatedText
+        updatedText = snapshot.headerStatusText
         summaries = snapshot.summaries
         accountRows = snapshot.accounts
     }
 
     public func switchToAccount(id: String) async throws {
         try await activeAccountController?.activateAccount(id: id)
-        await refresh()
+        await refresh(triggerUsageRefresh: false)
+        switchUsageRefreshTask?.cancel()
+        switchUsageRefreshTask = Task { [weak self] in
+            await self?.refresh()
+        }
     }
 
     public func toggleShowEmails() async {

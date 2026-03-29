@@ -63,7 +63,7 @@ final class MenuBarViewModelTests: XCTestCase {
         await viewModel.refresh()
 
         XCTAssertEqual(viewModel.headerEmail, "f••••••@example.com")
-        XCTAssertEqual(viewModel.updatedText, "Updated 2024-03-28 08:13:20 +08:00")
+        XCTAssertEqual(viewModel.updatedText, "08:13 Auto")
         XCTAssertEqual(viewModel.summaries.map(\.resetText), [
             "Resets 2024-03-28 09:56:40 +08:00",
             "Resets 2024-03-31 23:46:40 +08:00",
@@ -73,6 +73,10 @@ final class MenuBarViewModelTests: XCTestCase {
     }
 
     func testEnvironmentBackedServiceRefreshesActiveAccountUsageFromRolloutLogs() async throws {
+        let originalTimeZone = NSTimeZone.default
+        NSTimeZone.default = TimeZone(secondsFromGMT: 8 * 3600)!
+        defer { NSTimeZone.default = originalTimeZone }
+
         let tempDirectoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
@@ -115,7 +119,7 @@ final class MenuBarViewModelTests: XCTestCase {
         await viewModel.refresh()
 
         XCTAssertEqual(viewModel.headerTier, "TEAM")
-        XCTAssertTrue(viewModel.updatedText.hasPrefix("Updated "))
+        XCTAssertEqual(viewModel.updatedText, "16:00 Auto")
         XCTAssertEqual(viewModel.accountRows.count, 1)
         XCTAssertEqual(viewModel.accountRows.first?.fiveHourPercent, 42)
         XCTAssertEqual(viewModel.accountRows.first?.weeklyPercent, 24)
@@ -246,11 +250,15 @@ final class MenuBarViewModelTests: XCTestCase {
 
         await viewModel.refresh()
 
-        XCTAssertEqual(viewModel.updatedText, "Usage refresh disabled")
+        XCTAssertEqual(viewModel.updatedText, "Refresh off")
         XCTAssertEqual(viewModel.accountRows.first?.fiveHourPercent, 42)
     }
 
     func testEnvironmentBackedServiceLabelsLocalOnlyUsageMode() async throws {
+        let originalTimeZone = NSTimeZone.default
+        NSTimeZone.default = TimeZone(secondsFromGMT: 8 * 3600)!
+        defer { NSTimeZone.default = originalTimeZone }
+
         let tempDirectoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
@@ -296,8 +304,62 @@ final class MenuBarViewModelTests: XCTestCase {
 
         await viewModel.refresh()
 
-        XCTAssertTrue(viewModel.updatedText.hasPrefix("Updated "))
-        XCTAssertTrue(viewModel.updatedText.contains("(Local Only)"))
+        XCTAssertEqual(viewModel.updatedText, "08:13 Local")
+    }
+
+    func testSwitchToAccountCompletesBeforeSlowSnapshotRefreshFinishes() async throws {
+        let service = BlockingMenuBarSnapshotService(
+            fastSnapshot: MenuBarSnapshot(
+                headerEmail: "b@example.com",
+                headerTier: "PLUS",
+                updatedText: "Updated 2024-03-28 08:13:20 +08:00",
+                headerStatusText: "08:13 Auto",
+                usageSourceText: "API",
+                summaries: [],
+                accounts: [
+                    AccountRowModel(id: "acct-2", emailMask: "b@example.com", tierLabel: "Plus", fiveHourPercent: 0, weeklyPercent: 0, isActive: true),
+                ]
+            ),
+            slowSnapshot: MenuBarSnapshot(
+                headerEmail: "b@example.com",
+                headerTier: "PLUS",
+                updatedText: "Updated 2024-03-28 08:14:20 +08:00",
+                headerStatusText: "08:14 Auto",
+                usageSourceText: "API",
+                summaries: [],
+                accounts: [
+                    AccountRowModel(id: "acct-2", emailMask: "b@example.com", tierLabel: "Plus", fiveHourPercent: 12, weeklyPercent: 18, isActive: true),
+                ]
+            )
+        )
+        let controller = ActiveAccountController(
+            activeAccountID: "acct-1",
+            switcher: StubSwitchCommandRunner(),
+            usageService: StubUsageRefreshService()
+        )
+        let viewModel = MenuBarViewModel(
+            service: service,
+            activeAccountController: controller
+        )
+
+        let completedBeforeTimeout = try await withThrowingTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                try await viewModel.switchToAccount(id: "acct-2")
+                return true
+            }
+            group.addTask {
+                try await Task.sleep(nanoseconds: 100_000_000)
+                return false
+            }
+
+            let first = try await group.next() ?? false
+            group.cancelAll()
+            return first
+        }
+
+        XCTAssertTrue(completedBeforeTimeout)
+        XCTAssertEqual(viewModel.headerEmail, "b@example.com")
+        XCTAssertEqual(viewModel.updatedText, "08:13 Auto")
     }
 
     func testSwitchingAccountRefreshesHeaderState() async throws {
@@ -965,5 +1027,28 @@ private actor CancellableBlockingCodexLoginRunner: CodexLoginRunning {
 
     func didObserveCancellation() -> Bool {
         observedCancellation
+    }
+}
+
+private actor BlockingMenuBarSnapshotService: MenuBarSnapshotService {
+    let fastSnapshot: MenuBarSnapshot
+    let slowSnapshot: MenuBarSnapshot
+
+    init(fastSnapshot: MenuBarSnapshot, slowSnapshot: MenuBarSnapshot) {
+        self.fastSnapshot = fastSnapshot
+        self.slowSnapshot = slowSnapshot
+    }
+
+    func loadSnapshot() async -> MenuBarSnapshot {
+        slowSnapshot
+    }
+
+    func loadSnapshot(triggerUsageRefresh: Bool) async -> MenuBarSnapshot {
+        if triggerUsageRefresh {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            return slowSnapshot
+        }
+
+        return fastSnapshot
     }
 }

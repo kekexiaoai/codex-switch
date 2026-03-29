@@ -11,6 +11,10 @@ public struct CodexUserFacingTimeFormatter {
         formatter(dateFormat: "yyyy-MM-dd HH:mm:ss ZZZZZ").string(from: date)
     }
 
+    public func compactClockTimestamp(from date: Date) -> String {
+        formatter(dateFormat: "HH:mm").string(from: date)
+    }
+
     public func logTimestamp(from date: Date) -> String {
         formatter(dateFormat: "yyyy-MM-dd'T'HH:mm:ssZZZZZ").string(from: date)
     }

@@ -128,7 +128,7 @@ final class StatusSnapshotLoaderTests: XCTestCase {
 private struct StubMenuBarSnapshotService: MenuBarSnapshotService {
     let snapshot: MenuBarSnapshot
 
-    func loadSnapshot() async -> MenuBarSnapshot {
+    func loadSnapshot(triggerUsageRefresh: Bool) async -> MenuBarSnapshot {
         snapshot
     }
 }

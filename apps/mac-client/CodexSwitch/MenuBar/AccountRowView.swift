@@ -22,16 +22,19 @@ public struct AccountRowView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(account.emailMask)
                             .font(.headline)
-                        if account.isActive {
-                            Label("Active", systemImage: "checkmark.circle.fill")
-                                .font(.caption.weight(.semibold))
-                                .labelStyle(.titleAndIcon)
-                                .foregroundColor(Color(nsColor: .systemGreen))
-                        }
                         Spacer()
-                        Text(account.tierLabel)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text(account.tierLabel)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            HStack(spacing: 4) {
+                                Text(account.isActive ? "Current" : "Switch")
+                                    .font(.caption.weight(.semibold))
+                                Image(systemName: account.isActive ? "checkmark.circle.fill" : "chevron.right.circle.fill")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .foregroundColor(account.isActive ? Color(nsColor: .systemGreen) : .secondary)
+                        }
                     }
 
                     HStack(spacing: 12) {

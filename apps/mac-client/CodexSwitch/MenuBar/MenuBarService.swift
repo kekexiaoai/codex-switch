@@ -2,6 +2,13 @@ import Foundation
 
 public protocol MenuBarSnapshotService {
     func loadSnapshot() async -> MenuBarSnapshot
+    func loadSnapshot(triggerUsageRefresh: Bool) async -> MenuBarSnapshot
+}
+
+public extension MenuBarSnapshotService {
+    func loadSnapshot() async -> MenuBarSnapshot {
+        await loadSnapshot(triggerUsageRefresh: true)
+    }
 }
 
 public struct EnvironmentMenuBarService: MenuBarSnapshotService {
@@ -16,16 +23,32 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         self.timeFormatter = timeFormatter
     }
 
-    public func loadSnapshot() async -> MenuBarSnapshot {
+    public func loadSnapshot(triggerUsageRefresh: Bool) async -> MenuBarSnapshot {
         let repositoryAccounts = try? await environment.accountRepository?.loadAccounts()
         let accounts = repositoryAccounts?.map(\.emailMask) ?? environment.accountStore.loadAccounts()
-        let usageText = await environment.usageService.refreshUsage()
+        let settingsStore = UserDefaultsUsageSettingsStore(defaults: environment.settingsDefaults)
+        let usageSettings = (
+            enabled: settingsStore.usageRefreshEnabled(),
+            mode: settingsStore.usageSourceMode()
+        )
+        var cachedUsage = loadCachedUsage()
+        let usageText: String
+        if triggerUsageRefresh {
+            usageText = await environment.usageService.refreshUsage()
+            cachedUsage = loadCachedUsage()
+        } else {
+            usageText = verboseUsageText(for: cachedUsage.latestSnapshot, settings: usageSettings)
+        }
         let showFullEmails = environment.emailVisibilityProvider?.showEmails() ?? false
         let activeAccountID = await environment.activeAccountController?.currentActiveAccountID()
         let activeAccount = repositoryAccounts?.first(where: { $0.id == activeAccountID }) ?? repositoryAccounts?.first
         let activeSnapshot: CodexUsageSnapshot?
         if let activeAccount {
-            activeSnapshot = await environment.usageService.usageSnapshot(for: activeAccount.id)
+            if triggerUsageRefresh {
+                activeSnapshot = await environment.usageService.usageSnapshot(for: activeAccount.id)
+            } else {
+                activeSnapshot = cachedUsage.entries[activeAccount.id]
+            }
         } else {
             activeSnapshot = nil
         }
@@ -53,7 +76,12 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         if let repositoryAccounts {
             accountRows = []
             for account in repositoryAccounts {
-                let snapshot = await environment.usageService.usageSnapshot(for: account.id)
+                let snapshot: CodexUsageSnapshot?
+                if triggerUsageRefresh {
+                    snapshot = await environment.usageService.usageSnapshot(for: account.id)
+                } else {
+                    snapshot = cachedUsage.entries[account.id]
+                }
                 accountRows.append(
                     AccountRowModel(
                         id: account.id,
@@ -82,6 +110,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
             headerEmail: headerEmail,
             headerTier: activeAccount?.tier.rawValue.uppercased() ?? (environment.runtimeMode == .live ? "LIVE" : "PREVIEW"),
             updatedText: usageText,
+            headerStatusText: headerStatusText(for: cachedUsage.latestSnapshot, settings: usageSettings),
             usageSourceText: usageSourceText,
             summaries: activeSnapshot.map { snapshot in
                 [
@@ -109,16 +138,62 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
             accounts: accountRows
         )
     }
+
+    private func headerStatusText(
+        for snapshot: CodexUsageSnapshot?,
+        settings: (enabled: Bool, mode: CodexUsageSourceMode)
+    ) -> String {
+        guard settings.enabled else {
+            return "Refresh off"
+        }
+
+        guard let snapshot else {
+            return "No usage"
+        }
+
+        let suffix = settings.mode == .localOnly ? "Local" : "Auto"
+        return "\(timeFormatter.compactClockTimestamp(from: snapshot.updatedAt)) \(suffix)"
+    }
+
+    private func verboseUsageText(
+        for snapshot: CodexUsageSnapshot?,
+        settings: (enabled: Bool, mode: CodexUsageSourceMode)
+    ) -> String {
+        guard settings.enabled else {
+            return "Usage refresh disabled"
+        }
+
+        guard let snapshot else {
+            let suffix = settings.mode == .localOnly ? " (Local Only)" : ""
+            return "No usage data\(suffix)"
+        }
+
+        let suffix = settings.mode == .localOnly ? " (Local Only)" : ""
+        return "Updated \(timeFormatter.displayTimestamp(from: snapshot.updatedAt))\(suffix)"
+    }
+
+    private func loadCachedUsage() -> (entries: [String: CodexUsageSnapshot], latestSnapshot: CodexUsageSnapshot?) {
+        guard
+            let paths = environment.codexPaths,
+            let cache = try? CodexAuthFileStore(paths: paths).loadUsageCache()
+        else {
+            return ([:], nil)
+        }
+
+        let latestSnapshot = cache.entries.values.max(by: { $0.updatedAt < $1.updatedAt })
+        return (cache.entries, latestSnapshot)
+    }
 }
 
 public struct MockMenuBarService: MenuBarSnapshotService {
     public init() {}
 
-    public func loadSnapshot() async -> MenuBarSnapshot {
+    public func loadSnapshot(triggerUsageRefresh: Bool) async -> MenuBarSnapshot {
         MenuBarSnapshot(
             headerEmail: "a••••@gmail.com",
             headerTier: "TEAM",
             updatedText: "Updated 10 seconds ago",
+            headerStatusText: "10:15 Auto",
             usageSourceText: "API",
             summaries: [
                 UsageSummaryModel(

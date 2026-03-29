@@ -59,6 +59,7 @@ public struct MenuBarSnapshot: Equatable {
     public let headerEmail: String
     public let headerTier: String
     public let updatedText: String
+    public let headerStatusText: String
     public let usageSourceText: String
     public let summaries: [UsageSummaryModel]
     public let accounts: [AccountRowModel]
@@ -67,6 +68,7 @@ public struct MenuBarSnapshot: Equatable {
         headerEmail: String,
         headerTier: String,
         updatedText: String,
+        headerStatusText: String? = nil,
         usageSourceText: String = "",
         summaries: [UsageSummaryModel],
         accounts: [AccountRowModel]
@@ -74,6 +76,7 @@ public struct MenuBarSnapshot: Equatable {
         self.headerEmail = headerEmail
         self.headerTier = headerTier
         self.updatedText = updatedText
+        self.headerStatusText = headerStatusText ?? updatedText
         self.usageSourceText = usageSourceText
         self.summaries = summaries
         self.accounts = accounts
