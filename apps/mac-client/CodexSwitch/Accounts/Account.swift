@@ -34,4 +34,21 @@ public struct Account: Codable, Equatable, Identifiable {
 
         return emailMask
     }
+
+    public static func maskedEmail(_ email: String) -> String {
+        let parts = email.split(separator: "@", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2 else {
+            return email
+        }
+
+        let localPart = String(parts[0])
+        let domainPart = String(parts[1])
+        guard let first = localPart.first else {
+            return email
+        }
+
+        let maskedCount = max(localPart.count - 1, 0)
+        let mask = String(repeating: "\u{2022}", count: maskedCount)
+        return "\(first)\(mask)@\(domainPart)"
+    }
 }

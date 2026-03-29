@@ -3,6 +3,11 @@ import XCTest
 
 @MainActor
 final class MenuBarViewModelTests: XCTestCase {
+    func testAccountMaskingHidesMostOfLocalPart() {
+        XCTAssertEqual(Account.maskedEmail("alex@example.com"), "a•••@example.com")
+        XCTAssertEqual(Account.maskedEmail("ab@example.com"), "a•@example.com")
+    }
+
     func testMenuBarViewModelFormatsCurrentAccountSummary() async {
         let viewModel = MenuBarViewModel.preview
 
@@ -95,7 +100,7 @@ final class MenuBarViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.accountRows.count, 2)
         XCTAssertEqual(controller.currentActiveAccountID(), "demo-2")
-        XCTAssertEqual(viewModel.headerEmail, "d••••2@example.com")
+        XCTAssertEqual(viewModel.headerEmail, "d••••@example.com")
     }
 
     func testEnvironmentBackedServiceShowsFullEmailsWhenPreferenceEnabled() async throws {
@@ -128,5 +133,49 @@ final class MenuBarViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.headerEmail, "a@example.com")
         XCTAssertEqual(viewModel.accountRows.first?.emailMask, "a@example.com")
+    }
+
+    func testSubmitNewAccountPersistsDraftAndActivatesIt() async throws {
+        let metadataStore = InMemoryAccountMetadataStore(
+            accounts: [
+                Account(id: "acct-1", emailMask: "a••••@example.com", email: "a@example.com", tier: .team),
+            ]
+        )
+        let credentialStore = InMemoryCredentialStore()
+        let repository = AccountRepository(
+            metadataStore: metadataStore,
+            credentialStore: credentialStore
+        )
+        let controller = ActiveAccountController(
+            activeAccountID: "acct-1",
+            switcher: StubSwitchCommandRunner(),
+            usageService: StubUsageRefreshService()
+        )
+        let environment = AppEnvironment(
+            accountStore: MockAccountStore(),
+            usageService: MockUsageService(),
+            accountRepository: repository,
+            activeAccountController: controller,
+            runtimeMode: .live
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment),
+            accountRepository: repository,
+            activeAccountController: controller
+        )
+
+        viewModel.startAddingAccount()
+        viewModel.draftEmail = "newperson@example.com"
+        viewModel.draftSecret = "secret-2"
+        viewModel.draftTier = .pro
+
+        try await viewModel.submitNewAccount()
+
+        let savedAccounts = try await repository.loadAccounts()
+        XCTAssertEqual(savedAccounts.count, 2)
+        XCTAssertEqual(savedAccounts.last?.email, "newperson@example.com")
+        XCTAssertEqual(savedAccounts.last?.emailMask, "n••••••••@example.com")
+        XCTAssertEqual(savedAccounts.last?.tier, .pro)
+        XCTAssertEqual(controller.currentActiveAccountID(), "acct-2")
     }
 }

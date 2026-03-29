@@ -34,14 +34,17 @@ public struct MenuBarPanelView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 actionRow(title: "Add Account") {
-                    Task {
-                        try? await viewModel.addDemoAccount()
-                    }
+                    viewModel.startAddingAccount()
                 }
                 actionRow(title: "Status Page")
                 actionRow(title: "Show Emails")
                 actionRow(title: "Settings")
                 actionRow(title: "Quit")
+            }
+
+            if viewModel.isPresentingAddAccount {
+                Divider()
+                addAccountForm
             }
         }
         .padding(20)
@@ -74,5 +77,40 @@ public struct MenuBarPanelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
+    }
+
+    private var addAccountForm: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Add Account")
+                .font(.headline)
+
+            TextField("Email", text: $viewModel.draftEmail)
+                .textFieldStyle(.roundedBorder)
+
+            SecureField("Secret", text: $viewModel.draftSecret)
+                .textFieldStyle(.roundedBorder)
+
+            Picker("Tier", selection: $viewModel.draftTier) {
+                Text("Plus").tag(AccountTier.plus)
+                Text("Pro").tag(AccountTier.pro)
+                Text("Team").tag(AccountTier.team)
+            }
+            .pickerStyle(.segmented)
+
+            HStack {
+                Button("Cancel") {
+                    viewModel.cancelAddingAccount()
+                }
+
+                Spacer()
+
+                Button("Save") {
+                    Task {
+                        try? await viewModel.submitNewAccount()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+        }
     }
 }
