@@ -23,7 +23,11 @@ public struct MenuBarPanelView: View {
                 .font(.headline)
 
             ForEach(viewModel.accountRows) { account in
-                AccountRowView(account: account)
+                AccountRowView(account: account) {
+                    Task {
+                        try? await viewModel.switchToAccount(id: account.id)
+                    }
+                }
             }
 
             Divider()

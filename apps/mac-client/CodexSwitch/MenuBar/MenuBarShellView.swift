@@ -10,7 +10,8 @@ public struct MenuBarShellView: View {
     public init(environment: AppEnvironment) {
         _viewModel = StateObject(
             wrappedValue: MenuBarViewModel(
-                service: EnvironmentMenuBarService(environment: environment)
+                service: EnvironmentMenuBarService(environment: environment),
+                activeAccountController: environment.activeAccountController
             )
         )
     }

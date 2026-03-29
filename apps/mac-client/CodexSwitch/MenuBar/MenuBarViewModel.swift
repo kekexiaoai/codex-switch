@@ -9,11 +9,16 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var accountRows: [AccountRowModel] = []
 
     private let service: any MenuBarSnapshotService
+    private let activeAccountController: ActiveAccountController?
 
     public static let preview = MenuBarViewModel(service: MockMenuBarService())
 
-    public init(service: any MenuBarSnapshotService) {
+    public init(
+        service: any MenuBarSnapshotService,
+        activeAccountController: ActiveAccountController? = nil
+    ) {
         self.service = service
+        self.activeAccountController = activeAccountController
     }
 
     public func refresh() async {
@@ -23,5 +28,10 @@ public final class MenuBarViewModel: ObservableObject {
         updatedText = snapshot.updatedText
         summaries = snapshot.summaries
         accountRows = snapshot.accounts
+    }
+
+    public func switchToAccount(id: String) async throws {
+        try await activeAccountController?.activateAccount(id: id)
+        await refresh()
     }
 }
