@@ -88,7 +88,7 @@ public struct RuntimeConfiguration {
     }
 }
 
-public struct AppEnvironment {
+public final class AppEnvironment {
     public let accountStore: any AccountStore
     public let usageService: any UsageService
     public let accountRepository: AccountRepository?

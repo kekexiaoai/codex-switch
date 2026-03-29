@@ -9,6 +9,13 @@ final class CodexSwitchTests: XCTestCase {
         XCTAssertNotNil(environment.usageService)
     }
 
+    func testAppEnvironmentUsesReferenceSemanticsForStartupContainer() {
+        let environment = AppEnvironment.preview
+        let object = environment as AnyObject
+
+        XCTAssertTrue(object === (environment as AnyObject))
+    }
+
     func testMenuBarHostDefaultsToSupportedHost() {
         let host = MenuBarHostKind.current
 
