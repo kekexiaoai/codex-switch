@@ -14,13 +14,23 @@ concurrency:
 
 jobs:
   package:
-    name: Build Package Artifact
-    runs-on: macos-14
+    name: Build Package Artifact (${{ matrix.label }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: arm64 / macOS 14
+            runner: macos-14
+            arch: arm64
+          - label: x86_64 / macOS 13
+            runner: macos-13
+            arch: x86_64
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
 
@@ -30,17 +40,24 @@ jobs:
       - name: Run Packaging Script
         run: ./scripts/package-macos-app.sh
 
+      - name: Inspect Binary Architecture
+        run: |
+          file "dist/Codex Switch.app/Contents/MacOS/CodexSwitchApp" | tee /tmp/codex-switch-app-arch.txt
+          file "dist/Codex Switch.app/Contents/Frameworks/CodexSwitchKit.framework/Versions/A/CodexSwitchKit" | tee /tmp/codex-switch-framework-arch.txt
+          grep -q "${{ matrix.arch }}" /tmp/codex-switch-app-arch.txt
+          grep -q "${{ matrix.arch }}" /tmp/codex-switch-framework-arch.txt
+
       - name: Create Zip Archive
-        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/Codex-Switch-${{ github.run_number }}.zip"
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/Codex-Switch-${{ matrix.arch }}-${{ github.run_number }}.zip"
 
       - name: Upload App Bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: Codex-Switch-app-${{ github.run_number }}
+          name: Codex-Switch-app-${{ matrix.arch }}-${{ github.run_number }}
           path: dist/Codex Switch.app
 
       - name: Upload Zip Archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: Codex-Switch-zip-${{ github.run_number }}
-          path: dist/Codex-Switch-${{ github.run_number }}.zip
+          name: Codex-Switch-zip-${{ matrix.arch }}-${{ github.run_number }}
+          path: dist/Codex-Switch-${{ matrix.arch }}-${{ github.run_number }}.zip

@@ -28,14 +28,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Test Package And Publish Release
+  release-arm64:
+    name: Release arm64
     runs-on: macos-14
     timeout-minutes: 45
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.ref }}
@@ -59,9 +59,8 @@ jobs:
             TAG_NAME="$REF_NAME"
           fi
 
-          ZIP_NAME="Codex-Switch-${TAG_NAME}.zip"
           echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
-          echo "zip_name=$ZIP_NAME" >>"$GITHUB_OUTPUT"
+          echo "zip_name=Codex-Switch-${TAG_NAME}-arm64.zip" >>"$GITHUB_OUTPUT"
 
       - name: Xcode Project Tests
         run: xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'
@@ -69,15 +68,86 @@ jobs:
       - name: Build App Bundle
         run: ./scripts/package-macos-app.sh
 
+      - name: Inspect Binary Architecture
+        run: |
+          file "dist/Codex Switch.app/Contents/MacOS/CodexSwitchApp" | tee /tmp/codex-switch-app-arch.txt
+          file "dist/Codex Switch.app/Contents/Frameworks/CodexSwitchKit.framework/Versions/A/CodexSwitchKit" | tee /tmp/codex-switch-framework-arch.txt
+          grep -q "arm64" /tmp/codex-switch-app-arch.txt
+          grep -q "arm64" /tmp/codex-switch-framework-arch.txt
+
       - name: Create Release Archive
         run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Publish arm64 Asset
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ github.event.inputs.prerelease == 'true' }}
+        run: |
+          if gh release view "${{ steps.meta.outputs.tag_name }}" >/dev/null 2>&1; then
+            echo "Release ${{ steps.meta.outputs.tag_name }} already exists"
+          else
+            if [[ "$PRERELEASE" == "true" ]]; then
+              gh release create "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --target "${GITHUB_SHA}" --generate-notes --prerelease
+              exit 0
+            fi
+            gh release create "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --target "${GITHUB_SHA}" --generate-notes
+            exit 0
+          fi
+
+          gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --clobber
+
+  release-x86_64:
+    name: Release x86_64
+    runs-on: macos-13
+    needs: release-arm64
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
-          tag_name: ${{ steps.meta.outputs.tag_name }}
-          target_commitish: ${{ github.sha }}
-          generate_release_notes: true
-          prerelease: ${{ github.event.inputs.prerelease == 'true' }}
-          files: |
-            dist/${{ steps.meta.outputs.zip_name }}
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.ref }}
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Resolve Release Metadata
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            TAG_NAME="$INPUT_TAG"
+            if [[ -z "$TAG_NAME" ]]; then
+              TAG_NAME="manual-${GITHUB_RUN_NUMBER}"
+            fi
+          else
+            TAG_NAME="$REF_NAME"
+          fi
+
+          echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
+          echo "zip_name=Codex-Switch-${TAG_NAME}-x86_64.zip" >>"$GITHUB_OUTPUT"
+
+      - name: Xcode Project Tests
+        run: xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'
+
+      - name: Build App Bundle
+        run: ./scripts/package-macos-app.sh
+
+      - name: Inspect Binary Architecture
+        run: |
+          file "dist/Codex Switch.app/Contents/MacOS/CodexSwitchApp" | tee /tmp/codex-switch-app-arch.txt
+          file "dist/Codex Switch.app/Contents/Frameworks/CodexSwitchKit.framework/Versions/A/CodexSwitchKit" | tee /tmp/codex-switch-framework-arch.txt
+          grep -q "x86_64" /tmp/codex-switch-app-arch.txt
+          grep -q "x86_64" /tmp/codex-switch-framework-arch.txt
+
+      - name: Create Release Archive
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
+
+      - name: Upload x86_64 Asset To Existing Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --clobber

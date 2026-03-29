@@ -12,19 +12,31 @@ concurrency:
 
 jobs:
   test:
-    name: Test And Validate
-    runs-on: macos-14
+    name: Test And Validate (${{ matrix.label }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: arm64 / macOS 14
+            runner: macos-14
+            arch: arm64
+          - label: x86_64 / macOS 13
+            runner: macos-13
+            arch: x86_64
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
       - name: Show Toolchain Versions
         run: |
+          echo "Expected architecture: ${{ matrix.arch }}"
+          uname -m
           swift --version
           xcodebuild -version
 
