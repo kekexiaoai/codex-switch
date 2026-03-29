@@ -234,6 +234,11 @@ public final class MenuBarViewModel: ObservableObject {
             }
         case .loginInBrowser:
             switch authError {
+            case .browserLaunchFailed:
+                return MenuBarAlertMessage(
+                    title: "Browser Could Not Open",
+                    message: "Codex Switch could not open your default browser. Check your browser settings and try again."
+                )
             case .loginCancelled:
                 return MenuBarAlertMessage(
                     title: "Browser Login Cancelled",

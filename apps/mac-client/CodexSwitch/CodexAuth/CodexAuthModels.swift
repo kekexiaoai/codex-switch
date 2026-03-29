@@ -10,6 +10,7 @@ public enum CodexAuthError: Error, Equatable {
     case activeAuthReplacementFailed
     case loginCancelled
     case loginTimedOut
+    case browserLaunchFailed
     case loginFailed
     case noUsageData
 }

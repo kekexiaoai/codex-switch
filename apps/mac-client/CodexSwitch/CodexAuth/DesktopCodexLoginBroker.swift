@@ -40,6 +40,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
     private let codeVerifierGenerator: () -> String
     private let callbackServerFactory: () throws -> any OAuthCallbackServing
     private let browserOpener: (URL) -> Bool
+    private let fallbackBrowserOpener: (URL) -> Bool
     private let applicationActivator: () -> Void
     private let tokenExchanger: @Sendable (String, String, URL) async throws -> CodexOAuthTokenResponse
     private let now: () -> Date
@@ -54,6 +55,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
         codeVerifierGenerator: (() -> String)? = nil,
         callbackServerFactory: (() throws -> any OAuthCallbackServing)? = nil,
         browserOpener: ((URL) -> Bool)? = nil,
+        fallbackBrowserOpener: ((URL) -> Bool)? = nil,
         applicationActivator: (() -> Void)? = nil,
         tokenExchanger: (@Sendable (String, String, URL) async throws -> CodexOAuthTokenResponse)? = nil,
         now: @escaping () -> Date = Date.init,
@@ -69,6 +71,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
         self.codeVerifierGenerator = codeVerifierGenerator ?? { Self.randomURLSafeString(length: 64) }
         self.callbackServerFactory = callbackServerFactory ?? { try LocalhostOAuthCallbackServer() }
         self.browserOpener = browserOpener ?? SystemBrowserOpener.open(url:)
+        self.fallbackBrowserOpener = fallbackBrowserOpener ?? ShellBrowserOpener.open(url:)
         self.applicationActivator = applicationActivator ?? SystemApplicationActivator.activate
         self.tokenExchanger = tokenExchanger ?? Self.exchangeCodeForTokens
         self.now = now
@@ -90,11 +93,15 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
 
         let didOpenBrowser = await MainActor.run {
             applicationActivator()
-            return browserOpener(authorizationURL)
+            if browserOpener(authorizationURL) {
+                return true
+            }
+
+            return fallbackBrowserOpener(authorizationURL)
         }
 
         guard didOpenBrowser else {
-            throw CodexAuthError.loginFailed
+            throw CodexAuthError.browserLaunchFailed
         }
 
         let callbackResult = try await waitForCallback(using: callbackServer)
@@ -429,6 +436,22 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
 private struct SystemBrowserOpener {
     static func open(url: URL) -> Bool {
         NSWorkspace.shared.open(url)
+    }
+}
+
+private struct ShellBrowserOpener {
+    static func open(url: URL) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = [url.absoluteString]
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            return process.terminationStatus == 0
+        } catch {
+            return false
+        }
     }
 }
 

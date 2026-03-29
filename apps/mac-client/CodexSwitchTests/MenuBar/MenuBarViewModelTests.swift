@@ -372,6 +372,28 @@ final class MenuBarViewModelTests: XCTestCase {
         )
     }
 
+    func testLoginInBrowserShowsFriendlyErrorWhenBrowserCouldNotBeOpened() async {
+        let paths = CodexPaths(
+            baseDirectory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        )
+        let viewModel = MenuBarViewModel(
+            service: MockMenuBarService(),
+            loginCoordinator: CodexLoginCoordinator(
+                runner: ThrowingCodexLoginRunner(error: .browserLaunchFailed),
+                importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths)),
+                fileStore: CodexAuthFileStore(paths: paths)
+            )
+        )
+
+        await viewModel.performAddAccountAction(.loginInBrowser)
+
+        XCTAssertEqual(viewModel.alertMessage?.title, "Browser Could Not Open")
+        XCTAssertEqual(
+            viewModel.alertMessage?.message,
+            "Codex Switch could not open your default browser. Check your browser settings and try again."
+        )
+    }
+
     func testAddAccountMenuExposesThreeChoices() {
         XCTAssertEqual(
             MenuBarViewModel.AddAccountAction.allCases.map { "\($0.title)|\($0.systemImageName)" },
