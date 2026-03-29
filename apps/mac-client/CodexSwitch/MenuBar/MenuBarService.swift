@@ -15,6 +15,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         let repositoryAccounts = try? await environment.accountRepository?.loadAccounts()
         let accounts = repositoryAccounts?.map(\.emailMask) ?? environment.accountStore.loadAccounts()
         let usageText = environment.usageService.refreshUsage()
+        let showFullEmails = environment.emailVisibilityProvider?.showEmails() ?? false
         let activeAccountID = await environment.activeAccountController?.currentActiveAccountID()
         let headerEmail: String
         if
@@ -22,7 +23,9 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
             let activeAccountID,
             let activeAccount = repositoryAccounts.first(where: { $0.id == activeAccountID })
         {
-            headerEmail = activeAccount.emailMask
+            headerEmail = activeAccount.displayEmail(showFullEmail: showFullEmails)
+        } else if let firstRepositoryAccount = repositoryAccounts?.first {
+            headerEmail = firstRepositoryAccount.displayEmail(showFullEmail: showFullEmails)
         } else {
             headerEmail = accounts.first ?? "No account"
         }
@@ -42,7 +45,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
             accounts: repositoryAccounts?.map { account in
                 AccountRowModel(
                     id: account.id,
-                    emailMask: account.emailMask,
+                    emailMask: account.displayEmail(showFullEmail: showFullEmails),
                     tierLabel: account.tier.rawValue.capitalized,
                     fiveHourPercent: environment.runtimeMode == .live ? 42 : 56,
                     weeklyPercent: environment.runtimeMode == .live ? 24 : 13

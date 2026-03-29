@@ -48,7 +48,8 @@ public final class MenuBarViewModel: ObservableObject {
         let accountID = "demo-\(nextIndex)"
         let account = Account(
             id: accountID,
-            emailMask: "demo\(nextIndex)@example.com",
+            emailMask: "d••••\(nextIndex)@example.com",
+            email: "demo\(nextIndex)@example.com",
             tier: .plus
         )
 

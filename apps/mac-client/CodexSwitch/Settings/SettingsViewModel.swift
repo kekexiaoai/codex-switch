@@ -1,5 +1,21 @@
 import Foundation
 
+public protocol EmailVisibilityProviding {
+    func showEmails() -> Bool
+}
+
+public struct UserDefaultsEmailVisibilityStore: EmailVisibilityProviding {
+    private let defaults: UserDefaults
+
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    public func showEmails() -> Bool {
+        defaults.bool(forKey: SettingsViewModel.showEmailsKey)
+    }
+}
+
 @MainActor
 public final class SettingsViewModel: ObservableObject {
     public static let showEmailsKey = "showEmails"

@@ -27,6 +27,7 @@ public struct AccountRepository {
         let sanitized = Account(
             id: account.id,
             emailMask: account.emailMask,
+            email: account.email,
             tier: account.tier
         )
 
@@ -42,7 +43,7 @@ public struct AccountRepository {
 
     public func loadAccounts() async throws -> [Account] {
         try await metadataStore.loadAccounts().map {
-            Account(id: $0.id, emailMask: $0.emailMask, tier: $0.tier)
+            Account(id: $0.id, emailMask: $0.emailMask, email: $0.email, tier: $0.tier)
         }
     }
 

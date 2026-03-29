@@ -10,6 +10,7 @@ final class RealIntegrationSmokeTests: XCTestCase {
         XCTAssertNotNil(environment.accountRepository)
         XCTAssertNotNil(environment.activeAccountController)
         let accounts = try await environment.accountRepository?.loadAccounts()
-        XCTAssertEqual(accounts?.first?.emailMask, "fixture@example.com")
+        XCTAssertEqual(accounts?.first?.emailMask, "f••••••@example.com")
+        XCTAssertEqual(accounts?.first?.email, "fixture@example.com")
     }
 }

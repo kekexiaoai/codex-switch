@@ -78,6 +78,7 @@ public struct AppEnvironment {
     public let usageService: any UsageService
     public let accountRepository: AccountRepository?
     public let activeAccountController: ActiveAccountController?
+    public let emailVisibilityProvider: (any EmailVisibilityProviding)?
     public let runtimeMode: RuntimeMode
 
     public init(
@@ -85,12 +86,14 @@ public struct AppEnvironment {
         usageService: any UsageService,
         accountRepository: AccountRepository? = nil,
         activeAccountController: ActiveAccountController? = nil,
+        emailVisibilityProvider: (any EmailVisibilityProviding)? = UserDefaultsEmailVisibilityStore(),
         runtimeMode: RuntimeMode
     ) {
         self.accountStore = accountStore
         self.usageService = usageService
         self.accountRepository = accountRepository
         self.activeAccountController = activeAccountController
+        self.emailVisibilityProvider = emailVisibilityProvider
         self.runtimeMode = runtimeMode
     }
 
@@ -99,13 +102,14 @@ public struct AppEnvironment {
         usageService: MockUsageService(),
         accountRepository: nil,
         activeAccountController: nil,
+        emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
         runtimeMode: .preview
     )
 
     @MainActor
     public static func live(configuration: RuntimeConfiguration) throws -> AppEnvironment {
         let fixtureAccounts = [
-            Account(id: "fixture-1", emailMask: "fixture@example.com", tier: .team),
+            Account(id: "fixture-1", emailMask: "f••••••@example.com", email: "fixture@example.com", tier: .team),
         ]
         let repository = AccountRepository(
             metadataStore: InMemoryAccountMetadataStore(accounts: fixtureAccounts),
@@ -122,6 +126,7 @@ public struct AppEnvironment {
             usageService: LiveUsageService(configuration: configuration),
             accountRepository: repository,
             activeAccountController: controller,
+            emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
             runtimeMode: .live
         )
     }

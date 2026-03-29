@@ -20,7 +20,7 @@ final class MenuBarViewModelTests: XCTestCase {
 
         await viewModel.refresh()
 
-        XCTAssertEqual(viewModel.headerEmail, "fixture@example.com")
+        XCTAssertEqual(viewModel.headerEmail, "f••••••@example.com")
         XCTAssertEqual(viewModel.updatedText, "live-fixture")
         XCTAssertEqual(viewModel.accountRows.count, 1)
     }
@@ -64,7 +64,7 @@ final class MenuBarViewModelTests: XCTestCase {
     func testAddDemoAccountAppendsAccountAndActivatesIt() async throws {
         let metadataStore = InMemoryAccountMetadataStore(
             accounts: [
-                Account(id: "acct-1", emailMask: "a@example.com", tier: .team),
+                Account(id: "acct-1", emailMask: "a••••@example.com", email: "a@example.com", tier: .team),
             ]
         )
         let credentialStore = InMemoryCredentialStore()
@@ -95,6 +95,38 @@ final class MenuBarViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.accountRows.count, 2)
         XCTAssertEqual(controller.currentActiveAccountID(), "demo-2")
-        XCTAssertEqual(viewModel.headerEmail, "demo2@example.com")
+        XCTAssertEqual(viewModel.headerEmail, "d••••2@example.com")
+    }
+
+    func testEnvironmentBackedServiceShowsFullEmailsWhenPreferenceEnabled() async throws {
+        let metadataStore = InMemoryAccountMetadataStore(
+            accounts: [
+                Account(id: "acct-1", emailMask: "a••••@example.com", email: "a@example.com", tier: .team),
+            ]
+        )
+        let repository = AccountRepository(
+            metadataStore: metadataStore,
+            credentialStore: InMemoryCredentialStore()
+        )
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.EmailVisibility")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.EmailVisibility")
+        defaults.set(true, forKey: SettingsViewModel.showEmailsKey)
+
+        let environment = AppEnvironment(
+            accountStore: MockAccountStore(),
+            usageService: MockUsageService(),
+            accountRepository: repository,
+            activeAccountController: nil,
+            emailVisibilityProvider: UserDefaultsEmailVisibilityStore(defaults: defaults),
+            runtimeMode: .live
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment)
+        )
+
+        await viewModel.refresh()
+
+        XCTAssertEqual(viewModel.headerEmail, "a@example.com")
+        XCTAssertEqual(viewModel.accountRows.first?.emailMask, "a@example.com")
     }
 }
