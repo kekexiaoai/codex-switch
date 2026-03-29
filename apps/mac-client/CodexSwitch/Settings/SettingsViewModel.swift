@@ -4,6 +4,10 @@ public protocol EmailVisibilityProviding {
     func showEmails() -> Bool
 }
 
+public protocol EmailVisibilityMutating: EmailVisibilityProviding {
+    func setShowEmails(_ enabled: Bool)
+}
+
 public struct UserDefaultsEmailVisibilityStore: EmailVisibilityProviding {
     private let defaults: UserDefaults
 
@@ -13,6 +17,12 @@ public struct UserDefaultsEmailVisibilityStore: EmailVisibilityProviding {
 
     public func showEmails() -> Bool {
         defaults.bool(forKey: SettingsViewModel.showEmailsKey)
+    }
+}
+
+extension UserDefaultsEmailVisibilityStore: EmailVisibilityMutating {
+    public func setShowEmails(_ enabled: Bool) {
+        defaults.set(enabled, forKey: SettingsViewModel.showEmailsKey)
     }
 }
 

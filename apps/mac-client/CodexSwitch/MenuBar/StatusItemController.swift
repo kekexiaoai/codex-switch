@@ -13,7 +13,8 @@ public final class StatusItemController: NSObject {
         self.viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(environment: environment),
             accountRepository: environment.accountRepository,
-            activeAccountController: environment.activeAccountController
+            activeAccountController: environment.activeAccountController,
+            emailVisibilityStore: environment.emailVisibilityProvider as? any EmailVisibilityMutating
         )
         super.init()
     }

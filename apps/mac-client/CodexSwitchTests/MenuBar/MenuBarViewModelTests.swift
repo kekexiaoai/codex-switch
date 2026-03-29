@@ -135,6 +135,39 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.accountRows.first?.emailMask, "a@example.com")
     }
 
+    func testToggleShowEmailsRefreshesVisibleEmailState() async throws {
+        let metadataStore = InMemoryAccountMetadataStore(
+            accounts: [
+                Account(id: "acct-1", emailMask: "a••••@example.com", email: "a@example.com", tier: .team),
+            ]
+        )
+        let repository = AccountRepository(
+            metadataStore: metadataStore,
+            credentialStore: InMemoryCredentialStore()
+        )
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.ToggleVisibility")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.ToggleVisibility")
+        let environment = AppEnvironment(
+            accountStore: MockAccountStore(),
+            usageService: MockUsageService(),
+            accountRepository: repository,
+            activeAccountController: nil,
+            emailVisibilityProvider: UserDefaultsEmailVisibilityStore(defaults: defaults),
+            runtimeMode: .live
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment),
+            emailVisibilityStore: UserDefaultsEmailVisibilityStore(defaults: defaults)
+        )
+
+        await viewModel.refresh()
+        XCTAssertEqual(viewModel.headerEmail, "a••••@example.com")
+
+        await viewModel.toggleShowEmails()
+
+        XCTAssertEqual(viewModel.headerEmail, "a@example.com")
+    }
+
     func testSubmitNewAccountPersistsDraftAndActivatesIt() async throws {
         let metadataStore = InMemoryAccountMetadataStore(
             accounts: [

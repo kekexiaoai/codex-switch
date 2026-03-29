@@ -8,6 +8,7 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var summaries: [UsageSummaryModel] = []
     @Published public private(set) var accountRows: [AccountRowModel] = []
     @Published public private(set) var isPresentingAddAccount = false
+    @Published public private(set) var showEmails = false
     @Published public var draftEmail = ""
     @Published public var draftSecret = ""
     @Published public var draftTier: AccountTier = .plus
@@ -15,21 +16,26 @@ public final class MenuBarViewModel: ObservableObject {
     private let service: any MenuBarSnapshotService
     private let accountRepository: AccountRepository?
     private let activeAccountController: ActiveAccountController?
+    private let emailVisibilityStore: (any EmailVisibilityMutating)?
 
     public static let preview = MenuBarViewModel(service: MockMenuBarService())
 
     public init(
         service: any MenuBarSnapshotService,
         accountRepository: AccountRepository? = nil,
-        activeAccountController: ActiveAccountController? = nil
+        activeAccountController: ActiveAccountController? = nil,
+        emailVisibilityStore: (any EmailVisibilityMutating)? = nil
     ) {
         self.service = service
         self.accountRepository = accountRepository
         self.activeAccountController = activeAccountController
+        self.emailVisibilityStore = emailVisibilityStore
+        self.showEmails = emailVisibilityStore?.showEmails() ?? false
     }
 
     public func refresh() async {
         let snapshot = await service.loadSnapshot()
+        showEmails = emailVisibilityStore?.showEmails() ?? showEmails
         headerEmail = snapshot.headerEmail
         headerTier = snapshot.headerTier
         updatedText = snapshot.updatedText
@@ -51,6 +57,13 @@ public final class MenuBarViewModel: ObservableObject {
 
     public func cancelAddingAccount() {
         isPresentingAddAccount = false
+    }
+
+    public func toggleShowEmails() async {
+        let nextValue = !(emailVisibilityStore?.showEmails() ?? showEmails)
+        emailVisibilityStore?.setShowEmails(nextValue)
+        showEmails = nextValue
+        await refresh()
     }
 
     public func addDemoAccount() async throws {

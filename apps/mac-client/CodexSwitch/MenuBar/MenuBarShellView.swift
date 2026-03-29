@@ -12,7 +12,8 @@ public struct MenuBarShellView: View {
             wrappedValue: MenuBarViewModel(
                 service: EnvironmentMenuBarService(environment: environment),
                 accountRepository: environment.accountRepository,
-                activeAccountController: environment.activeAccountController
+                activeAccountController: environment.activeAccountController,
+                emailVisibilityStore: environment.emailVisibilityProvider as? any EmailVisibilityMutating
             )
         )
     }
