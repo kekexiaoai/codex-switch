@@ -35,10 +35,19 @@ public struct CodexUsageCache: Codable, Equatable {
 public struct CodexUsageScanner {
     private let paths: CodexPaths
     private let fileManager: FileManager
+    private let now: () -> Date
+    private let calendar: Calendar
 
-    public init(paths: CodexPaths, fileManager: FileManager = .default) {
+    public init(
+        paths: CodexPaths,
+        fileManager: FileManager = .default,
+        now: @escaping () -> Date = Date.init,
+        calendar: Calendar = .autoupdatingCurrent
+    ) {
         self.paths = paths
         self.fileManager = fileManager
+        self.now = now
+        self.calendar = calendar
     }
 
     public func refreshUsage(for account: Account) throws -> CodexUsageSnapshot {
@@ -113,8 +122,13 @@ public struct CodexUsageScanner {
     }
 
     private func listRolloutLogURLs() throws -> [URL] {
+        let todaysDirectory = sessionDirectoryURL(for: now())
+        guard fileManager.fileExists(atPath: todaysDirectory.path) else {
+            return []
+        }
+
         guard let enumerator = fileManager.enumerator(
-            at: paths.sessionsDirectoryURL,
+            at: todaysDirectory,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else {
@@ -137,6 +151,18 @@ public struct CodexUsageScanner {
             return url
         }
         .sorted { $0.lastPathComponent > $1.lastPathComponent }
+    }
+
+    private func sessionDirectoryURL(for date: Date) -> URL {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        let year = String(components.year ?? 0)
+        let month = String(format: "%02d", components.month ?? 0)
+        let day = String(format: "%02d", components.day ?? 0)
+
+        return paths.sessionsDirectoryURL
+            .appendingPathComponent(year, isDirectory: true)
+            .appendingPathComponent(month, isDirectory: true)
+            .appendingPathComponent(day, isDirectory: true)
     }
 
     private func decodeEntry(from object: [String: Any]) -> RolloutEntry? {

@@ -87,8 +87,8 @@ final class MenuBarViewModelTests: XCTestCase {
             ),
         ])
         try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
-        try FileManager.default.createDirectory(at: paths.sessionsDirectoryURL, withIntermediateDirectories: true)
-        let rolloutURL = paths.sessionsDirectoryURL.appendingPathComponent("rollout-2026-03-29.jsonl")
+        let sessionDirectory = currentSessionDirectory(paths: paths)
+        let rolloutURL = sessionDirectory.appendingPathComponent("rollout-2026-03-29.jsonl")
         let rolloutLines = [
             #"{"timestamp":"2026-03-29T08:00:00Z","email":"fixture@example.com","rate_limits":{"five_hour":{"used_percent":42,"resets_at":"2026-03-29T10:30:00Z"},"weekly":{"used_percent":24,"resets_at":"2026-04-02T00:00:00Z"}}}"#,
         ].joined(separator: "\n")
@@ -677,6 +677,18 @@ final class MenuBarViewModelTests: XCTestCase {
 
     private func emailVisibilityToggleSystemImage(showEmails: Bool) -> String {
         showEmails ? "eye" : "eye.slash"
+    }
+
+    private func currentSessionDirectory(paths: CodexPaths) -> URL {
+        let now = Date()
+        let calendar = Calendar.autoupdatingCurrent
+        let components = calendar.dateComponents([.year, .month, .day], from: now)
+        let directory = paths.sessionsDirectoryURL
+            .appendingPathComponent(String(components.year ?? 0), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", components.month ?? 0), isDirectory: true)
+            .appendingPathComponent(String(format: "%02d", components.day ?? 0), isDirectory: true)
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory
     }
 
     private func waitForCondition(
