@@ -442,6 +442,11 @@ final class MenuBarViewModelTests: XCTestCase {
         await secondTask.value
         let invocationCount = await runner.invocationCount()
         XCTAssertEqual(invocationCount, 1)
+        XCTAssertEqual(viewModel.alertMessage?.title, "Browser Login In Progress")
+        XCTAssertEqual(
+            viewModel.alertMessage?.message,
+            "A browser login is already in progress. Finish that sign-in flow, or wait for it to time out before trying again."
+        )
     }
 
     func testAddAccountMenuExposesThreeChoices() {

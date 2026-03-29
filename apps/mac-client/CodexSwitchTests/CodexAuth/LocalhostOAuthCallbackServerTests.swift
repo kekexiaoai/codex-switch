@@ -77,6 +77,32 @@ final class LocalhostOAuthCallbackServerTests: XCTestCase {
         XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 200)
         XCTAssertEqual(callbackResult, .failure(error: "access_denied", description: "cancelled"))
     }
+
+    func testServerIgnoresUnrelatedBrowserRequestsAfterSuccessfulCallback() async throws {
+        let logger = TestDiagnosticsLogger()
+        let server = try LocalhostOAuthCallbackServer(port: nil, logger: logger)
+        defer { server.stop() }
+
+        let callbackTask = Task {
+            try await server.waitForCallback()
+        }
+
+        let callbackURL = try XCTUnwrap(
+            URL(string: "\(server.redirectURI.absoluteString)?code=test-code&state=test-state")
+        )
+        let (_, callbackResponse) = try await URLSession.shared.data(from: callbackURL)
+        let callbackResult = try await callbackTask.value
+
+        let faviconURL = try XCTUnwrap(
+            URL(string: "http://localhost:\(server.redirectURI.port ?? 0)/favicon.ico")
+        )
+        let (_, faviconResponse) = try await URLSession.shared.data(from: faviconURL)
+
+        XCTAssertEqual((callbackResponse as? HTTPURLResponse)?.statusCode, 200)
+        XCTAssertEqual(callbackResult, .code("test-code", state: "test-state"))
+        XCTAssertEqual((faviconResponse as? HTTPURLResponse)?.statusCode, 404)
+        XCTAssertFalse(logger.entries.contains(where: { $0.contains("callback_parse_failed") }))
+    }
 }
 
 private final class TestDiagnosticsLogger: CodexDiagnosticsLogging {

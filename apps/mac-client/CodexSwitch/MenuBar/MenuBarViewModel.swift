@@ -144,6 +144,12 @@ public final class MenuBarViewModel: ObservableObject {
 
     public func performAddAccountAction(_ action: AddAccountAction) async {
         guard !isPerformingAddAccountAction else {
+            if action == .loginInBrowser {
+                alertMessage = MenuBarAlertMessage(
+                    title: "Browser Login In Progress",
+                    message: "A browser login is already in progress. Finish that sign-in flow, or wait for it to time out before trying again."
+                )
+            }
             return
         }
 

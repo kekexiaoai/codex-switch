@@ -399,9 +399,7 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
             close(clientSocket)
         }
 
-        guard let request = readRequest(from: clientSocket),
-              let callbackResult = parseCallback(from: request)
-        else {
+        guard let request = readRequest(from: clientSocket) else {
             logger.log("callback_parse_failed")
             writeHTTPResponse(
                 body: "<html><body><h1>Codex login failed</h1><p>You can close this window.</p></body></html>",
@@ -411,11 +409,27 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
             return
         }
 
-        writeHTTPResponse(
-            body: "<html><body><h1>Codex login complete</h1><p>You can close this window and return to Codex Switch.</p></body></html>",
-            to: clientSocket
-        )
-        finish(with: .success(callbackResult))
+        switch parseRequest(request) {
+        case let .callback(callbackResult):
+            writeHTTPResponse(
+                body: "<html><body><h1>Codex login complete</h1><p>You can close this window and return to Codex Switch.</p></body></html>",
+                to: clientSocket
+            )
+            finish(with: .success(callbackResult))
+        case .ignored:
+            writeHTTPResponse(
+                statusLine: "HTTP/1.1 404 Not Found",
+                body: "<html><body><h1>Not found</h1></body></html>",
+                to: clientSocket
+            )
+        case .invalid:
+            logger.log("callback_parse_failed")
+            writeHTTPResponse(
+                body: "<html><body><h1>Codex login failed</h1><p>You can close this window.</p></body></html>",
+                to: clientSocket
+            )
+            finish(with: .failure(CodexAuthError.loginFailed))
+        }
     }
 
     private func readRequest(from clientSocket: Int32) -> String? {
@@ -451,37 +465,37 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
         return String(data: requestData, encoding: .utf8)
     }
 
-    private func parseCallback(from request: String) -> OAuthCallbackResult? {
+    private func parseRequest(_ request: String) -> ParsedCallbackRequest {
         guard let requestLine = request.components(separatedBy: "\r\n").first else {
-            return nil
+            return .invalid
         }
 
         let parts = requestLine.split(separator: " ")
         guard parts.count >= 2 else {
-            return nil
+            return .invalid
         }
 
         let pathWithQuery = String(parts[1])
         guard pathWithQuery.hasPrefix("/auth/callback") else {
-            return nil
+            return .ignored
         }
 
         guard let components = URLComponents(string: "http://localhost\(pathWithQuery)") else {
-            return nil
+            return .invalid
         }
 
         let queryItems = Dictionary(uniqueKeysWithValues: components.queryItems?.map { ($0.name, $0.value ?? "") } ?? [])
         if let code = queryItems["code"], let state = queryItems["state"], !code.isEmpty, !state.isEmpty {
             logger.log("callback_query code=true error=false")
-            return .code(code, state: state)
+            return .callback(.code(code, state: state))
         }
 
         if let error = queryItems["error"], !error.isEmpty {
             logger.log("callback_query code=false error=true type=\(error)")
-            return .failure(error: error, description: queryItems["error_description"])
+            return .callback(.failure(error: error, description: queryItems["error_description"]))
         }
 
-        return nil
+        return .invalid
     }
 
     private func finish(with result: Result<OAuthCallbackResult, Error>) {
@@ -511,9 +525,13 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
         }
     }
 
-    private func writeHTTPResponse(body: String, to clientSocket: Int32) {
+    private func writeHTTPResponse(
+        statusLine: String = "HTTP/1.1 200 OK",
+        body: String,
+        to clientSocket: Int32
+    ) {
         let response = """
-        HTTP/1.1 200 OK\r
+        \(statusLine)\r
         Content-Type: text/html; charset=utf-8\r
         Content-Length: \(body.utf8.count)\r
         Connection: close\r
@@ -628,6 +646,12 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
     private static func socketErrorDescription(_ errorNumber: Int32) -> String {
         String(cString: strerror(errorNumber))
     }
+}
+
+private enum ParsedCallbackRequest {
+    case callback(OAuthCallbackResult)
+    case ignored
+    case invalid
 }
 
 private struct SystemBrowserOpener {
