@@ -329,11 +329,15 @@ final class MenuBarViewModelTests: XCTestCase {
     }
 
     func testLoginInBrowserShowsFriendlyErrorWhenLoginFails() async {
+        let paths = CodexPaths(
+            baseDirectory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        )
         let viewModel = MenuBarViewModel(
             service: MockMenuBarService(),
             loginCoordinator: CodexLoginCoordinator(
                 runner: StubCodexLoginRunner(result: .failure),
-                importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: CodexPaths(baseDirectory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true))))
+                importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths)),
+                fileStore: CodexAuthFileStore(paths: paths)
             )
         )
 
@@ -342,7 +346,7 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.alertMessage?.title, "Browser Login Failed")
         XCTAssertEqual(
             viewModel.alertMessage?.message,
-            "Codex browser login did not complete. Make sure the Codex CLI is installed and try again."
+            "Codex browser login did not complete. Make sure `codex login` works in Terminal, then try again."
         )
     }
 

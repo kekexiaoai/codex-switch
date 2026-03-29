@@ -156,7 +156,8 @@ public struct AppEnvironment {
             accountImporter: importer,
             loginCoordinator: CodexLoginCoordinator(
                 runner: configuration.loginRunner,
-                importer: importer
+                importer: importer,
+                fileStore: fileStore
             ),
             emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
             runtimeMode: .live

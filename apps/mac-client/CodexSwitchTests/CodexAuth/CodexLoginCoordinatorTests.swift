@@ -23,7 +23,8 @@ final class CodexLoginCoordinatorTests: XCTestCase {
 
         let coordinator = CodexLoginCoordinator(
             runner: StubCodexLoginRunner(result: .success),
-            importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths))
+            importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths)),
+            fileStore: CodexAuthFileStore(paths: paths)
         )
 
         let account = try await coordinator.loginAndImport()
@@ -36,7 +37,8 @@ final class CodexLoginCoordinatorTests: XCTestCase {
         let paths = CodexPaths(baseDirectory: tempDirectoryURL)
         let coordinator = CodexLoginCoordinator(
             runner: StubCodexLoginRunner(result: .cancelled),
-            importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths))
+            importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths)),
+            fileStore: CodexAuthFileStore(paths: paths)
         )
 
         do {
@@ -45,6 +47,25 @@ final class CodexLoginCoordinatorTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? CodexAuthError, .loginCancelled)
         }
+    }
+
+    func testLoginCoordinatorImportsUpdatedAuthWhenRunnerReportsFailure() async throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        try FileManager.default.createDirectory(at: paths.baseDirectory, withIntermediateDirectories: true)
+        try sampleAuthData(email: "before@example.com", tier: "pro").write(to: paths.authFileURL)
+
+        let updatedAuthData = try sampleAuthData(email: "after@example.com", tier: "team")
+        let coordinator = CodexLoginCoordinator(
+            runner: AuthWritingCodexLoginRunner(authFileURL: paths.authFileURL, dataToWrite: updatedAuthData, result: .failure),
+            importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths)),
+            fileStore: CodexAuthFileStore(paths: paths)
+        )
+
+        let account = try await coordinator.loginAndImport()
+
+        XCTAssertEqual(account.id, "subject-after@example.com")
+        XCTAssertEqual(account.email, "after@example.com")
+        XCTAssertEqual(account.source, .browserLogin)
     }
 
     func testProcessLoginRunnerMapsExitCodesToCoordinatorResults() {
@@ -85,5 +106,16 @@ final class CodexLoginCoordinatorTests: XCTestCase {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+}
+
+private struct AuthWritingCodexLoginRunner: CodexLoginRunning {
+    let authFileURL: URL
+    let dataToWrite: Data
+    let result: CodexLoginResult
+
+    func runLogin() async throws -> CodexLoginResult {
+        try dataToWrite.write(to: authFileURL, options: .atomic)
+        return result
     }
 }

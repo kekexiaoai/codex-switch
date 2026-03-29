@@ -247,7 +247,7 @@ public final class MenuBarViewModel: ObservableObject {
             case .loginFailed:
                 return MenuBarAlertMessage(
                     title: "Browser Login Failed",
-                    message: "Codex browser login did not complete. Make sure the Codex CLI is installed and try again."
+                    message: "Codex browser login did not complete. Make sure `codex login` works in Terminal, then try again."
                 )
             default:
                 return MenuBarAlertMessage(

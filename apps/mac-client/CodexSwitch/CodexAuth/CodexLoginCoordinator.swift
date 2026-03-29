@@ -62,13 +62,16 @@ public struct ProcessCodexLoginRunner: CodexLoginRunning {
 public struct CodexLoginCoordinator {
     private let runner: any CodexLoginRunning
     private let importer: CodexAuthImporter
+    private let fileStore: CodexAuthFileStore
 
-    public init(runner: any CodexLoginRunning, importer: CodexAuthImporter) {
+    public init(runner: any CodexLoginRunning, importer: CodexAuthImporter, fileStore: CodexAuthFileStore) {
         self.runner = runner
         self.importer = importer
+        self.fileStore = fileStore
     }
 
     public func loginAndImport() async throws -> Account {
+        let previousAuthData = try? fileStore.readCurrentAuthData()
         let result = try await runner.runLogin()
         switch result {
         case .success:
@@ -76,7 +79,22 @@ public struct CodexLoginCoordinator {
         case .cancelled:
             throw CodexAuthError.loginCancelled
         case .failure:
+            if let updatedAccount = try importAccountIfAuthChanged(since: previousAuthData) {
+                return updatedAccount
+            }
             throw CodexAuthError.loginFailed
         }
+    }
+
+    private func importAccountIfAuthChanged(since previousAuthData: Data?) throws -> Account? {
+        guard let currentAuthData = try? fileStore.readCurrentAuthData() else {
+            return nil
+        }
+
+        guard currentAuthData != previousAuthData else {
+            return nil
+        }
+
+        return try importer.importAuthData(currentAuthData, source: .browserLogin)
     }
 }
