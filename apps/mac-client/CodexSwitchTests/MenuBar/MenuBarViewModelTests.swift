@@ -348,8 +348,12 @@ final class MenuBarViewModelTests: XCTestCase {
 
     func testAddAccountMenuExposesThreeChoices() {
         XCTAssertEqual(
-            MenuBarViewModel.AddAccountAction.allCases.map(\.title),
-            ["Import Current Account", "Import Backup Auth", "Login in Browser"]
+            MenuBarViewModel.AddAccountAction.allCases.map { "\($0.title)|\($0.systemImageName)" },
+            [
+                "Import Current Account|person.crop.circle.badge.clock",
+                "Import Backup Auth|tray.and.arrow.down",
+                "Login in Browser|globe",
+            ]
         )
     }
 

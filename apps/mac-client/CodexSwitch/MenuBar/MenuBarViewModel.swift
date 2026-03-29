@@ -17,6 +17,17 @@ public final class MenuBarViewModel: ObservableObject {
                 return "Login in Browser"
             }
         }
+
+        public var systemImageName: String {
+            switch self {
+            case .importCurrentAccount:
+                return "person.crop.circle.badge.clock"
+            case .importBackupAuth:
+                return "tray.and.arrow.down"
+            case .loginInBrowser:
+                return "globe"
+            }
+        }
     }
 
     @Published public private(set) var headerEmail = ""

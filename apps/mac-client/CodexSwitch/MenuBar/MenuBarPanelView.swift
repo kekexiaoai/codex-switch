@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct MenuBarPanelView: View {
     @ObservedObject private var viewModel: MenuBarViewModel
+    @State private var isShowingAddAccountOptions = false
 
     public init(viewModel: MenuBarViewModel) {
         self.viewModel = viewModel
@@ -34,18 +35,21 @@ public struct MenuBarPanelView: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 addAccountMenu
-                actionRow(title: "Status Page") {
+                actionRow(title: "Status Page", systemImage: "waveform.path.ecg") {
                     viewModel.openStatusPage()
                 }
-                actionRow(title: viewModel.showEmails ? "Hide Emails" : "Show Emails") {
+                actionRow(
+                    title: viewModel.showEmails ? "Hide Emails" : "Show Emails",
+                    systemImage: viewModel.showEmails ? "eye.slash" : "eye"
+                ) {
                     Task {
                         await viewModel.toggleShowEmails()
                     }
                 }
-                actionRow(title: "Settings") {
+                actionRow(title: "Settings", systemImage: "gearshape") {
                     viewModel.openSettings()
                 }
-                actionRow(title: "Quit") {
+                actionRow(title: "Quit", systemImage: "power") {
                     viewModel.quit()
                 }
             }
@@ -86,28 +90,60 @@ public struct MenuBarPanelView: View {
         }
     }
 
-    private func actionRow(title: String, action: @escaping () -> Void = {}) -> some View {
+    private func actionRow(
+        title: String,
+        systemImage: String,
+        trailingSystemImage: String? = nil,
+        isIndented: Bool = false,
+        action: @escaping () -> Void = {}
+    ) -> some View {
         Button(action: action) {
-            Text(title)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .frame(width: 16)
+                    .foregroundColor(.secondary)
+                Text(title)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let trailingSystemImage {
+                    Image(systemName: trailingSystemImage)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.leading, isIndented ? 20 : 0)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
     private var addAccountMenu: some View {
-        Menu {
-            ForEach(MenuBarViewModel.AddAccountAction.allCases, id: \.title) { action in
-                Button(action.title) {
-                    Task {
-                        await viewModel.performAddAccountAction(action)
+        VStack(alignment: .leading, spacing: 8) {
+            actionRow(
+                title: "Add Account",
+                systemImage: "person.crop.circle.badge.plus",
+                trailingSystemImage: isShowingAddAccountOptions ? "chevron.down" : "chevron.right"
+            ) {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isShowingAddAccountOptions.toggle()
+                }
+            }
+
+            if isShowingAddAccountOptions {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(MenuBarViewModel.AddAccountAction.allCases, id: \.title) { action in
+                        actionRow(
+                            title: action.title,
+                            systemImage: action.systemImageName,
+                            isIndented: true
+                        ) {
+                            Task {
+                                await viewModel.performAddAccountAction(action)
+                            }
+                        }
                     }
                 }
             }
-        } label: {
-            Text("Add Account")
-                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .menuStyle(.borderlessButton)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
