@@ -30,4 +30,23 @@ final class CodexDiagnosticsLoggerTests: XCTestCase {
         XCTAssertTrue(contents.contains("2025-03-28T10:31:12Z browser_open_started"))
         XCTAssertTrue(contents.contains("2025-03-28T10:31:12Z callback_received"))
     }
+
+    func testLogReaderReturnsRecentSafeEventsOnly() throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let contents = """
+        2026-03-28T11:41:22Z browser_login_started
+        2026-03-28T11:41:22Z token_exchange_succeeded
+        2026-03-28T11:41:22Z access_token=secret-should-not-appear
+        2026-03-28T11:41:22Z callback_received code=true error=false
+        2026-03-28T11:41:22Z refresh_token=another-secret
+        """
+        try contents.write(to: paths.loginDiagnosticsLogURL, atomically: true, encoding: .utf8)
+
+        let events = CodexDiagnosticsLogReader(paths: paths).recentSafeEvents(limit: 2)
+
+        XCTAssertEqual(events, [
+            "2026-03-28T11:41:22Z token_exchange_succeeded",
+            "2026-03-28T11:41:22Z callback_received code=true error=false",
+        ])
+    }
 }

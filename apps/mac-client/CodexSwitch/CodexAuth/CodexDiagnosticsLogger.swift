@@ -60,3 +60,44 @@ public final class CodexDiagnosticsFileLogger: CodexDiagnosticsLogging {
         return formatter
     }()
 }
+
+public struct CodexDiagnosticsLogReader {
+    private let logFileURL: URL
+    private let fileManager: FileManager
+
+    public init(paths: CodexPaths, fileManager: FileManager = .default) {
+        self.logFileURL = paths.loginDiagnosticsLogURL
+        self.fileManager = fileManager
+    }
+
+    public func recentSafeEvents(limit: Int = 5) -> [String] {
+        guard limit > 0, fileManager.fileExists(atPath: logFileURL.path) else {
+            return []
+        }
+
+        guard let contents = try? String(contentsOf: logFileURL, encoding: .utf8) else {
+            return []
+        }
+
+        let safeLines = contents
+            .split(separator: "\n")
+            .map(String.init)
+            .filter(isSafeLogLine)
+
+        return Array(safeLines.suffix(limit))
+    }
+
+    private func isSafeLogLine(_ line: String) -> Bool {
+        let forbiddenMarkers = [
+            "access_token",
+            "refresh_token",
+            "id_token",
+            "OPENAI_API_KEY",
+            "authorization:",
+            "bearer ",
+        ]
+
+        let lowercased = line.lowercased()
+        return !forbiddenMarkers.contains(where: { lowercased.contains($0) })
+    }
+}
