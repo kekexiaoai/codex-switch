@@ -56,7 +56,7 @@ public struct LiveUsageService: UsageService {
         self.resolver = resolver ?? CodexUsageResolver(
             scanner: CodexUsageScanner(paths: configuration.paths),
             apiClient: CodexUsageAPIClient(transport: configuration.usageAPITransport),
-            logger: CodexDiagnosticsFileLogger(paths: configuration.paths)
+            logger: CodexDiagnosticsFileLogger(paths: configuration.paths, category: .usageRefresh)
         )
     }
 
@@ -226,7 +226,8 @@ public final class AppEnvironment {
     @MainActor
     public static func live(configuration: RuntimeConfiguration) throws -> AppEnvironment {
         let fileStore = CodexAuthFileStore(paths: configuration.paths)
-        let diagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths)
+        let browserDiagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths, category: .browserLogin)
+        let usageDiagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths, category: .usageRefresh)
         let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
         let repository = AccountRepository(catalog: archivedAccountStore)
         let importer = CodexAuthImporter(fileStore: fileStore)
@@ -235,7 +236,7 @@ public final class AppEnvironment {
             resolver: CodexUsageResolver(
                 scanner: CodexUsageScanner(paths: configuration.paths),
                 apiClient: CodexUsageAPIClient(transport: configuration.usageAPITransport),
-                logger: diagnosticsLogger
+                logger: usageDiagnosticsLogger
             ),
             settingsProvider: UserDefaultsUsageSettingsStore(defaults: configuration.settingsDefaults)
         )
@@ -258,7 +259,7 @@ public final class AppEnvironment {
                 resolver: CodexUsageResolver(
                     scanner: CodexUsageScanner(paths: configuration.paths),
                     apiClient: CodexUsageAPIClient(transport: configuration.usageAPITransport),
-                    logger: diagnosticsLogger
+                    logger: usageDiagnosticsLogger
                 )
             ),
             accountRepository: repository,
@@ -267,7 +268,8 @@ public final class AppEnvironment {
             loginCoordinator: CodexLoginCoordinator(
                 runner: loginRunner,
                 importer: importer,
-                fileStore: fileStore
+                fileStore: fileStore,
+                logger: browserDiagnosticsLogger
             ),
             settingsDefaults: configuration.settingsDefaults,
             settingsActionHandler: LiveSettingsActionHandler(paths: configuration.paths),

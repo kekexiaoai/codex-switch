@@ -29,12 +29,22 @@ public struct StatusSnapshot: Equatable {
     public struct PathsSummary: Equatable {
         public let authFilePath: String
         public let accountsDirectoryPath: String
-        public let diagnosticsLogPath: String
+        public let diagnosticsDirectoryPath: String
+        public let browserLoginLogPath: String
+        public let usageRefreshLogPath: String
 
-        public init(authFilePath: String, accountsDirectoryPath: String, diagnosticsLogPath: String) {
+        public init(
+            authFilePath: String,
+            accountsDirectoryPath: String,
+            diagnosticsDirectoryPath: String,
+            browserLoginLogPath: String,
+            usageRefreshLogPath: String
+        ) {
             self.authFilePath = authFilePath
             self.accountsDirectoryPath = accountsDirectoryPath
-            self.diagnosticsLogPath = diagnosticsLogPath
+            self.diagnosticsDirectoryPath = diagnosticsDirectoryPath
+            self.browserLoginLogPath = browserLoginLogPath
+            self.usageRefreshLogPath = usageRefreshLogPath
         }
     }
 
@@ -122,7 +132,9 @@ public extension StatusSnapshot {
         paths: PathsSummary(
             authFilePath: "~/.codex/auth.json",
             accountsDirectoryPath: "~/.codex/accounts",
-            diagnosticsLogPath: "~/.codex/codex-switch-login.log"
+            diagnosticsDirectoryPath: "~/.codex/codex-switch",
+            browserLoginLogPath: "~/.codex/codex-switch/browser-login.log",
+            usageRefreshLogPath: "~/.codex/codex-switch/usage-refresh.log"
         ),
         diagnostics: DiagnosticsSummary(
             statusText: "Recent diagnostics activity",

@@ -64,7 +64,11 @@ final class CodexUsageScannerTests: XCTestCase {
 
         let snapshot = try scanner.refreshUsage(for: account)
 
-        XCTAssertEqual(snapshot, cachedSnapshot)
+        XCTAssertEqual(snapshot.accountID, cachedSnapshot.accountID)
+        XCTAssertEqual(snapshot.updatedAt, cachedSnapshot.updatedAt)
+        XCTAssertEqual(snapshot.sourceLabel, "Cache")
+        XCTAssertEqual(snapshot.fiveHour, cachedSnapshot.fiveHour)
+        XCTAssertEqual(snapshot.weekly, cachedSnapshot.weekly)
     }
 
     func testUsageScannerParsesNestedTokenCountRateLimitsFromRolloutEntry() throws {

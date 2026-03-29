@@ -8,7 +8,9 @@ final class SettingsActionHandlerTests: XCTestCase {
         let paths = CodexPaths(baseDirectory: baseDirectory)
 
         try FileManager.default.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
-        try "diagnostics".data(using: .utf8)!.write(to: paths.loginDiagnosticsLogURL)
+        try FileManager.default.createDirectory(at: paths.diagnosticsDirectoryURL, withIntermediateDirectories: true)
+        try "browser".data(using: .utf8)!.write(to: paths.browserLoginDiagnosticsLogURL)
+        try "usage".data(using: .utf8)!.write(to: paths.usageRefreshDiagnosticsLogURL)
         try "{}".data(using: .utf8)!.write(to: paths.usageCacheURL)
         try "{\"archive\":1}".data(using: .utf8)!.write(to: paths.accountsDirectoryURL.appendingPathComponent("a.json"))
         try "{\"archive\":2}".data(using: .utf8)!.write(to: paths.accountsDirectoryURL.appendingPathComponent("b.json"))
@@ -26,7 +28,8 @@ final class SettingsActionHandlerTests: XCTestCase {
         _ = try handler.performDestructiveAction(.clearDiagnosticsLog)
         _ = try handler.performDestructiveAction(.removeArchivedAccounts)
 
-        XCTAssertFalse(FileManager.default.fileExists(atPath: paths.loginDiagnosticsLogURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: paths.browserLoginDiagnosticsLogURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: paths.usageRefreshDiagnosticsLogURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: paths.accountsDirectoryURL.appendingPathComponent("a.json").path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: paths.accountsDirectoryURL.appendingPathComponent("b.json").path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: paths.accountMetadataCacheURL.path))
@@ -40,10 +43,14 @@ final class SettingsActionHandlerTests: XCTestCase {
         var openedURLs: [URL] = []
 
         try FileManager.default.createDirectory(at: paths.baseDirectory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: paths.diagnosticsDirectoryURL, withIntermediateDirectories: true)
         try """
         2026-03-28T11:41:22Z browser_login_started
         2026-03-28T11:45:08Z access_token=secret
-        """.data(using: .utf8)!.write(to: paths.loginDiagnosticsLogURL)
+        """.data(using: .utf8)!.write(to: paths.browserLoginDiagnosticsLogURL)
+        try """
+        2026-03-29T13:41:22Z usage_refresh_started mode=automatic account=acct-1
+        """.data(using: .utf8)!.write(to: paths.usageRefreshDiagnosticsLogURL)
 
         defer {
             try? FileManager.default.removeItem(at: baseDirectory)
@@ -62,13 +69,14 @@ final class SettingsActionHandlerTests: XCTestCase {
         let message = try handler.performUtilityAction(.exportDiagnosticsSummary)
 
         XCTAssertEqual(openedURLs[0], paths.baseDirectory)
-        XCTAssertEqual(openedURLs[1], paths.loginDiagnosticsLogURL)
+        XCTAssertEqual(openedURLs[1], paths.diagnosticsDirectoryURL)
         XCTAssertEqual(message.title, "Diagnostics Exported")
         XCTAssertEqual(openedURLs.count, 3)
 
         let exportURL = openedURLs[2]
         let contents = try String(contentsOf: exportURL, encoding: .utf8)
         XCTAssertTrue(contents.contains("browser_login_started"))
+        XCTAssertTrue(contents.contains("usage_refresh_started"))
         XCTAssertFalse(contents.contains("access_token"))
     }
 }

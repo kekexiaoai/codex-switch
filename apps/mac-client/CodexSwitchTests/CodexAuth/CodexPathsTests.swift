@@ -11,7 +11,9 @@ final class CodexPathsTests: XCTestCase {
         XCTAssertEqual(paths.accountMetadataCacheURL.path, "/tmp/codex-home/.codex/accounts/metadata.json")
         XCTAssertEqual(paths.usageCacheURL.path, "/tmp/codex-home/.codex/accounts/usage-cache.json")
         XCTAssertEqual(paths.sessionsDirectoryURL.path, "/tmp/codex-home/.codex/sessions")
-        XCTAssertEqual(paths.loginDiagnosticsLogURL.path, "/tmp/codex-home/.codex/codex-switch-login.log")
+        XCTAssertEqual(paths.diagnosticsDirectoryURL.path, "/tmp/codex-home/.codex/codex-switch")
+        XCTAssertEqual(paths.browserLoginDiagnosticsLogURL.path, "/tmp/codex-home/.codex/codex-switch/browser-login.log")
+        XCTAssertEqual(paths.usageRefreshDiagnosticsLogURL.path, "/tmp/codex-home/.codex/codex-switch/usage-refresh.log")
     }
 
     func testAccountStoresArchiveMetadataNeededByCodexBackend() {

@@ -24,7 +24,13 @@ public struct StatusWindowView: View {
             return []
         }
 
-        return [activeAccount.tierLabel, activeAccount.sourceLabel, activeAccount.archiveFilename]
+        return [
+            activeAccount.tierLabel,
+            activeAccount.sourceLabel,
+            activeAccount.archiveFilename,
+            snapshot.usageStatusText,
+            snapshot.updatedText,
+        ]
     }
 
     var usageTitles: [String] {
@@ -43,7 +49,9 @@ public struct StatusWindowView: View {
         [
             snapshot.paths.authFilePath,
             snapshot.paths.accountsDirectoryPath,
-            snapshot.paths.diagnosticsLogPath,
+            snapshot.paths.diagnosticsDirectoryPath,
+            snapshot.paths.browserLoginLogPath,
+            snapshot.paths.usageRefreshLogPath,
         ]
     }
 

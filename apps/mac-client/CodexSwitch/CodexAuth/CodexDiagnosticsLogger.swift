@@ -4,6 +4,11 @@ public protocol CodexDiagnosticsLogging {
     func log(_ message: String)
 }
 
+public enum CodexDiagnosticsLogCategory: Equatable {
+    case browserLogin
+    case usageRefresh
+}
+
 public struct NullCodexDiagnosticsLogger: CodexDiagnosticsLogging {
     public init() {}
 
@@ -18,10 +23,16 @@ public final class CodexDiagnosticsFileLogger: CodexDiagnosticsLogging {
 
     public init(
         paths: CodexPaths,
+        category: CodexDiagnosticsLogCategory = .browserLogin,
         fileManager: FileManager = .default,
         now: @escaping () -> Date = Date.init
     ) {
-        self.logFileURL = paths.loginDiagnosticsLogURL
+        switch category {
+        case .browserLogin:
+            self.logFileURL = paths.browserLoginDiagnosticsLogURL
+        case .usageRefresh:
+            self.logFileURL = paths.usageRefreshDiagnosticsLogURL
+        }
         self.fileManager = fileManager
         self.now = now
     }
@@ -66,23 +77,25 @@ public struct CodexDiagnosticsLogReader {
     private let fileManager: FileManager
 
     public init(paths: CodexPaths, fileManager: FileManager = .default) {
-        self.logFileURL = paths.loginDiagnosticsLogURL
+        self.logFileURL = paths.diagnosticsDirectoryURL
         self.fileManager = fileManager
     }
 
     public func recentSafeEvents(limit: Int = 5) -> [String] {
-        guard limit > 0, fileManager.fileExists(atPath: logFileURL.path) else {
+        guard limit > 0 else {
             return []
         }
 
-        guard let contents = try? String(contentsOf: logFileURL, encoding: .utf8) else {
-            return []
-        }
-
-        let safeLines = contents
-            .split(separator: "\n")
-            .map(String.init)
+        let candidateURLs = [
+            logFileURL.appendingPathComponent("browser-login.log"),
+            logFileURL.appendingPathComponent("usage-refresh.log"),
+        ]
+        let safeLines = candidateURLs
+            .filter { fileManager.fileExists(atPath: $0.path) }
+            .compactMap { try? String(contentsOf: $0, encoding: .utf8) }
+            .flatMap { $0.split(separator: "\n").map(String.init) }
             .filter(isSafeLogLine)
+            .sorted()
 
         return Array(safeLines.suffix(limit))
     }

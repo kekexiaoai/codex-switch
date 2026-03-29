@@ -13,12 +13,20 @@ public struct CodexUsageWindow: Codable, Equatable {
 public struct CodexUsageSnapshot: Codable, Equatable {
     public let accountID: String
     public let updatedAt: Date
+    public let sourceLabel: String?
     public let fiveHour: CodexUsageWindow
     public let weekly: CodexUsageWindow
 
-    public init(accountID: String, updatedAt: Date, fiveHour: CodexUsageWindow, weekly: CodexUsageWindow) {
+    public init(
+        accountID: String,
+        updatedAt: Date,
+        sourceLabel: String? = nil,
+        fiveHour: CodexUsageWindow,
+        weekly: CodexUsageWindow
+    ) {
         self.accountID = accountID
         self.updatedAt = updatedAt
+        self.sourceLabel = sourceLabel
         self.fiveHour = fiveHour
         self.weekly = weekly
     }
@@ -71,12 +79,13 @@ public struct CodexUsageScanner {
 
     public func refreshUsageResult(for account: Account) throws -> CodexUsageScanResult {
         if let snapshot = try loadLatestSnapshot(for: account) {
-            try saveCachedSnapshot(snapshot)
-            return CodexUsageScanResult(snapshot: snapshot, source: .rolloutLogs)
+            let labeledSnapshot = snapshot.withSourceLabel("Local Logs")
+            try saveCachedSnapshot(labeledSnapshot)
+            return CodexUsageScanResult(snapshot: labeledSnapshot, source: .rolloutLogs)
         }
 
         if let cached = try loadCachedSnapshot(for: account.id) {
-            return CodexUsageScanResult(snapshot: cached, source: .cache)
+            return CodexUsageScanResult(snapshot: cached.withSourceLabel("Cache"), source: .cache)
         }
 
         throw CodexAuthError.noUsageData
@@ -383,5 +392,17 @@ private extension CodexUsageScanner {
     struct Window {
         let usedPercent: Int
         let resetsAt: Date
+    }
+}
+
+private extension CodexUsageSnapshot {
+    func withSourceLabel(_ sourceLabel: String) -> CodexUsageSnapshot {
+        CodexUsageSnapshot(
+            accountID: accountID,
+            updatedAt: updatedAt,
+            sourceLabel: sourceLabel,
+            fiveHour: fiveHour,
+            weekly: weekly
+        )
     }
 }

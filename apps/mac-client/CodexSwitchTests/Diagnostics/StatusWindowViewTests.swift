@@ -16,7 +16,7 @@ final class StatusWindowViewTests: XCTestCase {
             archivedAccountCount: 2,
             accountInventoryStatusText: "2 archived accounts",
             updatedText: "Updated just now",
-            usageStatusText: "Updated just now",
+            usageStatusText: "Local Logs",
             summaries: [
                 UsageSummaryModel(id: "5h", title: "5 Hours", percentUsed: 42, resetText: "Resets soon"),
                 UsageSummaryModel(id: "weekly", title: "Weekly", percentUsed: 17, resetText: "Resets later"),
@@ -31,7 +31,9 @@ final class StatusWindowViewTests: XCTestCase {
             paths: StatusSnapshot.PathsSummary(
                 authFilePath: "/tmp/auth.json",
                 accountsDirectoryPath: "/tmp/accounts",
-                diagnosticsLogPath: "/tmp/codex-switch-login.log"
+                diagnosticsDirectoryPath: "/tmp/codex-switch",
+                browserLoginLogPath: "/tmp/codex-switch/browser-login.log",
+                usageRefreshLogPath: "/tmp/codex-switch/usage-refresh.log"
             ),
             diagnostics: StatusSnapshot.DiagnosticsSummary(
                 statusText: "Recent diagnostics activity",
@@ -46,13 +48,13 @@ final class StatusWindowViewTests: XCTestCase {
 
         XCTAssertEqual(view.sectionTitles, ["Operations", "Usage", "Accounts", "Diagnostics", "Paths"])
         XCTAssertEqual(view.activeAccountTitle, "active@example.com")
-        XCTAssertEqual(view.activeAccountDetails, ["Team", "Browser Login", "active.json"])
+        XCTAssertEqual(view.activeAccountDetails, ["Team", "Browser Login", "active.json", "Local Logs", "Updated just now"])
         XCTAssertEqual(view.usageTitles, ["5 Hours", "Weekly"])
         XCTAssertEqual(view.accountEmails, ["a••••@example.com", "b••••@example.com"])
         XCTAssertEqual(view.diagnosticsLines, [
             "2026-03-28T11:41:22Z browser_login_started",
             "2026-03-29T13:45:09Z usage_refresh_local_succeeded mode=automatic account=acct-active source=rollout_logs",
         ])
-        XCTAssertEqual(view.pathLines, ["/tmp/auth.json", "/tmp/accounts", "/tmp/codex-switch-login.log"])
+        XCTAssertEqual(view.pathLines, ["/tmp/auth.json", "/tmp/accounts", "/tmp/codex-switch", "/tmp/codex-switch/browser-login.log", "/tmp/codex-switch/usage-refresh.log"])
     }
 }

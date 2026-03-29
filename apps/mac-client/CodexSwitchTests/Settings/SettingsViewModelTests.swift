@@ -109,7 +109,7 @@ final class SettingsViewModelTests: XCTestCase {
         try viewModel.performUtilityAction(.openDiagnosticsLog)
 
         XCTAssertEqual(actionHandler.utilityActions, [.openCodexDirectory, .openDiagnosticsLog])
-        XCTAssertEqual(viewModel.lastActionMessage?.title, "Diagnostics Log Opened")
+        XCTAssertEqual(viewModel.lastActionMessage?.title, "Diagnostics Folder Opened")
     }
 }
 
@@ -121,7 +121,7 @@ private final class RecordingSettingsActionHandler: SettingsActionHandling {
         destructiveActions.append(action)
         switch action {
         case .clearDiagnosticsLog:
-            return SettingsActionMessage(title: "Diagnostics Cleared", message: "Removed the local diagnostics log.")
+            return SettingsActionMessage(title: "Diagnostics Cleared", message: "Removed local diagnostics logs.")
         case .clearUsageCache:
             return SettingsActionMessage(title: "Usage Cache Cleared", message: "Removed cached usage data.")
         case .removeArchivedAccounts:
@@ -135,7 +135,7 @@ private final class RecordingSettingsActionHandler: SettingsActionHandling {
         case .openCodexDirectory:
             return SettingsActionMessage(title: "Codex Directory Opened", message: "Opened ~/.codex.")
         case .openDiagnosticsLog:
-            return SettingsActionMessage(title: "Diagnostics Log Opened", message: "Opened the local diagnostics log.")
+            return SettingsActionMessage(title: "Diagnostics Folder Opened", message: "Opened the local diagnostics folder.")
         case .exportDiagnosticsSummary:
             return SettingsActionMessage(title: "Diagnostics Exported", message: "Exported a sanitized diagnostics summary.")
         }

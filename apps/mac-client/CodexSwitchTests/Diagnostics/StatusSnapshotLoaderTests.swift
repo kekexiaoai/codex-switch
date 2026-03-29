@@ -31,6 +31,7 @@ final class StatusSnapshotLoaderTests: XCTestCase {
                     headerEmail: activeAccount.emailMask,
                     headerTier: "TEAM",
                     updatedText: "Updated just now",
+                    usageSourceText: "API",
                     summaries: [
                         UsageSummaryModel(id: "5h", title: "5 Hours", percentUsed: 42, resetText: "Resets soon"),
                         UsageSummaryModel(id: "weekly", title: "Weekly", percentUsed: 17, resetText: "Resets later"),
@@ -72,6 +73,7 @@ final class StatusSnapshotLoaderTests: XCTestCase {
         XCTAssertEqual(snapshot.activeAccount?.archiveFilename, "active.json")
         XCTAssertEqual(snapshot.archivedAccountCount, 2)
         XCTAssertEqual(snapshot.updatedText, "Updated just now")
+        XCTAssertEqual(snapshot.usageStatusText, "API")
         XCTAssertEqual(snapshot.summaries.map(\.id), ["5h", "weekly"])
         XCTAssertEqual(snapshot.accountRows.map(\.id), [activeAccount.id, secondaryAccount.id])
         XCTAssertEqual(snapshot.runtimeModeLabel, "Live")
@@ -79,7 +81,9 @@ final class StatusSnapshotLoaderTests: XCTestCase {
         XCTAssertEqual(snapshot.preferredHostLabel, "MenuBarExtra")
         XCTAssertEqual(snapshot.paths.authFilePath, paths.authFileURL.path)
         XCTAssertEqual(snapshot.paths.accountsDirectoryPath, paths.accountsDirectoryURL.path)
-        XCTAssertEqual(snapshot.paths.diagnosticsLogPath, paths.loginDiagnosticsLogURL.path)
+        XCTAssertEqual(snapshot.paths.diagnosticsDirectoryPath, paths.diagnosticsDirectoryURL.path)
+        XCTAssertEqual(snapshot.paths.browserLoginLogPath, paths.browserLoginDiagnosticsLogURL.path)
+        XCTAssertEqual(snapshot.paths.usageRefreshLogPath, paths.usageRefreshDiagnosticsLogURL.path)
         XCTAssertEqual(snapshot.accountInventoryStatusText, "2 archived accounts")
         XCTAssertEqual(snapshot.diagnostics.statusText, "No diagnostics yet")
     }
@@ -93,6 +97,7 @@ final class StatusSnapshotLoaderTests: XCTestCase {
                     headerEmail: "No account",
                     headerTier: "LIVE",
                     updatedText: "No usage data",
+                    usageSourceText: "Unavailable",
                     summaries: [],
                     accounts: []
                 )
@@ -114,7 +119,7 @@ final class StatusSnapshotLoaderTests: XCTestCase {
         XCTAssertEqual(snapshot.archivedAccountCount, 0)
         XCTAssertEqual(snapshot.accountInventoryStatusText, "No archived accounts")
         XCTAssertTrue(snapshot.summaries.isEmpty)
-        XCTAssertEqual(snapshot.usageStatusText, "No usage data")
+        XCTAssertEqual(snapshot.usageStatusText, "Unavailable")
         XCTAssertEqual(snapshot.diagnostics.statusText, "No diagnostics yet")
         XCTAssertTrue(snapshot.diagnostics.recentEvents.isEmpty)
     }

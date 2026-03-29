@@ -49,7 +49,7 @@ public struct NoopSettingsActionHandler: SettingsActionHandling {
     public func performDestructiveAction(_ action: SettingsDestructiveAction) throws -> SettingsActionMessage {
         switch action {
         case .clearDiagnosticsLog:
-            return SettingsActionMessage(title: "Diagnostics Cleared", message: "Removed the local diagnostics log.")
+            return SettingsActionMessage(title: "Diagnostics Cleared", message: "Removed local diagnostics logs.")
         case .clearUsageCache:
             return SettingsActionMessage(title: "Usage Cache Cleared", message: "Removed cached usage data.")
         case .removeArchivedAccounts:
@@ -62,7 +62,7 @@ public struct NoopSettingsActionHandler: SettingsActionHandling {
         case .openCodexDirectory:
             return SettingsActionMessage(title: "Codex Directory Opened", message: "Opened ~/.codex.")
         case .openDiagnosticsLog:
-            return SettingsActionMessage(title: "Diagnostics Log Opened", message: "Opened the local diagnostics log.")
+            return SettingsActionMessage(title: "Diagnostics Folder Opened", message: "Opened the local diagnostics folder.")
         case .exportDiagnosticsSummary:
             return SettingsActionMessage(title: "Diagnostics Exported", message: "Exported a sanitized diagnostics summary.")
         }

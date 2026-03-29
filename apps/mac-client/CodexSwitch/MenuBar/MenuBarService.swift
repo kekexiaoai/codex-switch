@@ -37,6 +37,13 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
             headerEmail = accounts.first ?? "No account"
         }
 
+        let usageSourceText: String
+        if usageText == "Usage refresh disabled" {
+            usageSourceText = "Refresh Disabled"
+        } else {
+            usageSourceText = activeSnapshot?.sourceLabel ?? "Unavailable"
+        }
+
         var accountRows: [AccountRowModel]
         if let repositoryAccounts {
             accountRows = []
@@ -68,6 +75,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
             headerEmail: headerEmail,
             headerTier: activeAccount?.tier.rawValue.uppercased() ?? (environment.runtimeMode == .live ? "LIVE" : "PREVIEW"),
             updatedText: usageText,
+            usageSourceText: usageSourceText,
             summaries: activeSnapshot.map { snapshot in
                 [
                     UsageSummaryModel(
@@ -104,6 +112,7 @@ public struct MockMenuBarService: MenuBarSnapshotService {
             headerEmail: "a••••@gmail.com",
             headerTier: "TEAM",
             updatedText: "Updated 10 seconds ago",
+            usageSourceText: "API",
             summaries: [
                 UsageSummaryModel(
                     id: "5h",

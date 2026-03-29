@@ -618,7 +618,7 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.alertMessage?.title, "Browser Could Not Open")
         XCTAssertEqual(
             viewModel.alertMessage?.message,
-            "Codex Switch could not open your default browser. Check your browser settings, then review ~/.codex/codex-switch-login.log and try again."
+            "Codex Switch could not open your default browser. Check your browser settings, then review ~/.codex/codex-switch/browser-login.log and try again."
         )
     }
 

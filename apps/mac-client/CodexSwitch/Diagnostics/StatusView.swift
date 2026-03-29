@@ -31,7 +31,8 @@ public struct StatusView: View {
                 infoRow(label: "Archive", value: activeAccount.archiveFilename)
             }
             infoRow(label: "Accounts", value: snapshot.accountInventoryStatusText)
-            infoRow(label: "Usage", value: snapshot.usageStatusText)
+            infoRow(label: "Usage Source", value: snapshot.usageStatusText)
+            infoRow(label: "Usage Updated", value: snapshot.updatedText)
         }
     }
 
@@ -111,7 +112,9 @@ public struct StatusView: View {
         statusCard(title: "Paths", systemImage: "folder") {
             pathRow(label: "Auth", value: snapshot.paths.authFilePath)
             pathRow(label: "Accounts", value: snapshot.paths.accountsDirectoryPath)
-            pathRow(label: "Diagnostics", value: snapshot.paths.diagnosticsLogPath)
+            pathRow(label: "Diagnostics Directory", value: snapshot.paths.diagnosticsDirectoryPath)
+            pathRow(label: "Browser Login Log", value: snapshot.paths.browserLoginLogPath)
+            pathRow(label: "Usage Refresh Log", value: snapshot.paths.usageRefreshLogPath)
         }
     }
 

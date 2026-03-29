@@ -287,7 +287,7 @@ public struct DesktopCodexLoginRunner: CodexLoginRunning {
         logger: (any CodexDiagnosticsLogging)? = nil
     ) {
         self.fileStore = fileStore
-        let diagnosticsLogger = logger ?? CodexDiagnosticsFileLogger(paths: fileStore.paths)
+        let diagnosticsLogger = logger ?? CodexDiagnosticsFileLogger(paths: fileStore.paths, category: .browserLogin)
         self.broker = broker ?? DesktopCodexLoginBroker(
             callbackServerFactory: { try LocalhostOAuthCallbackServer(logger: diagnosticsLogger) },
             logger: diagnosticsLogger

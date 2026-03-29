@@ -25,7 +25,7 @@ final class SettingsViewTests: XCTestCase {
         )
         XCTAssertEqual(view.advancedControlLabels, [
             "Open ~/.codex",
-            "Open Diagnostics Log",
+            "Open Diagnostics Folder",
             "Export Diagnostics Summary",
         ])
     }

@@ -264,7 +264,11 @@ final class CodexUsageResolverTests: XCTestCase {
             mode: .localOnly
         )
 
-        XCTAssertEqual(snapshot, cachedSnapshot)
+        XCTAssertEqual(snapshot.accountID, cachedSnapshot.accountID)
+        XCTAssertEqual(snapshot.updatedAt, cachedSnapshot.updatedAt)
+        XCTAssertEqual(snapshot.sourceLabel, "Cache")
+        XCTAssertEqual(snapshot.fiveHour, cachedSnapshot.fiveHour)
+        XCTAssertEqual(snapshot.weekly, cachedSnapshot.weekly)
         XCTAssertEqual(logger.entries, [
             "usage_refresh_started mode=localOnly account=google-oauth2|123",
             "usage_refresh_local_succeeded mode=localOnly account=google-oauth2|123 source=cache",

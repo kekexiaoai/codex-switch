@@ -42,7 +42,7 @@ public struct StatusSnapshotLoader {
 
         let diagnosticsEvents = diagnosticsReader()
         let archivedAccountCount = repositoryAccounts.isEmpty ? menuBarSnapshot.accounts.count : repositoryAccounts.count
-        let usageStatusText = menuBarSnapshot.updatedText.isEmpty ? "No usage data" : menuBarSnapshot.updatedText
+        let usageStatusText = menuBarSnapshot.usageSourceText.isEmpty ? "Unavailable" : menuBarSnapshot.usageSourceText
 
         return StatusSnapshot(
             activeAccount: activeAccount.map {
@@ -70,7 +70,9 @@ public struct StatusSnapshotLoader {
             paths: StatusSnapshot.PathsSummary(
                 authFilePath: paths.authFileURL.path,
                 accountsDirectoryPath: paths.accountsDirectoryURL.path,
-                diagnosticsLogPath: paths.loginDiagnosticsLogURL.path
+                diagnosticsDirectoryPath: paths.diagnosticsDirectoryURL.path,
+                browserLoginLogPath: paths.browserLoginDiagnosticsLogURL.path,
+                usageRefreshLogPath: paths.usageRefreshDiagnosticsLogURL.path
             ),
             diagnostics: StatusSnapshot.DiagnosticsSummary(
                 statusText: diagnosticsEvents.isEmpty ? "No diagnostics yet" : "Recent diagnostics activity",

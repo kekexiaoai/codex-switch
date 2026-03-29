@@ -241,7 +241,7 @@ public struct SettingsView: View {
         case .openCodexDirectory:
             return "Open ~/.codex"
         case .openDiagnosticsLog:
-            return "Open Diagnostics Log"
+            return "Open Diagnostics Folder"
         case .exportDiagnosticsSummary:
             return "Export Diagnostics Summary"
         }
@@ -261,7 +261,7 @@ public struct SettingsView: View {
     private static func confirmationMessage(for action: SettingsDestructiveAction) -> String {
         switch action {
         case .clearDiagnosticsLog:
-            return "This removes the local diagnostics log file."
+            return "This removes the local diagnostics log files."
         case .clearUsageCache:
             return "This clears cached usage snapshots stored on this Mac."
         case .removeArchivedAccounts:

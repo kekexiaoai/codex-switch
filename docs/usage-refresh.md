@@ -90,11 +90,12 @@ For `Local Only`:
 
 ## Diagnostics Logging
 
-Usage refresh diagnostics are written into the same diagnostics file already used for browser login events:
+Usage refresh diagnostics are written into the diagnostics folder:
 
-- `~/.codex/codex-switch-login.log`
+- `~/.codex/codex-switch/browser-login.log`
+- `~/.codex/codex-switch/usage-refresh.log`
 
-The file name is historical. It now contains both browser login diagnostics and usage refresh diagnostics.
+Browser login and usage refresh now use separate log files under the same diagnostics folder.
 
 ### Expected usage refresh log events
 

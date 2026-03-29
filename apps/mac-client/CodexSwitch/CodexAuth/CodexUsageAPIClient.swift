@@ -109,6 +109,7 @@ public struct CodexUsageAPIClient {
         return CodexUsageSnapshot(
             accountID: account.id,
             updatedAt: updatedAt,
+            sourceLabel: "API",
             fiveHour: CodexUsageWindow(percentUsed: fiveHour.usedPercent, resetsAt: fiveHour.resetsAt),
             weekly: CodexUsageWindow(percentUsed: weekly.usedPercent, resetsAt: weekly.resetsAt)
         )

@@ -40,8 +40,9 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
     public func performDestructiveAction(_ action: SettingsDestructiveAction) throws -> SettingsActionMessage {
         switch action {
         case .clearDiagnosticsLog:
-            try removeItemIfPresent(at: paths.loginDiagnosticsLogURL)
-            return SettingsActionMessage(title: "Diagnostics Cleared", message: "Removed the local diagnostics log.")
+            try removeItemIfPresent(at: paths.browserLoginDiagnosticsLogURL)
+            try removeItemIfPresent(at: paths.usageRefreshDiagnosticsLogURL)
+            return SettingsActionMessage(title: "Diagnostics Cleared", message: "Removed local diagnostics logs.")
         case .clearUsageCache:
             try removeItemIfPresent(at: paths.usageCacheURL)
             return SettingsActionMessage(title: "Usage Cache Cleared", message: "Removed cached usage data.")
@@ -58,9 +59,9 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
             try open(paths.baseDirectory)
             return SettingsActionMessage(title: "Codex Directory Opened", message: "Opened ~/.codex.")
         case .openDiagnosticsLog:
-            try ensureDiagnosticsLogExists()
-            try open(paths.loginDiagnosticsLogURL)
-            return SettingsActionMessage(title: "Diagnostics Log Opened", message: "Opened the local diagnostics log.")
+            try ensureDiagnosticsDirectoryExists()
+            try open(paths.diagnosticsDirectoryURL)
+            return SettingsActionMessage(title: "Diagnostics Folder Opened", message: "Opened the local diagnostics folder.")
         case .exportDiagnosticsSummary:
             let exportURL = try exportDiagnosticsSummary()
             try open(exportURL)
@@ -91,13 +92,8 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
             && name != paths.usageCacheURL.lastPathComponent
     }
 
-    private func ensureDiagnosticsLogExists() throws {
-        try fileManager.createDirectory(at: paths.baseDirectory, withIntermediateDirectories: true)
-        guard !fileManager.fileExists(atPath: paths.loginDiagnosticsLogURL.path) else {
-            return
-        }
-
-        try Data().write(to: paths.loginDiagnosticsLogURL, options: .atomic)
+    private func ensureDiagnosticsDirectoryExists() throws {
+        try fileManager.createDirectory(at: paths.diagnosticsDirectoryURL, withIntermediateDirectories: true)
     }
 
     private func exportDiagnosticsSummary() throws -> URL {
