@@ -19,18 +19,25 @@ public struct StubBackupAuthPicker: BackupAuthPicking {
 
 #if canImport(AppKit)
 import AppKit
+import UniformTypeIdentifiers
 
 @MainActor
 public final class OpenPanelBackupAuthPicker: BackupAuthPicking {
     public init() {}
 
-    public func pickBackupAuthURL() async -> URL? {
+    public static func makePanel() -> NSOpenPanel {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = []
+        panel.allowedContentTypes = [.json]
         panel.prompt = "Import"
+        return panel
+    }
+
+    public func pickBackupAuthURL() async -> URL? {
+        NSApp.activate(ignoringOtherApps: true)
+        let panel = Self.makePanel()
         return panel.runModal() == .OK ? panel.url : nil
     }
 }

@@ -21,7 +21,11 @@ public final class ActiveAccountController: ObservableObject {
     public func activateAccount(id: String) async throws {
         try await switcher.activateAccount(id: id)
         activeAccountID = id
-        _ = try await usageService.refresh(reason: .switchTriggered)
+        do {
+            _ = try await usageService.refresh(reason: .switchTriggered)
+        } catch let error as CodexAuthError where error == .noUsageData {
+            // Account switching/import succeeded; missing usage data should not roll it back.
+        }
         lastRefreshSource = "switch"
     }
 

@@ -136,11 +136,85 @@ final class MenuBarViewModelTests: XCTestCase {
         )
 
         await viewModel.refresh()
-        try await viewModel.importCurrentAccount()
+        _ = try await viewModel.importCurrentAccount()
 
         XCTAssertEqual(viewModel.accountRows.count, 1)
         XCTAssertEqual(controller.currentActiveAccountID(), "subject-imported@example.com")
         XCTAssertEqual(viewModel.headerEmail, "i•••••••@example.com")
+    }
+
+    func testImportCurrentAccountShowsFriendlyErrorForAPIKeyOnlyAuth() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        let apiKeyOnlyAuth = """
+        {"api_key":"sk-test","provider":"openai"}
+        """
+        try Data(apiKeyOnlyAuth.utf8).write(to: paths.authFileURL)
+
+        let viewModel = MenuBarViewModel(
+            service: MockMenuBarService(),
+            accountImporter: CodexAuthImporter(fileStore: fileStore)
+        )
+
+        await viewModel.performAddAccountAction(.importCurrentAccount)
+
+        XCTAssertEqual(viewModel.alertMessage?.title, "Cannot Import Current Account")
+        XCTAssertEqual(
+            viewModel.alertMessage?.message,
+            "Current Codex auth does not contain a browser login session. If this machine is using OPENAI_API_KEY mode, choose Login in Browser or import a backup auth.json."
+        )
+    }
+
+    func testImportCurrentAccountShowsRefreshMessageForExistingAccount() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        try sampleAuthData(email: "existing@example.com", tier: "team").write(to: paths.authFileURL)
+
+        let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
+        let repository = AccountRepository(catalog: archivedAccountStore)
+        let controller = ActiveAccountController(
+            activeAccountID: nil,
+            switcher: CodexAccountSwitcher(
+                archivedAccountStore: archivedAccountStore,
+                fileStore: fileStore
+            ),
+            usageService: StubUsageRefreshService()
+        )
+        let importer = CodexAuthImporter(fileStore: fileStore)
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(
+                environment: AppEnvironment(
+                    accountStore: MockAccountStore(),
+                    usageService: MockUsageService(),
+                    accountRepository: repository,
+                    activeAccountController: controller,
+                    accountImporter: importer,
+                    runtimeMode: .live
+                )
+            ),
+            accountRepository: repository,
+            activeAccountController: controller,
+            accountImporter: importer
+        )
+
+        _ = try await viewModel.importCurrentAccount()
+        viewModel.dismissAlert()
+
+        try sampleAuthData(email: "existing@example.com", tier: "pro").write(to: paths.authFileURL)
+        await viewModel.performAddAccountAction(.importCurrentAccount)
+
+        XCTAssertEqual(viewModel.alertMessage?.title, "Account Refreshed")
+        XCTAssertEqual(viewModel.alertMessage?.message, "Account already exists, auth refreshed.")
     }
 
     func testEnvironmentBackedServiceShowsFullEmailsWhenPreferenceEnabled() async throws {
@@ -245,13 +319,38 @@ final class MenuBarViewModelTests: XCTestCase {
             backupAuthPicker: StubBackupAuthPicker(selectedURL: backupURL)
         )
 
-        try await viewModel.importBackupAccount()
+        _ = try await viewModel.importBackupAccount()
 
         let savedAccounts = try await repository.loadAccounts()
         XCTAssertEqual(savedAccounts.count, 1)
         XCTAssertEqual(savedAccounts.last?.email, "backup@example.com")
         XCTAssertEqual(savedAccounts.last?.tier, .team)
         XCTAssertEqual(controller.currentActiveAccountID(), "subject-backup@example.com")
+    }
+
+    func testLoginInBrowserShowsFriendlyErrorWhenLoginFails() async {
+        let viewModel = MenuBarViewModel(
+            service: MockMenuBarService(),
+            loginCoordinator: CodexLoginCoordinator(
+                runner: StubCodexLoginRunner(result: .failure),
+                importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: CodexPaths(baseDirectory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true))))
+            )
+        )
+
+        await viewModel.performAddAccountAction(.loginInBrowser)
+
+        XCTAssertEqual(viewModel.alertMessage?.title, "Browser Login Failed")
+        XCTAssertEqual(
+            viewModel.alertMessage?.message,
+            "Codex browser login did not complete. Make sure the Codex CLI is installed and try again."
+        )
+    }
+
+    func testAddAccountMenuExposesThreeChoices() {
+        XCTAssertEqual(
+            MenuBarViewModel.AddAccountAction.allCases.map(\.title),
+            ["Import Current Account", "Import Backup Auth", "Login in Browser"]
+        )
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {

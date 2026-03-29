@@ -53,6 +53,13 @@ final class CodexLoginCoordinatorTests: XCTestCase {
         XCTAssertEqual(ProcessCodexLoginRunner.result(forExitStatus: 1), .failure)
     }
 
+    func testProcessLoginRunnerUsesLoginShellToResolveCodexCLI() {
+        let process = ProcessCodexLoginRunner.makeProcess()
+
+        XCTAssertEqual(process.executableURL?.path, "/bin/zsh")
+        XCTAssertEqual(process.arguments, ["-lc", "codex login"])
+    }
+
     private func sampleAuthData(email: String, tier: String) throws -> Data {
         let payload = [
             "sub": "subject-\(email)",

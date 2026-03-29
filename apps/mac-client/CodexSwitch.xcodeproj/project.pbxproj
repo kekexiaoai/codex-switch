@@ -157,6 +157,7 @@
             "OBJ_13",
             "OBJ_18",
             "OBJ_22",
+            "OBJ_1000",
             "OBJ_25",
             "OBJ_35",
             "OBJ_38"
@@ -265,7 +266,13 @@
             "OBJ_127",
             "OBJ_128",
             "OBJ_129",
-            "OBJ_130"
+            "OBJ_130",
+            "OBJ_1031",
+            "OBJ_1032",
+            "OBJ_1033",
+            "OBJ_1034",
+            "OBJ_1035",
+            "OBJ_1036"
          );
       };
       "OBJ_124" = {
@@ -307,6 +314,190 @@
       "OBJ_130" = {
          isa = "PBXBuildFile";
          fileRef = "OBJ_55";
+      };
+      "OBJ_1000" = {
+         isa = "PBXGroup";
+         children = (
+            "OBJ_1001",
+            "OBJ_1002",
+            "OBJ_1003",
+            "OBJ_1004",
+            "OBJ_1005",
+            "OBJ_1006",
+            "OBJ_1007",
+            "OBJ_1008",
+            "OBJ_1009",
+            "OBJ_1010"
+         );
+         name = "CodexAuth";
+         path = "CodexAuth";
+         sourceTree = "<group>";
+      };
+      "OBJ_1001" = {
+         isa = "PBXFileReference";
+         path = "BackupAuthPicker.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1002" = {
+         isa = "PBXFileReference";
+         path = "CodexArchiveNaming.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1003" = {
+         isa = "PBXFileReference";
+         path = "CodexArchivedAccountStore.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1004" = {
+         isa = "PBXFileReference";
+         path = "CodexAuthFileStore.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1005" = {
+         isa = "PBXFileReference";
+         path = "CodexAuthImporter.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1006" = {
+         isa = "PBXFileReference";
+         path = "CodexAuthModels.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1007" = {
+         isa = "PBXFileReference";
+         path = "CodexJWTDecoder.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1008" = {
+         isa = "PBXFileReference";
+         path = "CodexLoginCoordinator.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1009" = {
+         isa = "PBXFileReference";
+         path = "CodexPaths.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1010" = {
+         isa = "PBXFileReference";
+         path = "CodexUsageScanner.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1011" = {
+         isa = "PBXFileReference";
+         path = "CodexAccountSwitcher.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1012" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1001";
+      };
+      "OBJ_1013" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1002";
+      };
+      "OBJ_1014" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1003";
+      };
+      "OBJ_1015" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1004";
+      };
+      "OBJ_1016" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1005";
+      };
+      "OBJ_1017" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1006";
+      };
+      "OBJ_1018" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1007";
+      };
+      "OBJ_1019" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1008";
+      };
+      "OBJ_1020" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1009";
+      };
+      "OBJ_1021" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1010";
+      };
+      "OBJ_1022" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1011";
+      };
+      "OBJ_1023" = {
+         isa = "PBXGroup";
+         children = (
+            "OBJ_1024",
+            "OBJ_1025",
+            "OBJ_1026",
+            "OBJ_1027",
+            "OBJ_1028"
+         );
+         name = "CodexAuth";
+         path = "CodexAuth";
+         sourceTree = "<group>";
+      };
+      "OBJ_1024" = {
+         isa = "PBXFileReference";
+         path = "CodexAuthImporterTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1025" = {
+         isa = "PBXFileReference";
+         path = "CodexAuthParsingTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1026" = {
+         isa = "PBXFileReference";
+         path = "CodexLoginCoordinatorTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1027" = {
+         isa = "PBXFileReference";
+         path = "CodexPathsTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1028" = {
+         isa = "PBXFileReference";
+         path = "CodexUsageScannerTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1030" = {
+         isa = "PBXFileReference";
+         path = "XcodeProjectSyncTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_1031" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1024";
+      };
+      "OBJ_1032" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1025";
+      };
+      "OBJ_1033" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1026";
+      };
+      "OBJ_1034" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1027";
+      };
+      "OBJ_1035" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1028";
+      };
+      "OBJ_1036" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_1030";
       };
       "OBJ_131" = {
          isa = "PBXFrameworksBuildPhase";
@@ -521,7 +712,8 @@
          children = (
             "OBJ_39",
             "OBJ_40",
-            "OBJ_41"
+            "OBJ_41",
+            "OBJ_1011"
          );
          name = "Switching";
          path = "Switching";
@@ -589,6 +781,7 @@
          children = (
             "OBJ_44",
             "OBJ_46",
+            "OBJ_1023",
             "OBJ_47",
             "OBJ_49",
             "OBJ_52",
@@ -620,7 +813,8 @@
       "OBJ_47" = {
          isa = "PBXGroup";
          children = (
-            "OBJ_48"
+            "OBJ_48",
+            "OBJ_1030"
          );
          name = "Integration";
          path = "Integration";
@@ -997,6 +1191,16 @@
             "OBJ_85",
             "OBJ_86",
             "OBJ_87",
+            "OBJ_1012",
+            "OBJ_1013",
+            "OBJ_1014",
+            "OBJ_1015",
+            "OBJ_1016",
+            "OBJ_1017",
+            "OBJ_1018",
+            "OBJ_1019",
+            "OBJ_1020",
+            "OBJ_1021",
             "OBJ_88",
             "OBJ_89",
             "OBJ_90",
@@ -1015,7 +1219,8 @@
             "OBJ_103",
             "OBJ_104",
             "OBJ_105",
-            "OBJ_106"
+            "OBJ_106",
+            "OBJ_1022"
          );
       };
       "OBJ_84" = {

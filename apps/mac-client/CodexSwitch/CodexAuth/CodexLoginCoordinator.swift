@@ -25,6 +25,13 @@ public struct StubCodexLoginRunner: CodexLoginRunning {
 public struct ProcessCodexLoginRunner: CodexLoginRunning {
     public init() {}
 
+    public static func makeProcess() -> Process {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-lc", "codex login"]
+        return process
+    }
+
     public static func result(forExitStatus status: Int32) -> CodexLoginResult {
         switch status {
         case 0:
@@ -38,9 +45,7 @@ public struct ProcessCodexLoginRunner: CodexLoginRunning {
 
     public func runLogin() async throws -> CodexLoginResult {
         try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["codex", "login"]
+            let process = Self.makeProcess()
             process.terminationHandler = { process in
                 continuation.resume(returning: Self.result(forExitStatus: process.terminationStatus))
             }

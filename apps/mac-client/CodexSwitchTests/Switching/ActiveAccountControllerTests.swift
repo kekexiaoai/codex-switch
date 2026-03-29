@@ -15,6 +15,18 @@ final class ActiveAccountControllerTests: XCTestCase {
         XCTAssertEqual(controller.lastRefreshSource, "switch")
     }
 
+    func testSwitchingAccountKeepsActivatedStateWhenUsageDataMissing() async throws {
+        let controller = ActiveAccountController(
+            switcher: StubSwitchCommandRunner(),
+            usageService: FailingUsageRefreshService(error: .noUsageData)
+        )
+
+        try await controller.activateAccount(id: "acct-2")
+
+        XCTAssertEqual(controller.activeAccountID, "acct-2")
+        XCTAssertEqual(controller.lastRefreshSource, "switch")
+    }
+
     func testCodexAccountSwitcherReplacesActiveAuthWithArchivedAuth() async throws {
         let tempDirectoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -71,5 +83,13 @@ final class ActiveAccountControllerTests: XCTestCase {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+}
+
+private struct FailingUsageRefreshService: UsageRefreshing {
+    let error: CodexAuthError
+
+    func refresh(reason: UsageRefreshReason) async throws -> [UsageSummaryModel] {
+        throw error
     }
 }

@@ -33,21 +33,7 @@ public struct MenuBarPanelView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 10) {
-                actionRow(title: "Import Current Account") {
-                    Task {
-                        try? await viewModel.importCurrentAccount()
-                    }
-                }
-                actionRow(title: "Import Backup Auth") {
-                    Task {
-                        try? await viewModel.importBackupAccount()
-                    }
-                }
-                actionRow(title: "Login in Browser") {
-                    Task {
-                        try? await viewModel.loginInBrowser()
-                    }
-                }
+                addAccountMenu
                 actionRow(title: "Status Page") {
                     viewModel.openStatusPage()
                 }
@@ -66,6 +52,18 @@ public struct MenuBarPanelView: View {
         }
         .padding(20)
         .frame(width: 360)
+        .alert(item: Binding(
+            get: { viewModel.alertMessage },
+            set: { _ in viewModel.dismissAlert() }
+        )) { alert in
+            Alert(
+                title: Text(alert.title),
+                message: Text(alert.message),
+                dismissButton: .default(Text("OK")) {
+                    viewModel.dismissAlert()
+                }
+            )
+        }
     }
 
     private var headerSection: some View {
@@ -94,5 +92,22 @@ public struct MenuBarPanelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
+    }
+
+    private var addAccountMenu: some View {
+        Menu {
+            ForEach(MenuBarViewModel.AddAccountAction.allCases, id: \.title) { action in
+                Button(action.title) {
+                    Task {
+                        await viewModel.performAddAccountAction(action)
+                    }
+                }
+            }
+        } label: {
+            Text("Add Account")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .menuStyle(.borderlessButton)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

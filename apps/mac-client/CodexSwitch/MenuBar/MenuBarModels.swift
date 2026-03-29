@@ -57,3 +57,17 @@ public struct MenuBarSnapshot: Equatable {
         self.accounts = accounts
     }
 }
+
+public struct MenuBarAlertMessage: Identifiable, Equatable {
+    public let title: String
+    public let message: String
+
+    public var id: String {
+        "\(title)\n\(message)"
+    }
+
+    public init(title: String, message: String) {
+        self.title = title
+        self.message = message
+    }
+}
