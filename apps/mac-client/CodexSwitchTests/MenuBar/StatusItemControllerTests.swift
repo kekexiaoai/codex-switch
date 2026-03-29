@@ -1,22 +1,32 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import CodexSwitchKit
 
 @MainActor
 final class StatusItemControllerTests: XCTestCase {
     func testStatusItemUsesTemplateImageAndLargerPopoverSize() {
-        let image = StatusItemController.statusItemImage()
+        let image = StatusItemController.statusItemImage(style: .highContrastLight)
+        let boldImage = StatusItemController.statusItemImage(style: .highContrastLightBold)
 
         XCTAssertNotNil(image)
-        XCTAssertEqual(image?.isTemplate, true)
+        XCTAssertEqual(image?.isTemplate, false)
         XCTAssertEqual(StatusItemController.statusItemAccessibilityTitle, "Codex Switch")
         XCTAssertEqual(image?.size, NSSize(width: 18, height: 18))
+        XCTAssertNotNil(boldImage)
+        XCTAssertEqual(boldImage?.isTemplate, false)
+        XCTAssertEqual(boldImage?.size, NSSize(width: 18, height: 18))
+    }
+
+    func testStatusItemMapsStylesToExpectedResourceNames() {
+        XCTAssertEqual(StatusItemController.resourceName(for: .highContrastLight), "StatusBarIconLightHighContrast")
+        XCTAssertEqual(StatusItemController.resourceName(for: .highContrastLightBold), "StatusBarIconLightHighContrastBold")
     }
 
     func testPopoverSizeClampsToMinimumAndMaximumHeight() {
         XCTAssertEqual(
             StatusItemController.preferredPopoverContentSize(forContentHeight: 200),
-            NSSize(width: 360, height: 420)
+            NSSize(width: 360, height: 380)
         )
         XCTAssertEqual(
             StatusItemController.preferredPopoverContentSize(forContentHeight: 560),
@@ -26,6 +36,40 @@ final class StatusItemControllerTests: XCTestCase {
             StatusItemController.preferredPopoverContentSize(forContentHeight: 1200),
             NSSize(width: 360, height: 720)
         )
+    }
+
+    func testMenuBarPanelContentShrinksWhenAccountCountDrops() async {
+        let service = SnapshotSequenceMenuBarService(
+            snapshots: [
+                makeSnapshot(accountCount: 8),
+                makeSnapshot(accountCount: 2),
+            ]
+        )
+        let viewModel = MenuBarViewModel(service: service)
+        let hostingController = NSHostingController(
+            rootView: MenuBarShellView(viewModel: viewModel)
+        )
+
+        _ = hostingController.view
+        hostingController.view.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: StatusItemController.popoverWidth,
+            height: StatusItemController.maxPopoverHeight
+        )
+
+        await viewModel.refresh()
+        await Task.yield()
+        hostingController.view.layoutSubtreeIfNeeded()
+        let expandedHeight = hostingController.view.fittingSize.height
+
+        await viewModel.refresh()
+        await Task.yield()
+        hostingController.view.layoutSubtreeIfNeeded()
+        let shrunkenHeight = hostingController.view.fittingSize.height
+
+        XCTAssertGreaterThan(expandedHeight, 0)
+        XCTAssertLessThan(shrunkenHeight, expandedHeight)
     }
 
     func testPopoverPresenterActivatesAppBeforeShowingPopover() {
@@ -171,6 +215,29 @@ final class StatusItemControllerTests: XCTestCase {
             pressure: 1
         )!
     }
+
+    private func makeSnapshot(accountCount: Int) -> MenuBarSnapshot {
+        MenuBarSnapshot(
+            headerEmail: "a@example.com",
+            headerTier: "Plus",
+            updatedText: "Updated just now",
+            usageSourceText: "Auto",
+            summaries: [
+                UsageSummaryModel(id: "5h", title: "5 Hours", percentUsed: 42, resetText: "Resets soon"),
+                UsageSummaryModel(id: "weekly", title: "Weekly", percentUsed: 17, resetText: "Resets later"),
+            ],
+            accounts: (0..<accountCount).map { index in
+                AccountRowModel(
+                    id: "acct-\(index)",
+                    emailMask: "user\(index)@example.com",
+                    tierLabel: index == 0 ? "Pro" : "Plus",
+                    fiveHourPercent: (index * 7) % 100,
+                    weeklyPercent: (index * 11) % 100,
+                    isActive: index == 0
+                )
+            }
+        )
+    }
 }
 
 private actor SnapshotSequence {
@@ -187,5 +254,20 @@ private actor SnapshotSequence {
         nextIndex += 1
         loadCount += 1
         return snapshots[index]
+    }
+}
+
+private actor SnapshotSequenceMenuBarService: MenuBarSnapshotService {
+    private let snapshots: [MenuBarSnapshot]
+    private var index = 0
+
+    init(snapshots: [MenuBarSnapshot]) {
+        self.snapshots = snapshots
+    }
+
+    func loadSnapshot(triggerUsageRefresh: Bool) async -> MenuBarSnapshot {
+        let currentIndex = min(index, snapshots.count - 1)
+        index += 1
+        return snapshots[currentIndex]
     }
 }

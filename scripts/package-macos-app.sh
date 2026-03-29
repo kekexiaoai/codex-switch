@@ -14,6 +14,9 @@ FRAMEWORKS_PATH="$CONTENTS_PATH/Frameworks"
 RESOURCES_PATH="$CONTENTS_PATH/Resources"
 ICON_SOURCE_PATH="$ROOT_DIR/packaging/icons/AppIcon.icns"
 STATUS_ITEM_ICON_SOURCE_PATH="$ROOT_DIR/apps/mac-client/CodexSwitch/Resources/StatusBarIcon.png"
+STATUS_ITEM_LIGHT_ICON_SOURCE_PATH="$ROOT_DIR/apps/mac-client/CodexSwitch/Resources/StatusBarIconLight.png"
+STATUS_ITEM_HIGH_CONTRAST_ICON_SOURCE_PATH="$ROOT_DIR/apps/mac-client/CodexSwitch/Resources/StatusBarIconLightHighContrast.png"
+STATUS_ITEM_HIGH_CONTRAST_BOLD_ICON_SOURCE_PATH="$ROOT_DIR/apps/mac-client/CodexSwitch/Resources/StatusBarIconLightHighContrastBold.png"
 
 mkdir -p "$DERIVED_DATA_PATH"
 
@@ -37,6 +40,18 @@ fi
 
 if [[ -f "$STATUS_ITEM_ICON_SOURCE_PATH" ]]; then
   cp "$STATUS_ITEM_ICON_SOURCE_PATH" "$RESOURCES_PATH/StatusBarIcon.png"
+fi
+
+if [[ -f "$STATUS_ITEM_LIGHT_ICON_SOURCE_PATH" ]]; then
+  cp "$STATUS_ITEM_LIGHT_ICON_SOURCE_PATH" "$RESOURCES_PATH/StatusBarIconLight.png"
+fi
+
+if [[ -f "$STATUS_ITEM_HIGH_CONTRAST_ICON_SOURCE_PATH" ]]; then
+  cp "$STATUS_ITEM_HIGH_CONTRAST_ICON_SOURCE_PATH" "$RESOURCES_PATH/StatusBarIconLightHighContrast.png"
+fi
+
+if [[ -f "$STATUS_ITEM_HIGH_CONTRAST_BOLD_ICON_SOURCE_PATH" ]]; then
+  cp "$STATUS_ITEM_HIGH_CONTRAST_BOLD_ICON_SOURCE_PATH" "$RESOURCES_PATH/StatusBarIconLightHighContrastBold.png"
 fi
 
 chmod +x "$MACOS_PATH/CodexSwitchApp"

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 @MainActor
 public struct SettingsView: View {
@@ -18,7 +19,13 @@ public struct SettingsView: View {
     }
 
     public var generalControlLabels: [String] {
-        ["Launch at Login"]
+        ["Launch at Login", "Menu Bar Icon"] + MenuBarIconStyle.allCases.map { style in
+            Self.label(for: style)
+        }
+    }
+
+    public var menuBarIconPreviewResourceNames: [String] {
+        MenuBarIconStyle.allCases.map { StatusItemController.resourceName(for: $0) }
     }
 
     public var privacyControlLabels: [String] {
@@ -61,6 +68,27 @@ public struct SettingsView: View {
                             set: { viewModel.setLaunchAtLogin($0) }
                         )
                     )
+
+                    Divider()
+
+                    Picker(
+                        "Menu Bar Icon",
+                        selection: Binding(
+                            get: { viewModel.menuBarIconStyle },
+                            set: { viewModel.setMenuBarIconStyle($0) }
+                        )
+                    ) {
+                        ForEach(MenuBarIconStyle.allCases, id: \.self) { style in
+                            Text(Self.label(for: style)).tag(style)
+                        }
+                    }
+                    .pickerStyle(.radioGroup)
+
+                    HStack(spacing: 12) {
+                        ForEach(MenuBarIconStyle.allCases, id: \.self) { style in
+                            menuBarIconPreview(for: style)
+                        }
+                    }
                 }
 
                 settingsSection("Privacy") {
@@ -216,12 +244,47 @@ public struct SettingsView: View {
         }
     }
 
+    private func menuBarIconPreview(for style: MenuBarIconStyle) -> some View {
+        VStack(spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(nsColor: .windowBackgroundColor))
+
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(Color.secondary.opacity(0.18))
+
+                if let image = StatusItemController.statusItemImage(style: style) {
+                    Image(nsImage: image)
+                        .interpolation(.high)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 20, height: 20)
+                }
+            }
+            .frame(width: 56, height: 36)
+
+            Text(Self.label(for: style))
+                .font(.caption)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
     private static func label(for mode: CodexUsageSourceMode) -> String {
         switch mode {
         case .automatic:
             return "Automatic"
         case .localOnly:
             return "Local Only"
+        }
+    }
+
+    private static func label(for style: MenuBarIconStyle) -> String {
+        switch style {
+        case .highContrastLight:
+            return "High Contrast"
+        case .highContrastLightBold:
+            return "High Contrast Bold"
         }
     }
 

@@ -5,6 +5,28 @@ public enum CodexUsageSourceMode: String, Codable, Equatable, CaseIterable {
     case localOnly
 }
 
+public enum MenuBarIconStyle: String, Codable, Equatable, CaseIterable {
+    case highContrastLight
+    case highContrastLightBold
+
+    public static var allCases: [MenuBarIconStyle] {
+        [.highContrastLight, .highContrastLightBold]
+    }
+
+    public static func resolved(from rawValue: String?) -> MenuBarIconStyle {
+        switch rawValue {
+        case MenuBarIconStyle.highContrastLight.rawValue:
+            return .highContrastLight
+        case MenuBarIconStyle.highContrastLightBold.rawValue, nil:
+            return .highContrastLightBold
+        case "template", "lightBackground":
+            return .highContrastLight
+        default:
+            return .highContrastLightBold
+        }
+    }
+}
+
 public protocol EmailVisibilityProviding {
     func showEmails() -> Bool
 }
@@ -14,8 +36,16 @@ public protocol UsageSettingsProviding {
     func usageSourceMode() -> CodexUsageSourceMode
 }
 
+public protocol MenuBarIconStyleProviding {
+    func menuBarIconStyle() -> MenuBarIconStyle
+}
+
 public protocol EmailVisibilityMutating: EmailVisibilityProviding {
     func setShowEmails(_ enabled: Bool)
+}
+
+public protocol MenuBarIconStyleMutating: MenuBarIconStyleProviding {
+    func setMenuBarIconStyle(_ style: MenuBarIconStyle)
 }
 
 public struct UserDefaultsEmailVisibilityStore: EmailVisibilityProviding {
@@ -58,17 +88,38 @@ public struct UserDefaultsUsageSettingsStore: UsageSettingsProviding {
     }
 }
 
+public struct UserDefaultsMenuBarIconStyleStore: MenuBarIconStyleProviding {
+    private let defaults: UserDefaults
+
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    public func menuBarIconStyle() -> MenuBarIconStyle {
+        MenuBarIconStyle.resolved(from: defaults.string(forKey: SettingsViewModel.menuBarIconStyleKey))
+    }
+}
+
+extension UserDefaultsMenuBarIconStyleStore: MenuBarIconStyleMutating {
+    public func setMenuBarIconStyle(_ style: MenuBarIconStyle) {
+        defaults.set(style.rawValue, forKey: SettingsViewModel.menuBarIconStyleKey)
+    }
+}
+
 @MainActor
 public final class SettingsViewModel: ObservableObject {
     public static let showEmailsKey = "showEmails"
     public static let usageRefreshEnabledKey = "usageRefreshEnabled"
     public static let usageSourceModeKey = "usageSourceMode"
     public static let launchAtLoginKey = "launchAtLogin"
+    public static let menuBarIconStyleKey = "menuBarIconStyle"
+    public static let menuBarIconStyleDidChangeNotification = Notification.Name("SettingsViewModel.menuBarIconStyleDidChange")
 
     @Published public private(set) var showEmails: Bool
     @Published public private(set) var usageRefreshEnabled: Bool
     @Published public private(set) var usageSourceMode: CodexUsageSourceMode
     @Published public private(set) var launchAtLogin: Bool
+    @Published public private(set) var menuBarIconStyle: MenuBarIconStyle
     @Published public private(set) var pendingConfirmation: SettingsConfirmationRequest?
     @Published public private(set) var lastActionMessage: SettingsActionMessage?
 
@@ -96,6 +147,7 @@ public final class SettingsViewModel: ObservableObject {
         let storedLaunchAtLogin = defaults.bool(forKey: Self.launchAtLoginKey)
         let resolvedLaunchAtLogin = launchAtLoginController?.isEnabled() ?? storedLaunchAtLogin
         self.launchAtLogin = resolvedLaunchAtLogin
+        self.menuBarIconStyle = MenuBarIconStyle.resolved(from: defaults.string(forKey: Self.menuBarIconStyleKey))
         self.pendingConfirmation = nil
         self.lastActionMessage = nil
 
@@ -139,6 +191,15 @@ public final class SettingsViewModel: ObservableObject {
         defaults.set(enabled, forKey: Self.launchAtLoginKey)
         launchAtLogin = enabled
         lastActionMessage = nil
+    }
+
+    public func setMenuBarIconStyle(_ style: MenuBarIconStyle) {
+        defaults.set(style.rawValue, forKey: Self.menuBarIconStyleKey)
+        menuBarIconStyle = style
+        NotificationCenter.default.post(
+            name: Self.menuBarIconStyleDidChangeNotification,
+            object: defaults
+        )
     }
 
     public func requestDestructiveAction(_ action: SettingsDestructiveAction) {

@@ -10,7 +10,14 @@ final class SettingsViewTests: XCTestCase {
         let view = SettingsView(viewModel: SettingsViewModel(defaults: defaults))
 
         XCTAssertEqual(view.sectionTitles, ["General", "Privacy", "Usage", "Advanced"])
-        XCTAssertEqual(view.generalControlLabels, ["Launch at Login"])
+        XCTAssertEqual(
+            view.generalControlLabels,
+            ["Launch at Login", "Menu Bar Icon", "High Contrast", "High Contrast Bold"]
+        )
+        XCTAssertEqual(
+            view.menuBarIconPreviewResourceNames,
+            ["StatusBarIconLightHighContrast", "StatusBarIconLightHighContrastBold"]
+        )
         XCTAssertEqual(view.privacyControlLabels, [
             "Show full account emails",
             "Clear Diagnostics Log",

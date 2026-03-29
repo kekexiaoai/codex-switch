@@ -115,22 +115,32 @@ struct MenuBarPopoverPresenter {
 @MainActor
 public final class StatusItemController: NSObject, NSPopoverDelegate {
     static let popoverWidth: CGFloat = 360
-    static let minPopoverHeight: CGFloat = 420
+    static let minPopoverHeight: CGFloat = 380
     static let maxPopoverHeight: CGFloat = 720
     static let statusItemAccessibilityTitle = "Codex Switch"
 
-    static func statusItemImage() -> NSImage? {
+    static func resourceName(for style: MenuBarIconStyle) -> String {
+        switch style {
+        case .highContrastLight:
+            return "StatusBarIconLightHighContrast"
+        case .highContrastLightBold:
+            return "StatusBarIconLightHighContrastBold"
+        }
+    }
+
+    static func statusItemImage(style: MenuBarIconStyle = .highContrastLightBold) -> NSImage? {
+        let resourceName = resourceName(for: style)
         let image = resourceBundles()
             .lazy
             .compactMap { bundle in
-                bundle.url(forResource: "StatusBarIcon", withExtension: "png")
+                bundle.url(forResource: resourceName, withExtension: "png")
             }
             .compactMap { url in
                 NSImage(contentsOf: url)
             }
             .first
         image?.size = NSSize(width: 18, height: 18)
-        image?.isTemplate = true
+        image?.isTemplate = false
         return image
     }
 
@@ -147,7 +157,8 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private let viewModel: MenuBarViewModel
-    private var preferredContentHeight: CGFloat = 640
+    private let settingsDefaults: UserDefaults
+    private var preferredContentHeight: CGFloat = StatusItemController.minPopoverHeight
     private lazy var outsideClickMonitor = PopoverOutsideClickMonitor(
         watchedWindows: { [weak self] in
             [
@@ -164,6 +175,7 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         environment: AppEnvironment = .preview,
         actionHandler: (any MenuBarActionHandling)? = nil
     ) {
+        self.settingsDefaults = environment.settingsDefaults
         self.viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(environment: environment),
             accountRepository: environment.accountRepository,
@@ -178,11 +190,21 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         super.init()
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     public func install() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleMenuBarIconStyleDidChange),
+            name: SettingsViewModel.menuBarIconStyleDidChangeNotification,
+            object: nil
+        )
         popover.delegate = self
         popover.behavior = .transient
         popover.contentSize = Self.preferredPopoverContentSize(forContentHeight: preferredContentHeight)
-        popover.contentViewController = NSHostingController(
+        let hostingController = NSHostingController(
             rootView: MenuBarShellView(
                 viewModel: viewModel,
                 onPreferredHeightChange: { [weak self] height in
@@ -190,10 +212,14 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
                 }
             )
         )
+        if #available(macOS 13.0, *) {
+            hostingController.sizingOptions = [.preferredContentSize]
+        }
+        popover.contentViewController = hostingController
 
         if let button = statusItem.button {
             button.title = ""
-            button.image = Self.statusItemImage()
+            button.image = currentStatusItemImage()
             button.imagePosition = .imageOnly
             button.toolTip = Self.statusItemAccessibilityTitle
             button.target = self
@@ -203,10 +229,6 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
 
     @objc
     private func togglePopover(_ sender: AnyObject?) {
-        Task {
-            await viewModel.refresh()
-        }
-
         guard let button = statusItem.button else {
             return
         }
@@ -214,22 +236,31 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             closePopover(sender)
         } else {
-            MenuBarPopoverPresenter(
-                activateApp: { NSApp.activate(ignoringOtherApps: true) },
-                showPopover: { [popover] in
-                    popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-                },
-                makePopoverInteractive: { [popover] in
-                    guard let window = popover.contentViewController?.view.window else {
-                        return
-                    }
-                    window.makeKeyAndOrderFront(nil)
-                    window.makeFirstResponder(window.contentView)
-                },
-                startOutsideClickMonitor: { [outsideClickMonitor] in
-                    outsideClickMonitor.start()
+            Task { [weak self] in
+                guard let self else {
+                    return
                 }
-            ).present()
+                await self.viewModel.refresh()
+                guard !self.popover.isShown else {
+                    return
+                }
+                MenuBarPopoverPresenter(
+                    activateApp: { NSApp.activate(ignoringOtherApps: true) },
+                    showPopover: { [popover] in
+                        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+                    },
+                    makePopoverInteractive: { [popover] in
+                        guard let window = popover.contentViewController?.view.window else {
+                            return
+                        }
+                        window.makeKeyAndOrderFront(nil)
+                        window.makeFirstResponder(window.contentView)
+                    },
+                    startOutsideClickMonitor: { [outsideClickMonitor] in
+                        outsideClickMonitor.start()
+                    }
+                ).present()
+            }
         }
     }
 
@@ -255,6 +286,16 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
             window.setContentSize(nextSize)
             window.layoutIfNeeded()
         }
+    }
+
+    private func currentStatusItemImage() -> NSImage? {
+        let style = UserDefaultsMenuBarIconStyleStore(defaults: settingsDefaults).menuBarIconStyle()
+        return Self.statusItemImage(style: style)
+    }
+
+    @objc
+    private func handleMenuBarIconStyleDidChange(_ notification: Notification) {
+        statusItem.button?.image = currentStatusItemImage()
     }
 
     static func preferredPopoverContentSize(forContentHeight height: CGFloat) -> NSSize {

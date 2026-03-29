@@ -41,6 +41,37 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.launchAtLogin)
     }
 
+    func testSettingsViewModelPersistsMenuBarIconStylePreference() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.MenuBarIcon")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.MenuBarIcon")
+
+        let viewModel = SettingsViewModel(defaults: defaults)
+
+        viewModel.setMenuBarIconStyle(.highContrastLight)
+
+        XCTAssertEqual(defaults.string(forKey: SettingsViewModel.menuBarIconStyleKey), MenuBarIconStyle.highContrastLight.rawValue)
+        XCTAssertEqual(viewModel.menuBarIconStyle, .highContrastLight)
+    }
+
+    func testSettingsViewModelDefaultsToHighContrastMenuBarIconStyle() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.MenuBarIcon.Default")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.MenuBarIcon.Default")
+
+        let viewModel = SettingsViewModel(defaults: defaults)
+
+        XCTAssertEqual(viewModel.menuBarIconStyle, .highContrastLightBold)
+    }
+
+    func testSettingsViewModelMapsLegacyMenuBarIconPreferencesToNormalHighContrast() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.MenuBarIcon.Legacy")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.MenuBarIcon.Legacy")
+        defaults.set("template", forKey: SettingsViewModel.menuBarIconStyleKey)
+
+        let viewModel = SettingsViewModel(defaults: defaults)
+
+        XCTAssertEqual(viewModel.menuBarIconStyle, .highContrastLight)
+    }
+
     func testSettingsViewModelUsesLaunchAtLoginControllerWhenPreferenceChanges() {
         let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.LaunchController")!
         defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.LaunchController")
