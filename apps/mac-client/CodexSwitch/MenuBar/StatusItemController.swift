@@ -8,13 +8,17 @@ public final class StatusItemController: NSObject {
     private let viewModel: MenuBarViewModel
     private let environment: AppEnvironment
 
-    public init(environment: AppEnvironment = .preview) {
+    public init(
+        environment: AppEnvironment = .preview,
+        actionHandler: (any MenuBarActionHandling)? = nil
+    ) {
         self.environment = environment
         self.viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(environment: environment),
             accountRepository: environment.accountRepository,
             activeAccountController: environment.activeAccountController,
-            emailVisibilityStore: environment.emailVisibilityProvider as? any EmailVisibilityMutating
+            emailVisibilityStore: environment.emailVisibilityProvider as? any EmailVisibilityMutating,
+            actionHandler: actionHandler
         )
         super.init()
     }

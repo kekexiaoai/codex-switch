@@ -17,6 +17,7 @@ public final class MenuBarViewModel: ObservableObject {
     private let accountRepository: AccountRepository?
     private let activeAccountController: ActiveAccountController?
     private let emailVisibilityStore: (any EmailVisibilityMutating)?
+    private let actionHandler: (any MenuBarActionHandling)?
 
     public static let preview = MenuBarViewModel(service: MockMenuBarService())
 
@@ -24,12 +25,14 @@ public final class MenuBarViewModel: ObservableObject {
         service: any MenuBarSnapshotService,
         accountRepository: AccountRepository? = nil,
         activeAccountController: ActiveAccountController? = nil,
-        emailVisibilityStore: (any EmailVisibilityMutating)? = nil
+        emailVisibilityStore: (any EmailVisibilityMutating)? = nil,
+        actionHandler: (any MenuBarActionHandling)? = nil
     ) {
         self.service = service
         self.accountRepository = accountRepository
         self.activeAccountController = activeAccountController
         self.emailVisibilityStore = emailVisibilityStore
+        self.actionHandler = actionHandler
         self.showEmails = emailVisibilityStore?.showEmails() ?? false
     }
 
@@ -64,6 +67,18 @@ public final class MenuBarViewModel: ObservableObject {
         emailVisibilityStore?.setShowEmails(nextValue)
         showEmails = nextValue
         await refresh()
+    }
+
+    public func openStatusPage() {
+        actionHandler?.handle(.openStatusPage)
+    }
+
+    public func openSettings() {
+        actionHandler?.handle(.openSettings)
+    }
+
+    public func quit() {
+        actionHandler?.handle(.quit)
     }
 
     public func addDemoAccount() async throws {

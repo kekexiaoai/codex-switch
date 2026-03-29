@@ -36,14 +36,20 @@ public struct MenuBarPanelView: View {
                 actionRow(title: "Add Account") {
                     viewModel.startAddingAccount()
                 }
-                actionRow(title: "Status Page")
+                actionRow(title: "Status Page") {
+                    viewModel.openStatusPage()
+                }
                 actionRow(title: viewModel.showEmails ? "Hide Emails" : "Show Emails") {
                     Task {
                         await viewModel.toggleShowEmails()
                     }
                 }
-                actionRow(title: "Settings")
-                actionRow(title: "Quit")
+                actionRow(title: "Settings") {
+                    viewModel.openSettings()
+                }
+                actionRow(title: "Quit") {
+                    viewModel.quit()
+                }
             }
 
             if viewModel.isPresentingAddAccount {
