@@ -33,6 +33,14 @@ public struct SettingsView: View {
         }
     }
 
+    public var usageRiskTitle: String {
+        "Usage Risk Notice"
+    }
+
+    public var usageRiskBody: String {
+        "Usage refresh reads local Codex usage data. Automatic mode may trigger extra scans or refresh work; use Local Only or disable refresh in sensitive environments."
+    }
+
     public var advancedControlLabels: [String] {
         SettingsUtilityAction.allCases.map { action in
             Self.label(for: action)
@@ -72,6 +80,18 @@ public struct SettingsView: View {
                 }
 
                 settingsSection("Usage") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label(usageRiskTitle, systemImage: "exclamationmark.triangle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.orange)
+
+                        Text(usageRiskBody)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Divider()
+
                     Toggle(
                         "Enable Usage Refresh",
                         isOn: Binding(

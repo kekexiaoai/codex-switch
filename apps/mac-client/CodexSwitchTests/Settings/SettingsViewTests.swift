@@ -18,6 +18,11 @@ final class SettingsViewTests: XCTestCase {
             "Remove Archived Accounts",
         ])
         XCTAssertEqual(view.usageControlLabels, ["Enable Usage Refresh", "Usage Source Mode", "Automatic", "Local Only"])
+        XCTAssertEqual(view.usageRiskTitle, "Usage Risk Notice")
+        XCTAssertEqual(
+            view.usageRiskBody,
+            "Usage refresh reads local Codex usage data. Automatic mode may trigger extra scans or refresh work; use Local Only or disable refresh in sensitive environments."
+        )
         XCTAssertEqual(view.advancedControlLabels, [
             "Open ~/.codex",
             "Open Diagnostics Log",
