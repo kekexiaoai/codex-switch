@@ -109,14 +109,24 @@ public struct MenuBarInlineMessage: Identifiable, Equatable {
     public let title: String
     public let message: String
     public let tone: Tone
+    public let accountID: String?
+    public let preferredIndex: Int?
 
     public var id: String {
-        "\(title)\n\(message)\n\(tone)"
+        "\(title)\n\(message)\n\(tone)\n\(accountID ?? "")\n\(preferredIndex.map(String.init) ?? "")"
     }
 
-    public init(title: String, message: String, tone: Tone) {
+    public init(
+        title: String,
+        message: String,
+        tone: Tone,
+        accountID: String? = nil,
+        preferredIndex: Int? = nil
+    ) {
         self.title = title
         self.message = message
         self.tone = tone
+        self.accountID = accountID
+        self.preferredIndex = preferredIndex
     }
 }

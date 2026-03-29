@@ -305,10 +305,16 @@ public final class MenuBarViewModel: ObservableObject {
         do {
             try await confirmPendingAccountRemoval()
         } catch {
+            let accountID = pendingAccountRemoval?.accountID
+            let preferredIndex = accountID.flatMap { id in
+                accountRows.firstIndex(where: { $0.id == id })
+            }
             removalFeedback = MenuBarInlineMessage(
                 title: "Remove Failed",
                 message: "Removing the archived account failed. Please try again.",
-                tone: .error
+                tone: .error,
+                accountID: accountID,
+                preferredIndex: preferredIndex
             )
         }
     }
@@ -326,6 +332,8 @@ public final class MenuBarViewModel: ObservableObject {
             id: pendingAccountRemoval.accountID,
             activeAccountID: activeAccountController?.currentActiveAccountID()
         )
+        let removedAccountID = pendingAccountRemoval.accountID
+        let preferredIndex = accountRows.firstIndex(where: { $0.id == removedAccountID })
         activeAccountController?.syncActiveAccountID(result.nextActiveAccountID)
         await refresh()
         self.pendingAccountRemoval = nil
@@ -334,7 +342,9 @@ public final class MenuBarViewModel: ObservableObject {
             message: result.nextActiveAccountID == nil
                 ? "The archived account was removed and there is no remaining active account."
                 : "The archived account was removed.",
-            tone: .success
+            tone: .success,
+            accountID: removedAccountID,
+            preferredIndex: preferredIndex
         )
     }
 

@@ -3,6 +3,7 @@ import SwiftUI
 public struct AccountRowView: View {
     private let account: AccountRowModel
     private let pendingRemovalMessage: String?
+    private let inlineFeedback: MenuBarInlineMessage?
     private let onSelect: (() -> Void)?
     private let onRemove: (() -> Void)?
     private let onConfirmRemove: (() -> Void)?
@@ -11,6 +12,7 @@ public struct AccountRowView: View {
     public init(
         account: AccountRowModel,
         pendingRemovalMessage: String? = nil,
+        inlineFeedback: MenuBarInlineMessage? = nil,
         onSelect: (() -> Void)? = nil,
         onRemove: (() -> Void)? = nil,
         onConfirmRemove: (() -> Void)? = nil,
@@ -18,6 +20,7 @@ public struct AccountRowView: View {
     ) {
         self.account = account
         self.pendingRemovalMessage = pendingRemovalMessage
+        self.inlineFeedback = inlineFeedback
         self.onSelect = onSelect
         self.onRemove = onRemove
         self.onConfirmRemove = onConfirmRemove
@@ -81,6 +84,10 @@ public struct AccountRowView: View {
                     }
                 }
             }
+
+            if let inlineFeedback {
+                inlineFeedbackContent(inlineFeedback)
+            }
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -133,5 +140,27 @@ public struct AccountRowView: View {
         }
         .buttonStyle(.plain)
         .help(help)
+    }
+
+    private func inlineFeedbackContent(_ feedback: MenuBarInlineMessage) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: feedback.tone == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundColor(feedback.tone == .success ? Color(nsColor: .systemGreen) : .orange)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feedback.title)
+                    .font(.caption.weight(.semibold))
+                Text(feedback.message)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
     }
 }

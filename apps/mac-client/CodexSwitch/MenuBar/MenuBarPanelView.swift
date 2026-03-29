@@ -22,13 +22,6 @@ public struct MenuBarPanelView: View {
         .overlay(alignment: .topLeading) {
             measuredPanelContent
         }
-        .overlay(alignment: .bottom) {
-            if let removalFeedback = viewModel.removalFeedback {
-                feedbackBanner(removalFeedback)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-            }
-        }
         .alert(item: Binding(
             get: { viewModel.alertMessage },
             set: { _ in viewModel.dismissAlert() }
@@ -97,10 +90,14 @@ public struct MenuBarPanelView: View {
             Text("Switch Account")
                 .font(.headline)
 
-            ForEach(viewModel.accountRows) { account in
+            ForEach(Array(viewModel.accountRows.enumerated()), id: \.element.id) { index, account in
+                if shouldShowRemovalFeedbackPlaceholder(before: index) {
+                    removalFeedbackPlaceholder
+                }
                 AccountRowView(
                     account: account,
                     pendingRemovalMessage: pendingRemovalMessage(for: account.id),
+                    inlineFeedback: inlineFeedback(for: account.id),
                     onSelect: {
                         Task {
                             try? await viewModel.switchToAccount(id: account.id)
@@ -118,6 +115,10 @@ public struct MenuBarPanelView: View {
                         viewModel.cancelPendingAccountRemoval()
                     }
                 )
+            }
+
+            if shouldShowRemovalFeedbackPlaceholderAtEnd {
+                removalFeedbackPlaceholder
             }
 
             Divider()
@@ -225,36 +226,43 @@ public struct MenuBarPanelView: View {
         .buttonStyle(MenuBarActionRowButtonStyle())
     }
 
-    private func feedbackBanner(_ feedback: MenuBarInlineMessage) -> some View {
+    private var removalFeedbackPlaceholder: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: feedback.tone == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundColor(feedback.tone == .success ? Color(nsColor: .systemGreen) : .orange)
+            if let removalFeedback = viewModel.removalFeedback {
+                Image(systemName: removalFeedback.tone == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .foregroundColor(removalFeedback.tone == .success ? Color(nsColor: .systemGreen) : .orange)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(feedback.title)
-                    .font(.caption.weight(.semibold))
-                Text(feedback.message)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(removalFeedback.title)
+                        .font(.caption.weight(.semibold))
+                    Text(removalFeedback.message)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Button {
+                    viewModel.dismissRemovalFeedback()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(width: 18, height: 18)
+                }
+                .buttonStyle(.plain)
             }
-
-            Spacer(minLength: 0)
-
-            Button {
-                viewModel.dismissRemovalFeedback()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(width: 18, height: 18)
-            }
-            .buttonStyle(.plain)
         }
         .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.primary.opacity(0.05))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
     }
 
@@ -264,6 +272,45 @@ public struct MenuBarPanelView: View {
         }
 
         return viewModel.pendingAccountRemoval?.message
+    }
+
+    private func inlineFeedback(for accountID: String) -> MenuBarInlineMessage? {
+        guard let removalFeedback = viewModel.removalFeedback else {
+            return nil
+        }
+        guard removalFeedback.accountID == accountID else {
+            return nil
+        }
+        return removalFeedback.tone == .error ? removalFeedback : nil
+    }
+
+    private func shouldShowRemovalFeedbackPlaceholder(before index: Int) -> Bool {
+        guard let removalFeedback = viewModel.removalFeedback else {
+            return false
+        }
+        guard removalFeedback.tone == .success else {
+            return false
+        }
+        guard !viewModel.accountRows.contains(where: { $0.id == removalFeedback.accountID }) else {
+            return false
+        }
+        return removalFeedback.preferredIndex == index
+    }
+
+    private var shouldShowRemovalFeedbackPlaceholderAtEnd: Bool {
+        guard let removalFeedback = viewModel.removalFeedback else {
+            return false
+        }
+        guard removalFeedback.tone == .success else {
+            return false
+        }
+        guard !viewModel.accountRows.contains(where: { $0.id == removalFeedback.accountID }) else {
+            return false
+        }
+        guard let preferredIndex = removalFeedback.preferredIndex else {
+            return false
+        }
+        return preferredIndex >= viewModel.accountRows.count
     }
 
     private var addAccountMenu: some View {

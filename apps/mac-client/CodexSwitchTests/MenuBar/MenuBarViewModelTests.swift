@@ -921,6 +921,8 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.accountRows.map(\.id), ["subject-beth@example.com"])
         XCTAssertEqual(viewModel.removalFeedback?.title, "Account Removed")
         XCTAssertEqual(viewModel.removalFeedback?.message, "The archived account was removed.")
+        XCTAssertEqual(viewModel.removalFeedback?.accountID, "subject-alex@example.com")
+        XCTAssertEqual(viewModel.removalFeedback?.preferredIndex, 0)
     }
 
     func testPerformPendingAccountRemovalKeepsConfirmationVisibleAndShowsInlineErrorOnFailure() async {
@@ -936,6 +938,8 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.pendingAccountRemoval?.accountID, "acct-1")
         XCTAssertEqual(viewModel.removalFeedback?.title, "Remove Failed")
         XCTAssertEqual(viewModel.removalFeedback?.message, "Removing the archived account failed. Please try again.")
+        XCTAssertEqual(viewModel.removalFeedback?.accountID, "acct-1")
+        XCTAssertEqual(viewModel.removalFeedback?.preferredIndex, 0)
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
