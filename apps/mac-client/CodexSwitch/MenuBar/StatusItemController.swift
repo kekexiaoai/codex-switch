@@ -98,6 +98,21 @@ final class PopoverOutsideClickMonitor {
 }
 
 @MainActor
+struct MenuBarPopoverPresenter {
+    let activateApp: () -> Void
+    let showPopover: () -> Void
+    let makePopoverInteractive: () -> Void
+    let startOutsideClickMonitor: () -> Void
+
+    func present() {
+        activateApp()
+        showPopover()
+        makePopoverInteractive()
+        startOutsideClickMonitor()
+    }
+}
+
+@MainActor
 public final class StatusItemController: NSObject, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
@@ -159,8 +174,22 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             closePopover(sender)
         } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            outsideClickMonitor.start()
+            MenuBarPopoverPresenter(
+                activateApp: { NSApp.activate(ignoringOtherApps: true) },
+                showPopover: { [popover] in
+                    popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+                },
+                makePopoverInteractive: { [popover] in
+                    guard let window = popover.contentViewController?.view.window else {
+                        return
+                    }
+                    window.makeKeyAndOrderFront(nil)
+                    window.makeFirstResponder(window.contentView)
+                },
+                startOutsideClickMonitor: { [outsideClickMonitor] in
+                    outsideClickMonitor.start()
+                }
+            ).present()
         }
     }
 

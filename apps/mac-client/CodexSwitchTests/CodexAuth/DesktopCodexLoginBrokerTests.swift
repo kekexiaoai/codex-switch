@@ -106,6 +106,45 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
         }
     }
 
+    func testBrokerActivatesAppBeforeOpeningBrowser() async throws {
+        var events: [String] = []
+        let broker = DesktopCodexLoginBroker(
+            stateGenerator: { "expected-state" },
+            codeVerifierGenerator: { "expected-verifier" },
+            callbackServerFactory: {
+                StubOAuthCallbackServer(
+                    redirectURI: URL(string: "http://127.0.0.1:8787/auth/callback")!,
+                    result: .success(.failure(error: "access_denied", description: "cancelled"))
+                )
+            },
+            browserOpener: { _ in
+                events.append("open")
+                return true
+            },
+            applicationActivator: {
+                events.append("activate")
+            },
+            tokenExchanger: { _, _, _ in
+                XCTFail("Token exchange should not run when callback reports cancellation")
+                return CodexOAuthTokenResponse(
+                    accessToken: "unused",
+                    refreshToken: "unused",
+                    idToken: "unused",
+                    accountID: "unused"
+                )
+            }
+        )
+
+        do {
+            _ = try await broker.performLogin()
+            XCTFail("Expected login to be cancelled")
+        } catch {
+            XCTAssertEqual(error as? CodexAuthError, .loginCancelled)
+        }
+
+        XCTAssertEqual(events, ["activate", "open"])
+    }
+
     private static let sampleRefreshDate = Date(timeIntervalSince1970: 1_743_157_872.345)
 
     private static func sampleIDToken(email: String, tier: String) -> String {

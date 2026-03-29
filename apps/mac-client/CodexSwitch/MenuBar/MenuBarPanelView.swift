@@ -113,7 +113,7 @@ public struct MenuBarPanelView: View {
             .padding(.leading, isIndented ? 20 : 0)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MenuBarActionRowButtonStyle())
     }
 
     private var addAccountMenu: some View {
@@ -145,5 +145,17 @@ public struct MenuBarPanelView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct MenuBarActionRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(configuration.isPressed ? Color.primary.opacity(0.12) : Color.clear)
+            )
     }
 }

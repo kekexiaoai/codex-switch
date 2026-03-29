@@ -4,6 +4,21 @@ import XCTest
 
 @MainActor
 final class StatusItemControllerTests: XCTestCase {
+    func testPopoverPresenterActivatesAppBeforeShowingPopover() {
+        var events: [String] = []
+
+        let presenter = MenuBarPopoverPresenter(
+            activateApp: { events.append("activate") },
+            showPopover: { events.append("show") },
+            makePopoverInteractive: { events.append("interactive") },
+            startOutsideClickMonitor: { events.append("monitor") }
+        )
+
+        presenter.present()
+
+        XCTAssertEqual(events, ["activate", "show", "interactive", "monitor"])
+    }
+
     func testOutsideClickMonitorOnlyDismissesForClicksOutsideWatchedWindows() async {
         var localHandler: ((NSEvent) -> NSEvent?)?
         var globalHandler: ((NSEvent) -> Void)?
