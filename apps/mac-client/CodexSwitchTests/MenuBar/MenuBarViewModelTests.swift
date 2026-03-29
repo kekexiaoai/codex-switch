@@ -914,12 +914,28 @@ final class MenuBarViewModelTests: XCTestCase {
 
         await viewModel.refresh()
         viewModel.requestRemoveAccount(id: "subject-alex@example.com")
-        try await viewModel.confirmPendingAccountRemoval()
+        await viewModel.performPendingAccountRemoval()
 
         XCTAssertNil(viewModel.pendingAccountRemoval)
         XCTAssertEqual(controller.currentActiveAccountID(), "subject-beth@example.com")
         XCTAssertEqual(viewModel.accountRows.map(\.id), ["subject-beth@example.com"])
-        XCTAssertEqual(viewModel.alertMessage?.title, "Account Removed")
+        XCTAssertEqual(viewModel.removalFeedback?.title, "Account Removed")
+        XCTAssertEqual(viewModel.removalFeedback?.message, "The archived account was removed.")
+    }
+
+    func testPerformPendingAccountRemovalKeepsConfirmationVisibleAndShowsInlineErrorOnFailure() async {
+        let viewModel = MenuBarViewModel(
+            service: MockMenuBarService(),
+            accountRemover: FailingAccountRemover()
+        )
+
+        await viewModel.refresh()
+        viewModel.requestRemoveAccount(id: "acct-1")
+        await viewModel.performPendingAccountRemoval()
+
+        XCTAssertEqual(viewModel.pendingAccountRemoval?.accountID, "acct-1")
+        XCTAssertEqual(viewModel.removalFeedback?.title, "Remove Failed")
+        XCTAssertEqual(viewModel.removalFeedback?.message, "Removing the archived account failed. Please try again.")
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
@@ -1093,5 +1109,12 @@ private struct SnapshotMenuBarService: MenuBarSnapshotService {
 
     func loadSnapshot(triggerUsageRefresh: Bool) async -> MenuBarSnapshot {
         snapshot
+    }
+}
+
+private struct FailingAccountRemover: AccountRemoving {
+    func removeArchivedAccount(id: String, activeAccountID: String?) async throws -> AccountRemovalResult {
+        struct StubError: LocalizedError {}
+        throw StubError()
     }
 }

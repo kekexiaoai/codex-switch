@@ -1,17 +1,34 @@
 import SwiftUI
 
 public struct MenuBarPanelView: View {
+    private struct PreferredHeightKey: PreferenceKey {
+        static var defaultValue: CGFloat = 0
+
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+            value = nextValue()
+        }
+    }
+
     @ObservedObject private var viewModel: MenuBarViewModel
     @State private var isShowingAddAccountOptions = false
+    private let onPreferredHeightChange: ((CGFloat) -> Void)?
 
-    public init(viewModel: MenuBarViewModel) {
+    public init(
+        viewModel: MenuBarViewModel,
+        onPreferredHeightChange: ((CGFloat) -> Void)? = nil
+    ) {
         self.viewModel = viewModel
+        self.onPreferredHeightChange = onPreferredHeightChange
     }
 
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 12) {
                 headerSection
+
+                if let removalFeedback = viewModel.removalFeedback {
+                    feedbackBanner(removalFeedback)
+                }
 
                 Divider()
 
@@ -27,6 +44,7 @@ public struct MenuBarPanelView: View {
                 ForEach(viewModel.accountRows) { account in
                     AccountRowView(
                         account: account,
+                        pendingRemovalMessage: pendingRemovalMessage(for: account.id),
                         onSelect: {
                             Task {
                                 try? await viewModel.switchToAccount(id: account.id)
@@ -34,6 +52,14 @@ public struct MenuBarPanelView: View {
                         },
                         onRemove: {
                             viewModel.requestRemoveAccount(id: account.id)
+                        },
+                        onConfirmRemove: {
+                            Task {
+                                await viewModel.performPendingAccountRemoval()
+                            }
+                        },
+                        onCancelRemove: {
+                            viewModel.cancelPendingAccountRemoval()
                         }
                     )
                 }
@@ -62,8 +88,19 @@ public struct MenuBarPanelView: View {
                 }
             }
             .padding(16)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(key: PreferredHeightKey.self, value: proxy.size.height)
+                }
+            )
         }
         .frame(width: 360)
+        .onPreferenceChange(PreferredHeightKey.self) { height in
+            guard height > 0 else {
+                return
+            }
+            onPreferredHeightChange?(height)
+        }
         .alert(item: Binding(
             get: { viewModel.alertMessage },
             set: { _ in viewModel.dismissAlert() }
@@ -76,43 +113,22 @@ public struct MenuBarPanelView: View {
                 }
             )
         }
-        .confirmationDialog(
-            viewModel.pendingAccountRemoval?.title ?? "Remove Account?",
-            isPresented: Binding(
-                get: { viewModel.pendingAccountRemoval != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        viewModel.cancelPendingAccountRemoval()
-                    }
-                }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Remove Account", role: .destructive) {
-                Task {
-                    try? await viewModel.confirmPendingAccountRemoval()
-                }
-            }
-            Button("Cancel", role: .cancel) {
-                viewModel.cancelPendingAccountRemoval()
-            }
-        } message: {
-            if let message = viewModel.pendingAccountRemoval?.message {
-                Text(message)
-            }
-        }
     }
 
     private var headerSection: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Codex")
-                    .font(.title2.weight(.semibold))
-                Text(viewModel.headerEmail)
-                    .font(.subheadline.weight(.medium))
-                    .padding(.top, 1)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("Codex")
+                        .font(.title2.weight(.semibold))
+                    Text(viewModel.headerEmail)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
                 HStack(spacing: 6) {
-                    Label(viewModel.updatedText, systemImage: "clock")
+                    Label("Updated \(viewModel.updatedText)", systemImage: "clock")
                         .font(.caption.weight(.medium))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -177,6 +193,47 @@ public struct MenuBarPanelView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(MenuBarActionRowButtonStyle())
+    }
+
+    private func feedbackBanner(_ feedback: MenuBarInlineMessage) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: feedback.tone == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundColor(feedback.tone == .success ? Color(nsColor: .systemGreen) : .orange)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feedback.title)
+                    .font(.caption.weight(.semibold))
+                Text(feedback.message)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                viewModel.dismissRemovalFeedback()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(width: 18, height: 18)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
+    }
+
+    private func pendingRemovalMessage(for accountID: String) -> String? {
+        guard viewModel.pendingAccountRemoval?.accountID == accountID else {
+            return nil
+        }
+
+        return viewModel.pendingAccountRemoval?.message
     }
 
     private var addAccountMenu: some View {

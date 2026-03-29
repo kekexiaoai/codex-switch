@@ -4,6 +4,30 @@ import XCTest
 
 @MainActor
 final class StatusItemControllerTests: XCTestCase {
+    func testStatusItemUsesTemplateImageAndLargerPopoverSize() {
+        let image = StatusItemController.statusItemImage()
+
+        XCTAssertNotNil(image)
+        XCTAssertEqual(image?.isTemplate, true)
+        XCTAssertEqual(StatusItemController.statusItemAccessibilityTitle, "Codex Switch")
+        XCTAssertEqual(image?.size, NSSize(width: 18, height: 18))
+    }
+
+    func testPopoverSizeClampsToMinimumAndMaximumHeight() {
+        XCTAssertEqual(
+            StatusItemController.preferredPopoverContentSize(forContentHeight: 200),
+            NSSize(width: 360, height: 420)
+        )
+        XCTAssertEqual(
+            StatusItemController.preferredPopoverContentSize(forContentHeight: 560),
+            NSSize(width: 360, height: 560)
+        )
+        XCTAssertEqual(
+            StatusItemController.preferredPopoverContentSize(forContentHeight: 1200),
+            NSSize(width: 360, height: 720)
+        )
+    }
+
     func testPopoverPresenterActivatesAppBeforeShowingPopover() {
         var events: [String] = []
 

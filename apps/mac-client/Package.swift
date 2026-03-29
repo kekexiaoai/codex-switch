@@ -13,7 +13,10 @@ let package = Package(
     targets: [
         .target(
             name: "CodexSwitchKit",
-            path: "CodexSwitch"
+            path: "CodexSwitch",
+            resources: [
+                .process("Resources"),
+            ]
         ),
         .executableTarget(
             name: "CodexSwitchApp",

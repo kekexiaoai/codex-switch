@@ -114,9 +114,40 @@ struct MenuBarPopoverPresenter {
 
 @MainActor
 public final class StatusItemController: NSObject, NSPopoverDelegate {
+    static let popoverWidth: CGFloat = 360
+    static let minPopoverHeight: CGFloat = 420
+    static let maxPopoverHeight: CGFloat = 720
+    static let statusItemAccessibilityTitle = "Codex Switch"
+
+    static func statusItemImage() -> NSImage? {
+        let image = resourceBundles()
+            .lazy
+            .compactMap { bundle in
+                bundle.url(forResource: "StatusBarIcon", withExtension: "png")
+            }
+            .compactMap { url in
+                NSImage(contentsOf: url)
+            }
+            .first
+        image?.size = NSSize(width: 18, height: 18)
+        image?.isTemplate = true
+        return image
+    }
+
+    private static func resourceBundles() -> [Bundle] {
+        var bundles = [Bundle.main, Bundle(for: StatusItemController.self)]
+
+#if SWIFT_PACKAGE && !Xcode
+        bundles.append(Bundle.module)
+#endif
+
+        return bundles
+    }
+
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private let viewModel: MenuBarViewModel
+    private var preferredContentHeight: CGFloat = 640
     private lazy var outsideClickMonitor = PopoverOutsideClickMonitor(
         watchedWindows: { [weak self] in
             [
@@ -150,13 +181,21 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     public func install() {
         popover.delegate = self
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 360, height: 560)
+        popover.contentSize = Self.preferredPopoverContentSize(forContentHeight: preferredContentHeight)
         popover.contentViewController = NSHostingController(
-            rootView: MenuBarShellView(viewModel: viewModel)
+            rootView: MenuBarShellView(
+                viewModel: viewModel,
+                onPreferredHeightChange: { [weak self] height in
+                    self?.updatePopoverContentSize(forContentHeight: height)
+                }
+            )
         )
 
         if let button = statusItem.button {
-            button.title = "Codex"
+            button.title = ""
+            button.image = Self.statusItemImage()
+            button.imagePosition = .imageOnly
+            button.toolTip = Self.statusItemAccessibilityTitle
             button.target = self
             button.action = #selector(togglePopover(_:))
         }
@@ -201,5 +240,25 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private func closePopover(_ sender: AnyObject? = nil) {
         popover.performClose(sender)
         outsideClickMonitor.stop()
+    }
+
+    private func updatePopoverContentSize(forContentHeight height: CGFloat) {
+        preferredContentHeight = height
+        let nextSize = Self.preferredPopoverContentSize(forContentHeight: height)
+        guard popover.contentSize != nextSize else {
+            return
+        }
+        popover.contentViewController?.preferredContentSize = nextSize
+        popover.contentSize = nextSize
+
+        if let window = popover.contentViewController?.view.window {
+            window.setContentSize(nextSize)
+            window.layoutIfNeeded()
+        }
+    }
+
+    static func preferredPopoverContentSize(forContentHeight height: CGFloat) -> NSSize {
+        let clampedHeight = min(max(height, minPopoverHeight), maxPopoverHeight)
+        return NSSize(width: popoverWidth, height: clampedHeight)
     }
 }

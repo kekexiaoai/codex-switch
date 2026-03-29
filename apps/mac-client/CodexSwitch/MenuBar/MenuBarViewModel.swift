@@ -53,6 +53,7 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var isPerformingAddAccountAction = false
     @Published public private(set) var addAccountProgress: AddAccountProgressState?
     @Published public private(set) var alertMessage: MenuBarAlertMessage?
+    @Published public private(set) var removalFeedback: MenuBarInlineMessage?
     @Published public private(set) var pendingAccountRemoval: AccountRemovalConfirmation?
 
     private let service: any MenuBarSnapshotService
@@ -275,11 +276,16 @@ public final class MenuBarViewModel: ObservableObject {
         alertMessage = nil
     }
 
+    public func dismissRemovalFeedback() {
+        removalFeedback = nil
+    }
+
     public func requestRemoveAccount(id: String) {
         guard let account = accountRows.first(where: { $0.id == id }) else {
             return
         }
 
+        removalFeedback = nil
         let isActive = account.isActive
         pendingAccountRemoval = AccountRemovalConfirmation(
             accountID: id,
@@ -292,15 +298,24 @@ public final class MenuBarViewModel: ObservableObject {
 
     public func cancelPendingAccountRemoval() {
         pendingAccountRemoval = nil
+        removalFeedback = nil
+    }
+
+    public func performPendingAccountRemoval() async {
+        do {
+            try await confirmPendingAccountRemoval()
+        } catch {
+            removalFeedback = MenuBarInlineMessage(
+                title: "Remove Failed",
+                message: "Removing the archived account failed. Please try again.",
+                tone: .error
+            )
+        }
     }
 
     public func confirmPendingAccountRemoval() async throws {
         guard let pendingAccountRemoval else {
             return
-        }
-
-        defer {
-            self.pendingAccountRemoval = nil
         }
 
         guard let accountRemover else {
@@ -313,11 +328,13 @@ public final class MenuBarViewModel: ObservableObject {
         )
         activeAccountController?.syncActiveAccountID(result.nextActiveAccountID)
         await refresh()
-        alertMessage = MenuBarAlertMessage(
+        self.pendingAccountRemoval = nil
+        removalFeedback = MenuBarInlineMessage(
             title: "Account Removed",
             message: result.nextActiveAccountID == nil
                 ? "The archived account was removed and there is no remaining active account."
-                : "The archived account was removed."
+                : "The archived account was removed.",
+            tone: .success
         )
     }
 

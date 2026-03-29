@@ -99,3 +99,24 @@ public struct MenuBarAlertMessage: Identifiable, Equatable {
         self.message = message
     }
 }
+
+public struct MenuBarInlineMessage: Identifiable, Equatable {
+    public enum Tone: Equatable {
+        case success
+        case error
+    }
+
+    public let title: String
+    public let message: String
+    public let tone: Tone
+
+    public var id: String {
+        "\(title)\n\(message)\n\(tone)"
+    }
+
+    public init(title: String, message: String, tone: Tone) {
+        self.title = title
+        self.message = message
+        self.tone = tone
+    }
+}

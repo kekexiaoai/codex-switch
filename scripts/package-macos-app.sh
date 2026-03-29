@@ -13,6 +13,7 @@ MACOS_PATH="$CONTENTS_PATH/MacOS"
 FRAMEWORKS_PATH="$CONTENTS_PATH/Frameworks"
 RESOURCES_PATH="$CONTENTS_PATH/Resources"
 ICON_SOURCE_PATH="$ROOT_DIR/packaging/icons/AppIcon.icns"
+STATUS_ITEM_ICON_SOURCE_PATH="$ROOT_DIR/apps/mac-client/CodexSwitch/Resources/StatusBarIcon.png"
 
 mkdir -p "$DERIVED_DATA_PATH"
 
@@ -32,6 +33,10 @@ cp -R "$BUILD_PRODUCTS_PATH/CodexSwitchKit.framework" "$FRAMEWORKS_PATH/"
 
 if [[ -f "$ICON_SOURCE_PATH" ]]; then
   cp "$ICON_SOURCE_PATH" "$RESOURCES_PATH/AppIcon.icns"
+fi
+
+if [[ -f "$STATUS_ITEM_ICON_SOURCE_PATH" ]]; then
+  cp "$STATUS_ITEM_ICON_SOURCE_PATH" "$RESOURCES_PATH/StatusBarIcon.png"
 fi
 
 chmod +x "$MACOS_PATH/CodexSwitchApp"
