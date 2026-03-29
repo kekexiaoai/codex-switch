@@ -357,6 +357,11 @@ final class MenuBarViewModelTests: XCTestCase {
         )
     }
 
+    func testEmailVisibilityToggleUsesCurrentStateIcon() {
+        XCTAssertEqual(emailVisibilityToggleSystemImage(showEmails: true), "eye")
+        XCTAssertEqual(emailVisibilityToggleSystemImage(showEmails: false), "eye.slash")
+    }
+
     private func sampleAuthData(email: String, tier: String) throws -> Data {
         let payload = [
             "sub": "subject-\(email)",
@@ -382,5 +387,9 @@ final class MenuBarViewModelTests: XCTestCase {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+
+    private func emailVisibilityToggleSystemImage(showEmails: Bool) -> String {
+        showEmails ? "eye" : "eye.slash"
     }
 }

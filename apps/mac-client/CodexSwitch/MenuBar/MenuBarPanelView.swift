@@ -40,7 +40,7 @@ public struct MenuBarPanelView: View {
                 }
                 actionRow(
                     title: viewModel.showEmails ? "Hide Emails" : "Show Emails",
-                    systemImage: viewModel.showEmails ? "eye.slash" : "eye"
+                    systemImage: viewModel.showEmails ? "eye" : "eye.slash"
                 ) {
                     Task {
                         await viewModel.toggleShowEmails()
