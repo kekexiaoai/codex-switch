@@ -332,6 +332,8 @@
             "OBJ_1007",
             "OBJ_1008",
             "OBJ_1009",
+            "OBJ_3017",
+            "OBJ_3018",
             "OBJ_1010",
             "OBJ_2001"
          );
@@ -389,6 +391,16 @@
          path = "CodexPaths.swift";
          sourceTree = "<group>";
       };
+      "OBJ_3017" = {
+         isa = "PBXFileReference";
+         path = "CodexUsageAPIClient.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_3018" = {
+         isa = "PBXFileReference";
+         path = "CodexUsageResolver.swift";
+         sourceTree = "<group>";
+      };
       "OBJ_1010" = {
          isa = "PBXFileReference";
          path = "CodexUsageScanner.swift";
@@ -443,6 +455,14 @@
       "OBJ_1020" = {
          isa = "PBXBuildFile";
          fileRef = "OBJ_1009";
+      };
+      "OBJ_3019" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_3017";
+      };
+      "OBJ_3020" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_3018";
       };
       "OBJ_1021" = {
          isa = "PBXBuildFile";
@@ -1323,6 +1343,8 @@
             "OBJ_1018",
             "OBJ_1019",
             "OBJ_1020",
+            "OBJ_3019",
+            "OBJ_3020",
             "OBJ_1021",
             "OBJ_88",
             "OBJ_89",

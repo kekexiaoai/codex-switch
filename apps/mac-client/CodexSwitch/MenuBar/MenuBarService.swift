@@ -14,11 +14,16 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
     public func loadSnapshot() async -> MenuBarSnapshot {
         let repositoryAccounts = try? await environment.accountRepository?.loadAccounts()
         let accounts = repositoryAccounts?.map(\.emailMask) ?? environment.accountStore.loadAccounts()
-        let usageText = environment.usageService.refreshUsage()
+        let usageText = await environment.usageService.refreshUsage()
         let showFullEmails = environment.emailVisibilityProvider?.showEmails() ?? false
         let activeAccountID = await environment.activeAccountController?.currentActiveAccountID()
         let activeAccount = repositoryAccounts?.first(where: { $0.id == activeAccountID }) ?? repositoryAccounts?.first
-        let activeSnapshot = activeAccount.flatMap { environment.usageService.usageSnapshot(for: $0.id) }
+        let activeSnapshot: CodexUsageSnapshot?
+        if let activeAccount {
+            activeSnapshot = await environment.usageService.usageSnapshot(for: activeAccount.id)
+        } else {
+            activeSnapshot = nil
+        }
         let headerEmail: String
         if
             let repositoryAccounts,
@@ -30,6 +35,33 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
             headerEmail = firstRepositoryAccount.displayEmail(showFullEmail: showFullEmails)
         } else {
             headerEmail = accounts.first ?? "No account"
+        }
+
+        var accountRows: [AccountRowModel]
+        if let repositoryAccounts {
+            accountRows = []
+            for account in repositoryAccounts {
+                let snapshot = await environment.usageService.usageSnapshot(for: account.id)
+                accountRows.append(
+                    AccountRowModel(
+                        id: account.id,
+                        emailMask: account.displayEmail(showFullEmail: showFullEmails),
+                        tierLabel: account.tier.rawValue.capitalized,
+                        fiveHourPercent: snapshot?.fiveHour.percentUsed ?? (environment.runtimeMode == .live ? 0 : 56),
+                        weeklyPercent: snapshot?.weekly.percentUsed ?? (environment.runtimeMode == .live ? 0 : 13)
+                    )
+                )
+            }
+        } else {
+            accountRows = accounts.enumerated().map { index, account in
+                AccountRowModel(
+                    id: "env-\(index)",
+                    emailMask: account,
+                    tierLabel: environment.runtimeMode == .live ? "Live" : "Preview",
+                    fiveHourPercent: environment.runtimeMode == .live ? 42 : 56,
+                    weeklyPercent: environment.runtimeMode == .live ? 24 : 13
+                )
+            }
         }
 
         return MenuBarSnapshot(
@@ -59,24 +91,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
                     resetText: "Usage source: \(usageText)"
                 ),
             ],
-            accounts: repositoryAccounts?.map { account in
-                let snapshot = environment.usageService.usageSnapshot(for: account.id)
-                return AccountRowModel(
-                    id: account.id,
-                    emailMask: account.displayEmail(showFullEmail: showFullEmails),
-                    tierLabel: account.tier.rawValue.capitalized,
-                    fiveHourPercent: snapshot?.fiveHour.percentUsed ?? (environment.runtimeMode == .live ? 0 : 56),
-                    weeklyPercent: snapshot?.weekly.percentUsed ?? (environment.runtimeMode == .live ? 0 : 13)
-                )
-            } ?? accounts.enumerated().map { index, account in
-                AccountRowModel(
-                    id: "env-\(index)",
-                    emailMask: account,
-                    tierLabel: environment.runtimeMode == .live ? "Live" : "Preview",
-                    fiveHourPercent: environment.runtimeMode == .live ? 42 : 56,
-                    weeklyPercent: environment.runtimeMode == .live ? 24 : 13
-                )
-            }
+            accounts: accountRows
         )
     }
 }

@@ -14,6 +14,8 @@ final class XcodeProjectSyncTests: XCTestCase {
             "CodexJWTDecoder.swift",
             "CodexLoginCoordinator.swift",
             "CodexPaths.swift",
+            "CodexUsageAPIClient.swift",
+            "CodexUsageResolver.swift",
             "CodexUsageScanner.swift",
             "DesktopCodexLoginBroker.swift",
             "CodexAccountSwitcher.swift",

@@ -63,6 +63,10 @@ public struct CodexUsageScanner {
         throw CodexAuthError.noUsageData
     }
 
+    public func cachedSnapshot(for accountID: String) throws -> CodexUsageSnapshot? {
+        try loadCachedSnapshot(for: accountID)
+    }
+
     private func loadLatestSnapshot(for account: Account) throws -> CodexUsageSnapshot? {
         guard fileManager.fileExists(atPath: paths.sessionsDirectoryURL.path) else {
             return nil
@@ -330,7 +334,7 @@ public struct CodexUsageScanner {
         return cache.entries[accountID]
     }
 
-    private func saveCachedSnapshot(_ snapshot: CodexUsageSnapshot) throws {
+    public func saveCachedSnapshot(_ snapshot: CodexUsageSnapshot) throws {
         let existingCache: CodexUsageCache
         if fileManager.fileExists(atPath: paths.usageCacheURL.path) {
             existingCache = try JSONDecoder().decode(CodexUsageCache.self, from: Data(contentsOf: paths.usageCacheURL))

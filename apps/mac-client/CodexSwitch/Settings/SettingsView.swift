@@ -38,7 +38,7 @@ public struct SettingsView: View {
     }
 
     public var usageRiskBody: String {
-        "Usage refresh reads local Codex usage data. Automatic mode may trigger extra scans or refresh work; use Local Only or disable refresh in sensitive environments."
+        "Automatic mode requests usage from the ChatGPT web backend first, then falls back to local Codex session logs. Local Only skips the remote request and reads only ~/.codex/sessions/YYYY/MM/DD/ rollout logs and cache."
     }
 
     public var advancedControlLabels: [String] {

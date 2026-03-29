@@ -13,7 +13,7 @@
 The current app only supports one usage source:
 
 - read the active account from `~/.codex/auth.json`
-- scan `~/.codex/sessions/rollout-*.jsonl`
+- scan `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` for the machine's current local date
 - match entries by email
 - cache the last successful snapshot in `~/.codex/accounts/usage-cache.json`
 
@@ -230,7 +230,7 @@ Keep the current scanner but make it more realistic and more tolerant.
 
 Changes:
 
-- continue reading newest `rollout-*.jsonl` first
+- continue reading newest `rollout-*.jsonl` first inside `~/.codex/sessions/YYYY/MM/DD/`
 - support the current simplified test fixture shape
 - add support for the nested `event_msg -> token_count -> rate_limits` style shape emitted by newer rollout logs
 - match by normalized email first

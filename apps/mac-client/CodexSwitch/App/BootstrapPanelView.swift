@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct BootstrapPanelView: View {
     private let environment: AppEnvironment
+    @State private var usageText = "Loading..."
 
     public init(environment: AppEnvironment = .preview) {
         self.environment = environment
@@ -17,11 +18,14 @@ public struct BootstrapPanelView: View {
             Text("Host: \(String(describing: MenuBarHostKind.current))")
                 .font(.caption)
                 .foregroundColor(.secondary)
-            Text("Usage: \(environment.usageService.refreshUsage())")
+            Text("Usage: \(usageText)")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
         .padding(16)
         .frame(width: 240)
+        .task {
+            usageText = await environment.usageService.refreshUsage()
+        }
     }
 }

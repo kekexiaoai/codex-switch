@@ -19,11 +19,17 @@ public struct StubUsageRefreshService: UsageRefreshing {
 
 public struct CodexUsageRefreshService: UsageRefreshing {
     private let fileStore: CodexAuthFileStore
-    private let scanner: CodexUsageScanner
+    private let resolver: CodexUsageResolver
+    private let settingsProvider: any UsageSettingsProviding
 
-    public init(fileStore: CodexAuthFileStore, scanner: CodexUsageScanner) {
+    public init(
+        fileStore: CodexAuthFileStore,
+        resolver: CodexUsageResolver,
+        settingsProvider: any UsageSettingsProviding = UserDefaultsUsageSettingsStore()
+    ) {
         self.fileStore = fileStore
-        self.scanner = scanner
+        self.resolver = resolver
+        self.settingsProvider = settingsProvider
     }
 
     public func refresh(reason: UsageRefreshReason) async throws -> [UsageSummaryModel] {
@@ -44,7 +50,11 @@ public struct CodexUsageRefreshService: UsageRefreshing {
             email: claims.email,
             tier: claims.tier
         )
-        let snapshot = try scanner.refreshUsage(for: account)
+        let snapshot = try await resolver.refreshUsage(
+            for: account,
+            authData: data,
+            mode: settingsProvider.usageSourceMode()
+        )
 
         return [
             UsageSummaryModel(

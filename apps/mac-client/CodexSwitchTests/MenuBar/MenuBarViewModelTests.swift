@@ -113,6 +113,85 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.accountRows.first?.weeklyPercent, 24)
     }
 
+    func testEnvironmentBackedServiceUsesRemoteUsageInAutomaticMode() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let archiveFilename = CodexArchiveNaming.archiveFilename(for: "fixture@example.com")
+        try FileManager.default.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
+        let authData = try sampleAuthDataWithTransport(
+            email: "fixture@example.com",
+            accountID: "google-oauth2|123456789",
+            plan: "team",
+            accessToken: "access-token",
+            transportAccountID: "chatgpt-account-id"
+        )
+        try authData.write(to: paths.accountsDirectoryURL.appendingPathComponent(archiveFilename))
+        try authData.write(to: paths.authFileURL)
+        let metadata = CodexAccountMetadataCache(entries: [
+            archiveFilename: CodexAccountMetadataEntry(
+                source: .currentAuth,
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+            ),
+        ])
+        try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
+
+        let sessionDirectory = currentSessionDirectory(paths: paths)
+        let rolloutURL = sessionDirectory.appendingPathComponent("rollout-2026-03-29.jsonl")
+        let rolloutLines = [
+            #"{"timestamp":"2026-03-29T08:00:00Z","email":"fixture@example.com","rate_limits":{"five_hour":{"used_percent":42,"resets_at":"2026-03-29T10:30:00Z"},"weekly":{"used_percent":24,"resets_at":"2026-04-02T00:00:00Z"}}}"#,
+        ].joined(separator: "\n")
+        try Data(rolloutLines.utf8).write(to: rolloutURL)
+
+        let environment = try AppEnvironment.live(
+            configuration: RuntimeConfiguration(
+                paths: paths,
+                loginRunner: StubCodexLoginRunner(result: .success),
+                usageAPITransport: { request in
+                    XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer access-token")
+                    XCTAssertEqual(request.value(forHTTPHeaderField: "ChatGPT-Account-Id"), "chatgpt-account-id")
+                    let response = HTTPURLResponse(
+                        url: request.url!,
+                        statusCode: 200,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )!
+                    let data = Data(
+                        #"""
+                        {
+                          "email": "fixture@example.com",
+                          "rate_limit": {
+                            "primary_window": {
+                              "used_percent": 11,
+                              "resets_at": "2026-03-29T10:30:00Z"
+                            },
+                            "secondary_window": {
+                              "used_percent": 19,
+                              "resets_at": "2026-04-02T00:00:00Z"
+                            }
+                          }
+                        }
+                        """#.utf8
+                    )
+                    return (data, response)
+                }
+            )
+        )
+        let viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment)
+        )
+
+        await viewModel.refresh()
+
+        XCTAssertEqual(viewModel.headerTier, "TEAM")
+        XCTAssertEqual(viewModel.accountRows.count, 1)
+        XCTAssertEqual(viewModel.accountRows.first?.fiveHourPercent, 11)
+        XCTAssertEqual(viewModel.accountRows.first?.weeklyPercent, 19)
+    }
+
     func testEnvironmentBackedServiceReportsUsageRefreshDisabled() async throws {
         let tempDirectoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -662,6 +741,35 @@ final class MenuBarViewModelTests: XCTestCase {
         let object: [String: Any] = [
             "tokens": [
                 "id_token": token,
+            ],
+        ]
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    private func sampleAuthDataWithTransport(
+        email: String,
+        accountID: String,
+        plan: String,
+        accessToken: String,
+        transportAccountID: String
+    ) throws -> Data {
+        let payload: [String: Any] = [
+            "sub": accountID,
+            "email": email,
+            "https://api.openai.com/auth": [
+                "chatgpt_plan_type": plan,
+            ],
+        ]
+        let token = [
+            base64URL(#"{"alg":"none","typ":"JWT"}"#),
+            base64URL(String(data: try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]), encoding: .utf8)!),
+            "signature",
+        ].joined(separator: ".")
+        let object: [String: Any] = [
+            "tokens": [
+                "id_token": token,
+                "access_token": accessToken,
+                "account_id": transportAccountID,
             ],
         ]
         return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])

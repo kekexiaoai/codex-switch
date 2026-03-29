@@ -5,8 +5,8 @@ public protocol AccountStore {
 }
 
 public protocol UsageService {
-    func refreshUsage() -> String
-    func usageSnapshot(for accountID: String) -> CodexUsageSnapshot?
+    func refreshUsage() async -> String
+    func usageSnapshot(for accountID: String) async -> CodexUsageSnapshot?
 }
 
 public struct MockAccountStore: AccountStore {
@@ -20,11 +20,11 @@ public struct MockAccountStore: AccountStore {
 public struct MockUsageService: UsageService {
     public init() {}
 
-    public func refreshUsage() -> String {
+    public func refreshUsage() async -> String {
         "preview"
     }
 
-    public func usageSnapshot(for accountID: String) -> CodexUsageSnapshot? {
+    public func usageSnapshot(for accountID: String) async -> CodexUsageSnapshot? {
         nil
     }
 }
@@ -44,22 +44,28 @@ public struct LiveAccountStore: AccountStore {
 public struct LiveUsageService: UsageService {
     private let configuration: RuntimeConfiguration
     private let settingsProvider: any UsageSettingsProviding
+    private let resolver: CodexUsageResolver
 
     public init(
         configuration: RuntimeConfiguration,
-        settingsProvider: any UsageSettingsProviding = UserDefaultsUsageSettingsStore()
+        settingsProvider: any UsageSettingsProviding = UserDefaultsUsageSettingsStore(),
+        resolver: CodexUsageResolver? = nil
     ) {
         self.configuration = configuration
         self.settingsProvider = settingsProvider
+        self.resolver = resolver ?? CodexUsageResolver(
+            scanner: CodexUsageScanner(paths: configuration.paths),
+            apiClient: CodexUsageAPIClient(transport: configuration.usageAPITransport)
+        )
     }
 
-    public func refreshUsage() -> String {
+    public func refreshUsage() async -> String {
         guard settingsProvider.usageRefreshEnabled() else {
             return "Usage refresh disabled"
         }
 
         let statusSuffix = settingsProvider.usageSourceMode() == .localOnly ? " (Local Only)" : ""
-        _ = refreshCurrentUsageIfPossible()
+        _ = await refreshCurrentUsageIfPossible()
         guard let cache = try? loadUsageCache(), let latest = cache.entries.values.max(by: { $0.updatedAt < $1.updatedAt }) else {
             return "No usage data\(statusSuffix)"
         }
@@ -67,12 +73,12 @@ public struct LiveUsageService: UsageService {
         return "Updated \(ISO8601DateFormatter().string(from: latest.updatedAt))\(statusSuffix)"
     }
 
-    public func usageSnapshot(for accountID: String) -> CodexUsageSnapshot? {
+    public func usageSnapshot(for accountID: String) async -> CodexUsageSnapshot? {
         if let snapshot = try? loadUsageCache().entries[accountID] {
             return snapshot
         }
 
-        return refreshCurrentUsageIfPossible(matching: accountID)
+        return await refreshCurrentUsageIfPossible(matching: accountID)
     }
 
     private func loadUsageCache() throws -> CodexUsageCache {
@@ -84,23 +90,27 @@ public struct LiveUsageService: UsageService {
         return try JSONDecoder().decode(CodexUsageCache.self, from: Data(contentsOf: url))
     }
 
-    private func refreshCurrentUsageIfPossible(matching accountID: String? = nil) -> CodexUsageSnapshot? {
+    private func refreshCurrentUsageIfPossible(matching accountID: String? = nil) async -> CodexUsageSnapshot? {
         guard settingsProvider.usageRefreshEnabled() else {
             return nil
         }
 
-        guard let account = currentAuthAccount() else {
+        guard let authContext = currentAuthContext() else {
             return nil
         }
 
-        if let accountID, account.id != accountID {
+        if let accountID, authContext.account.id != accountID {
             return nil
         }
 
-        return try? CodexUsageScanner(paths: configuration.paths).refreshUsage(for: account)
+        return try? await resolver.refreshUsage(
+            for: authContext.account,
+            authData: authContext.authData,
+            mode: settingsProvider.usageSourceMode()
+        )
     }
 
-    private func currentAuthAccount() -> Account? {
+    private func currentAuthContext() -> CurrentAuthContext? {
         guard
             let data = try? Data(contentsOf: configuration.paths.authFileURL),
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -111,13 +121,23 @@ public struct LiveUsageService: UsageService {
             return nil
         }
 
-        return Account(
-            id: claims.accountID,
-            emailMask: claims.emailMask,
-            email: claims.email,
-            tier: claims.tier,
-            source: .currentAuth
+        return CurrentAuthContext(
+            authData: data,
+            account: Account(
+                id: claims.accountID,
+                emailMask: claims.emailMask,
+                email: claims.email,
+                tier: claims.tier,
+                source: .currentAuth
+            )
         )
+    }
+}
+
+private extension LiveUsageService {
+    struct CurrentAuthContext {
+        let authData: Data
+        let account: Account
     }
 }
 
@@ -130,15 +150,18 @@ public struct RuntimeConfiguration {
     public let paths: CodexPaths
     public let loginRunner: (any CodexLoginRunning)?
     public let settingsDefaults: UserDefaults
+    public let usageAPITransport: CodexUsageAPIClient.Transport?
 
     public init(
         paths: CodexPaths = CodexPaths(),
         loginRunner: (any CodexLoginRunning)? = nil,
-        settingsDefaults: UserDefaults = .standard
+        settingsDefaults: UserDefaults = .standard,
+        usageAPITransport: CodexUsageAPIClient.Transport? = nil
     ) {
         self.paths = paths
         self.loginRunner = loginRunner
         self.settingsDefaults = settingsDefaults
+        self.usageAPITransport = usageAPITransport
     }
 }
 
@@ -207,7 +230,11 @@ public final class AppEnvironment {
         let importer = CodexAuthImporter(fileStore: fileStore)
         let usageRefreshService = CodexUsageRefreshService(
             fileStore: fileStore,
-            scanner: CodexUsageScanner(paths: configuration.paths)
+            resolver: CodexUsageResolver(
+                scanner: CodexUsageScanner(paths: configuration.paths),
+                apiClient: CodexUsageAPIClient(transport: configuration.usageAPITransport)
+            ),
+            settingsProvider: UserDefaultsUsageSettingsStore(defaults: configuration.settingsDefaults)
         )
         let controller = ActiveAccountController(
             activeAccountID: currentActiveAccountID(fileStore: fileStore),
@@ -224,7 +251,11 @@ public final class AppEnvironment {
             accountStore: LiveAccountStore(configuration: configuration),
             usageService: LiveUsageService(
                 configuration: configuration,
-                settingsProvider: UserDefaultsUsageSettingsStore(defaults: configuration.settingsDefaults)
+                settingsProvider: UserDefaultsUsageSettingsStore(defaults: configuration.settingsDefaults),
+                resolver: CodexUsageResolver(
+                    scanner: CodexUsageScanner(paths: configuration.paths),
+                    apiClient: CodexUsageAPIClient(transport: configuration.usageAPITransport)
+                )
             ),
             accountRepository: repository,
             activeAccountController: controller,

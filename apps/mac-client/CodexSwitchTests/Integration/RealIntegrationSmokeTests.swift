@@ -45,7 +45,8 @@ final class RealIntegrationSmokeTests: XCTestCase {
         let accounts = try await environment.accountRepository?.loadAccounts()
         XCTAssertEqual(accounts?.first?.emailMask, "f••••••@example.com")
         XCTAssertEqual(accounts?.first?.email, "fixture@example.com")
-        XCTAssertEqual(environment.usageService.usageSnapshot(for: "subject-fixture@example.com")?.fiveHour.percentUsed, 42)
+        let snapshot = await environment.usageService.usageSnapshot(for: "subject-fixture@example.com")
+        XCTAssertEqual(snapshot?.fiveHour.percentUsed, 42)
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
