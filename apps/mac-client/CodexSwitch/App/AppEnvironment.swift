@@ -77,11 +77,11 @@ public enum RuntimeMode: Equatable {
 
 public struct RuntimeConfiguration {
     public let paths: CodexPaths
-    public let loginRunner: any CodexLoginRunning
+    public let loginRunner: (any CodexLoginRunning)?
 
     public init(
         paths: CodexPaths = CodexPaths(),
-        loginRunner: any CodexLoginRunning = ProcessCodexLoginRunner()
+        loginRunner: (any CodexLoginRunning)? = nil
     ) {
         self.paths = paths
         self.loginRunner = loginRunner
@@ -148,6 +148,8 @@ public final class AppEnvironment {
             usageService: usageRefreshService
         )
 
+        let loginRunner = configuration.loginRunner ?? DesktopCodexLoginRunner(fileStore: fileStore)
+
         return AppEnvironment(
             accountStore: LiveAccountStore(configuration: configuration),
             usageService: LiveUsageService(configuration: configuration),
@@ -155,7 +157,7 @@ public final class AppEnvironment {
             activeAccountController: controller,
             accountImporter: importer,
             loginCoordinator: CodexLoginCoordinator(
-                runner: configuration.loginRunner,
+                runner: loginRunner,
                 importer: importer,
                 fileStore: fileStore
             ),

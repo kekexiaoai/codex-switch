@@ -9,6 +9,7 @@ public enum CodexAuthError: Error, Equatable {
     case archiveWriteFailed
     case activeAuthReplacementFailed
     case loginCancelled
+    case loginTimedOut
     case loginFailed
     case noUsageData
 }

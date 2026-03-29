@@ -23,55 +23,6 @@ public struct StubCodexLoginRunner: CodexLoginRunning {
     }
 }
 
-public struct ProcessCodexLoginRunner: CodexLoginRunning {
-    public init() {}
-
-    public static func makeProcess() -> Process {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = [
-            "-e",
-            """
-            tell application "Terminal"
-                activate
-                do script "clear; echo 'Codex Switch opened this Terminal window for browser login.'; echo 'If browser login does not start automatically, run /login in Codex below.'; codex login; status=$?; if [ $status -ne 0 ]; then echo ''; echo 'Falling back to interactive Codex. Run /login if needed.'; exec codex; fi"
-            end tell
-            """
-        ]
-        return process
-    }
-
-    public static func result(forExitStatus status: Int32) -> CodexLoginResult {
-        switch status {
-        case 0:
-            return .success
-        case 130, 143:
-            return .cancelled
-        default:
-            return .failure
-        }
-    }
-
-    public func runLogin() async throws -> CodexLoginResult {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Self.makeProcess()
-            process.terminationHandler = { process in
-                if process.terminationStatus == 0 {
-                    continuation.resume(returning: .started)
-                } else {
-                    continuation.resume(returning: Self.result(forExitStatus: process.terminationStatus))
-                }
-            }
-
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: CodexAuthError.loginFailed)
-            }
-        }
-    }
-}
-
 public struct CodexLoginCoordinator {
     private let runner: any CodexLoginRunning
     private let importer: CodexAuthImporter

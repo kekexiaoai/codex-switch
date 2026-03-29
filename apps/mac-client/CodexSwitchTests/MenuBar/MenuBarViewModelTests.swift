@@ -346,7 +346,29 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.alertMessage?.title, "Browser Login Failed")
         XCTAssertEqual(
             viewModel.alertMessage?.message,
-            "Codex browser login did not complete. A Terminal window was opened for login. Finish login there, then try Import Current Account if it was not imported automatically."
+            "Codex browser login did not complete. Complete the browser sign-in and try again."
+        )
+    }
+
+    func testLoginInBrowserShowsFriendlyErrorWhenLoginTimesOut() async {
+        let paths = CodexPaths(
+            baseDirectory: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        )
+        let viewModel = MenuBarViewModel(
+            service: MockMenuBarService(),
+            loginCoordinator: CodexLoginCoordinator(
+                runner: ThrowingCodexLoginRunner(error: .loginTimedOut),
+                importer: CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths)),
+                fileStore: CodexAuthFileStore(paths: paths)
+            )
+        )
+
+        await viewModel.performAddAccountAction(.loginInBrowser)
+
+        XCTAssertEqual(viewModel.alertMessage?.title, "Browser Login Timed Out")
+        XCTAssertEqual(
+            viewModel.alertMessage?.message,
+            "The browser sign-in did not finish before timing out. Try Login in Browser again."
         )
     }
 
@@ -395,5 +417,13 @@ final class MenuBarViewModelTests: XCTestCase {
 
     private func emailVisibilityToggleSystemImage(showEmails: Bool) -> String {
         showEmails ? "eye" : "eye.slash"
+    }
+}
+
+private struct ThrowingCodexLoginRunner: CodexLoginRunning {
+    let error: CodexAuthError
+
+    func runLogin() async throws -> CodexLoginResult {
+        throw error
     }
 }

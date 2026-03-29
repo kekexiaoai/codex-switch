@@ -239,6 +239,11 @@ public final class MenuBarViewModel: ObservableObject {
                     title: "Browser Login Cancelled",
                     message: "Codex browser login was cancelled before a valid auth session was created."
                 )
+            case .loginTimedOut:
+                return MenuBarAlertMessage(
+                    title: "Browser Login Timed Out",
+                    message: "The browser sign-in did not finish before timing out. Try Login in Browser again."
+                )
             case .currentAuthFileMissing, .idTokenMissing, .authJSONInvalid, .jwtPayloadInvalid:
                 return MenuBarAlertMessage(
                     title: "Browser Login Failed",
@@ -247,7 +252,7 @@ public final class MenuBarViewModel: ObservableObject {
             case .loginFailed:
                 return MenuBarAlertMessage(
                     title: "Browser Login Failed",
-                    message: "Codex browser login did not complete. A Terminal window was opened for login. Finish login there, then try Import Current Account if it was not imported automatically."
+                    message: "Codex browser login did not complete. Complete the browser sign-in and try again."
                 )
             default:
                 return MenuBarAlertMessage(

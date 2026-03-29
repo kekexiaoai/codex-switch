@@ -95,20 +95,18 @@ final class CodexLoginCoordinatorTests: XCTestCase {
         XCTAssertEqual(account.source, .browserLogin)
     }
 
-    func testProcessLoginRunnerMapsExitCodesToCoordinatorResults() {
-        XCTAssertEqual(ProcessCodexLoginRunner.result(forExitStatus: 0), .success)
-        XCTAssertEqual(ProcessCodexLoginRunner.result(forExitStatus: 130), .cancelled)
-        XCTAssertEqual(ProcessCodexLoginRunner.result(forExitStatus: 1), .failure)
-    }
+    func testDesktopLoginRunnerWritesBrokerAuthDataToCurrentAuthFile() async throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let authData = try sampleAuthData(email: "desktop@example.com", tier: "pro")
+        let runner = DesktopCodexLoginRunner(
+            fileStore: CodexAuthFileStore(paths: paths),
+            broker: StubDesktopCodexLoginBroker(authData: authData)
+        )
 
-    func testProcessLoginRunnerOpensTerminalForVisibleBrowserLoginFlow() {
-        let process = ProcessCodexLoginRunner.makeProcess()
+        let result = try await runner.runLogin()
 
-        XCTAssertEqual(process.executableURL?.path, "/usr/bin/osascript")
-        XCTAssertEqual(process.arguments?.first, "-e")
-        XCTAssertTrue(process.arguments?.joined(separator: "\n").contains("tell application \"Terminal\"") == true)
-        XCTAssertTrue(process.arguments?.joined(separator: "\n").contains("codex login") == true)
-        XCTAssertTrue(process.arguments?.joined(separator: "\n").contains("exec codex") == true)
+        XCTAssertEqual(result, .success)
+        XCTAssertEqual(try Data(contentsOf: paths.authFileURL), authData)
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
@@ -147,6 +145,14 @@ private struct AuthWritingCodexLoginRunner: CodexLoginRunning {
     func runLogin() async throws -> CodexLoginResult {
         try dataToWrite.write(to: authFileURL, options: .atomic)
         return result
+    }
+}
+
+private struct StubDesktopCodexLoginBroker: CodexDesktopLoginBroking {
+    let authData: Data
+
+    func performLogin() async throws -> Data {
+        authData
     }
 }
 
