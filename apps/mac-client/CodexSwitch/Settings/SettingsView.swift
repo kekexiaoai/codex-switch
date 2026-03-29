@@ -149,6 +149,9 @@ public struct SettingsView: View {
         } message: { message in
             Text(message.message)
         }
+        .onChange(of: viewModel.lastActionMessage?.id) { _ in
+            presentedMessage = viewModel.lastActionMessage
+        }
     }
 
     @ViewBuilder

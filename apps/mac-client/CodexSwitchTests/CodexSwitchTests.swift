@@ -27,11 +27,13 @@ final class CodexSwitchTests: XCTestCase {
         let defaults = UserDefaults(suiteName: "CodexSwitchTests.Environment.Settings")!
         defaults.removePersistentDomain(forName: "CodexSwitchTests.Environment.Settings")
         let handler = RecordingSettingsEnvironmentActionHandler()
+        let launchController = RecordingEnvironmentLaunchAtLoginController()
         let environment = AppEnvironment(
             accountStore: MockAccountStore(),
             usageService: MockUsageService(),
             settingsDefaults: defaults,
             settingsActionHandler: handler,
+            launchAtLoginController: launchController,
             runtimeMode: .preview,
             codexPaths: nil
         )
@@ -39,8 +41,10 @@ final class CodexSwitchTests: XCTestCase {
         let viewModel = environment.makeSettingsViewModel()
         viewModel.requestDestructiveAction(.clearDiagnosticsLog)
         try viewModel.confirmPendingAction()
+        viewModel.setLaunchAtLogin(true)
 
         XCTAssertEqual(handler.destructiveActions, [.clearDiagnosticsLog])
+        XCTAssertEqual(launchController.values, [true])
     }
 }
 
@@ -54,5 +58,17 @@ private final class RecordingSettingsEnvironmentActionHandler: SettingsActionHan
 
     func performUtilityAction(_ action: SettingsUtilityAction) throws -> SettingsActionMessage {
         SettingsActionMessage(title: "Done", message: "Done")
+    }
+}
+
+private final class RecordingEnvironmentLaunchAtLoginController: LaunchAtLoginControlling {
+    private(set) var values: [Bool] = []
+
+    func isEnabled() -> Bool {
+        false
+    }
+
+    func setEnabled(_ enabled: Bool) throws {
+        values.append(enabled)
     }
 }

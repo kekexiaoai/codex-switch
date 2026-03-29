@@ -47,13 +47,16 @@ public final class SettingsViewModel: ObservableObject {
 
     private let defaults: UserDefaults
     private let actionHandler: any SettingsActionHandling
+    private let launchAtLoginController: (any LaunchAtLoginControlling)?
 
     public init(
         defaults: UserDefaults = .standard,
-        actionHandler: any SettingsActionHandling = NoopSettingsActionHandler()
+        actionHandler: any SettingsActionHandling = NoopSettingsActionHandler(),
+        launchAtLoginController: (any LaunchAtLoginControlling)? = nil
     ) {
         self.defaults = defaults
         self.actionHandler = actionHandler
+        self.launchAtLoginController = launchAtLoginController
         self.showEmails = defaults.bool(forKey: Self.showEmailsKey)
         if defaults.object(forKey: Self.usageRefreshEnabledKey) == nil {
             self.usageRefreshEnabled = true
@@ -63,9 +66,15 @@ public final class SettingsViewModel: ObservableObject {
         self.usageSourceMode = CodexUsageSourceMode(
             rawValue: defaults.string(forKey: Self.usageSourceModeKey) ?? CodexUsageSourceMode.automatic.rawValue
         ) ?? .automatic
-        self.launchAtLogin = defaults.bool(forKey: Self.launchAtLoginKey)
+        let storedLaunchAtLogin = defaults.bool(forKey: Self.launchAtLoginKey)
+        let resolvedLaunchAtLogin = launchAtLoginController?.isEnabled() ?? storedLaunchAtLogin
+        self.launchAtLogin = resolvedLaunchAtLogin
         self.pendingConfirmation = nil
         self.lastActionMessage = nil
+
+        if storedLaunchAtLogin != resolvedLaunchAtLogin {
+            defaults.set(resolvedLaunchAtLogin, forKey: Self.launchAtLoginKey)
+        }
     }
 
     public func setShowEmails(_ enabled: Bool) {
@@ -84,8 +93,25 @@ public final class SettingsViewModel: ObservableObject {
     }
 
     public func setLaunchAtLogin(_ enabled: Bool) {
+        let previousValue = launchAtLogin
+
+        if let launchAtLoginController {
+            do {
+                try launchAtLoginController.setEnabled(enabled)
+            } catch {
+                defaults.set(previousValue, forKey: Self.launchAtLoginKey)
+                launchAtLogin = previousValue
+                lastActionMessage = SettingsActionMessage(
+                    title: "Launch at Login Unchanged",
+                    message: error.localizedDescription
+                )
+                return
+            }
+        }
+
         defaults.set(enabled, forKey: Self.launchAtLoginKey)
         launchAtLogin = enabled
+        lastActionMessage = nil
     }
 
     public func requestDestructiveAction(_ action: SettingsDestructiveAction) {

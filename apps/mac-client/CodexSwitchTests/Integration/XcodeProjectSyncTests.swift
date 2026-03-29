@@ -19,6 +19,7 @@ final class XcodeProjectSyncTests: XCTestCase {
             "CodexAccountSwitcher.swift",
             "SettingsActions.swift",
             "LiveSettingsActionHandler.swift",
+            "LaunchAtLoginController.swift",
         ]
 
         let missingFilenames = requiredFilenames.filter { !projectContents.contains($0) }

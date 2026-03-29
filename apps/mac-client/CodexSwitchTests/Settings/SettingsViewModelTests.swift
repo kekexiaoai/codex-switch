@@ -41,6 +41,44 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.launchAtLogin)
     }
 
+    func testSettingsViewModelUsesLaunchAtLoginControllerWhenPreferenceChanges() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.LaunchController")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.LaunchController")
+        let controller = RecordingLaunchAtLoginController(initialValue: false)
+
+        let viewModel = SettingsViewModel(
+            defaults: defaults,
+            launchAtLoginController: controller
+        )
+
+        viewModel.setLaunchAtLogin(true)
+
+        XCTAssertEqual(controller.values, [true])
+        XCTAssertTrue(defaults.bool(forKey: SettingsViewModel.launchAtLoginKey))
+        XCTAssertTrue(viewModel.launchAtLogin)
+    }
+
+    func testSettingsViewModelRestoresPreviousLaunchAtLoginValueWhenControllerFails() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.LaunchRollback")!
+        defaults.set(false, forKey: SettingsViewModel.launchAtLoginKey)
+        let controller = RecordingLaunchAtLoginController(
+            initialValue: false,
+            error: LaunchAtLoginControllerError.unsupportedOS
+        )
+
+        let viewModel = SettingsViewModel(
+            defaults: defaults,
+            launchAtLoginController: controller
+        )
+
+        viewModel.setLaunchAtLogin(true)
+
+        XCTAssertEqual(controller.values, [true])
+        XCTAssertFalse(defaults.bool(forKey: SettingsViewModel.launchAtLoginKey))
+        XCTAssertFalse(viewModel.launchAtLogin)
+        XCTAssertEqual(viewModel.lastActionMessage?.title, "Launch at Login Unchanged")
+    }
+
     func testSettingsViewModelRequiresConfirmationBeforeDestructiveActionRuns() throws {
         let actionHandler = RecordingSettingsActionHandler()
         let viewModel = SettingsViewModel(
@@ -101,5 +139,29 @@ private final class RecordingSettingsActionHandler: SettingsActionHandling {
         case .exportDiagnosticsSummary:
             return SettingsActionMessage(title: "Diagnostics Exported", message: "Exported a sanitized diagnostics summary.")
         }
+    }
+}
+
+private final class RecordingLaunchAtLoginController: LaunchAtLoginControlling {
+    private let error: LaunchAtLoginControllerError?
+    private var currentValue: Bool
+    private(set) var values: [Bool] = []
+
+    init(initialValue: Bool, error: LaunchAtLoginControllerError? = nil) {
+        self.currentValue = initialValue
+        self.error = error
+    }
+
+    func isEnabled() -> Bool {
+        currentValue
+    }
+
+    func setEnabled(_ enabled: Bool) throws {
+        values.append(enabled)
+        if let error {
+            throw error
+        }
+
+        currentValue = enabled
     }
 }
