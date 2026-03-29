@@ -10,6 +10,7 @@ final class XcodeProjectSyncTests: XCTestCase {
             "CodexAuthFileStore.swift",
             "CodexAuthImporter.swift",
             "CodexAuthModels.swift",
+            "CodexDiagnosticsLogger.swift",
             "CodexJWTDecoder.swift",
             "CodexLoginCoordinator.swift",
             "CodexPaths.swift",

@@ -46,6 +46,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
     private let now: () -> Date
     private let loginTimeoutNanoseconds: UInt64
     private let wait: @Sendable (UInt64) async throws -> Void
+    private let logger: any CodexDiagnosticsLogging
 
     public init(
         clientID: String = "app_EMoamEEZ73f0CkXaXp7hrann",
@@ -58,6 +59,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
         fallbackBrowserOpener: ((URL) -> Bool)? = nil,
         applicationActivator: (() -> Void)? = nil,
         tokenExchanger: (@Sendable (String, String, URL) async throws -> CodexOAuthTokenResponse)? = nil,
+        logger: (any CodexDiagnosticsLogging)? = nil,
         now: @escaping () -> Date = Date.init,
         loginTimeoutNanoseconds: UInt64 = 180_000_000_000,
         wait: @escaping @Sendable (UInt64) async throws -> Void = { duration in
@@ -73,13 +75,21 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
         self.browserOpener = browserOpener ?? SystemBrowserOpener.open(url:)
         self.fallbackBrowserOpener = fallbackBrowserOpener ?? ShellBrowserOpener.open(url:)
         self.applicationActivator = applicationActivator ?? SystemApplicationActivator.activate
-        self.tokenExchanger = tokenExchanger ?? Self.exchangeCodeForTokens
+        self.tokenExchanger = tokenExchanger ?? { code, verifier, redirectURI in
+            try await Self.exchangeCodeForTokens(
+                code: code,
+                codeVerifier: verifier,
+                redirectURI: redirectURI
+            )
+        }
+        self.logger = logger ?? CodexDiagnosticsFileLogger(paths: CodexPaths())
         self.now = now
         self.loginTimeoutNanoseconds = loginTimeoutNanoseconds
         self.wait = wait
     }
 
     public func performLogin() async throws -> Data {
+        logger.log("browser_login_started")
         let callbackServer = try callbackServerFactory()
         defer { callbackServer.stop() }
 
@@ -94,26 +104,36 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
         let didOpenBrowser = await MainActor.run {
             applicationActivator()
             if browserOpener(authorizationURL) {
+                logger.log("browser_open_primary_result=true")
                 return true
             }
 
-            return fallbackBrowserOpener(authorizationURL)
+            logger.log("browser_open_primary_result=false")
+            let didFallbackOpen = fallbackBrowserOpener(authorizationURL)
+            logger.log("browser_open_fallback_result=\(didFallbackOpen)")
+            return didFallbackOpen
         }
 
         guard didOpenBrowser else {
+            logger.log("browser_launch_failed")
             throw CodexAuthError.browserLaunchFailed
         }
 
         let callbackResult = try await waitForCallback(using: callbackServer)
         switch callbackResult {
         case let .code(code, returnedState):
+            logger.log("callback_received code=true error=false")
             guard returnedState == state else {
+                logger.log("callback_state_mismatch")
                 throw CodexAuthError.loginFailed
             }
 
+            logger.log("token_exchange_started")
             let tokenResponse = try await tokenExchanger(code, codeVerifier, callbackServer.redirectURI)
+            logger.log("token_exchange_succeeded")
             return try buildAuthData(from: tokenResponse)
         case let .failure(error, _):
+            logger.log("callback_received code=false error=true type=\(error)")
             if error == "access_denied" {
                 throw CodexAuthError.loginCancelled
             }
@@ -144,6 +164,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
             case let .callback(result):
                 return result
             case .timedOut:
+                logger.log("browser_login_timed_out")
                 throw CodexAuthError.loginTimedOut
             }
         }
@@ -248,10 +269,15 @@ public struct DesktopCodexLoginRunner: CodexLoginRunning {
 
     public init(
         fileStore: CodexAuthFileStore,
-        broker: any CodexDesktopLoginBroking = DesktopCodexLoginBroker()
+        broker: (any CodexDesktopLoginBroking)? = nil,
+        logger: (any CodexDiagnosticsLogging)? = nil
     ) {
         self.fileStore = fileStore
-        self.broker = broker
+        let diagnosticsLogger = logger ?? CodexDiagnosticsFileLogger(paths: fileStore.paths)
+        self.broker = broker ?? DesktopCodexLoginBroker(
+            callbackServerFactory: { try LocalhostOAuthCallbackServer(logger: diagnosticsLogger) },
+            logger: diagnosticsLogger
+        )
     }
 
     public func runLogin() async throws -> CodexLoginResult {
@@ -269,8 +295,10 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
     private let stateLock = NSLock()
     private var continuation: CheckedContinuation<OAuthCallbackResult, Error>?
     private var isStopped = false
+    private let logger: any CodexDiagnosticsLogging
 
-    public init(port: UInt16? = 1455) throws {
+    public init(port: UInt16? = 1455, logger: any CodexDiagnosticsLogging = NullCodexDiagnosticsLogger()) throws {
+        self.logger = logger
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
         let requestedPort = port.flatMap(NWEndpoint.Port.init(rawValue:))
@@ -284,8 +312,10 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
             switch listenerState {
             case .ready:
                 actualPort = listener.port?.rawValue
+                logger.log("callback_listener_ready port=\(listener.port?.rawValue ?? 0)")
                 startupSemaphore.signal()
             case let .failed(error):
+                logger.log("callback_listener_failed \(String(describing: error))")
                 startupError = error
                 startupSemaphore.signal()
             default:
@@ -325,6 +355,7 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
     }
 
     public func stop() {
+        logger.log("callback_listener_stopped")
         listener.cancel()
 
         let pendingContinuation: CheckedContinuation<OAuthCallbackResult, Error>?
@@ -346,6 +377,7 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
             }
 
             if let error {
+                self.logger.log("callback_connection_error \(String(describing: error))")
                 self.finish(with: .failure(CodexAuthError.loginFailed))
                 connection.cancel()
                 _ = error
@@ -357,6 +389,7 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
                 let request = String(data: data, encoding: .utf8),
                 let callbackResult = self.parseCallback(from: request)
             else {
+                self.logger.log("callback_parse_failed")
                 self.writeHTTPResponse(
                     body: "<html><body><h1>Codex login failed</h1><p>You can close this window.</p></body></html>",
                     to: connection
@@ -396,10 +429,12 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
 
         let queryItems = Dictionary(uniqueKeysWithValues: components.queryItems?.map { ($0.name, $0.value ?? "") } ?? [])
         if let code = queryItems["code"], let state = queryItems["state"], !code.isEmpty, !state.isEmpty {
+            logger.log("callback_query code=true error=false")
             return .code(code, state: state)
         }
 
         if let error = queryItems["error"], !error.isEmpty {
+            logger.log("callback_query code=false error=true type=\(error)")
             return .failure(error: error, description: queryItems["error_description"])
         }
 

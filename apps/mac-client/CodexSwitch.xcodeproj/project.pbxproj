@@ -324,6 +324,7 @@
             "OBJ_1004",
             "OBJ_1005",
             "OBJ_1006",
+            "OBJ_2003",
             "OBJ_1007",
             "OBJ_1008",
             "OBJ_1009",
@@ -362,6 +363,11 @@
       "OBJ_1006" = {
          isa = "PBXFileReference";
          path = "CodexAuthModels.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_2003" = {
+         isa = "PBXFileReference";
+         path = "CodexDiagnosticsLogger.swift";
          sourceTree = "<group>";
       };
       "OBJ_1007" = {
@@ -417,6 +423,10 @@
       "OBJ_1017" = {
          isa = "PBXBuildFile";
          fileRef = "OBJ_1006";
+      };
+      "OBJ_2004" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_2003";
       };
       "OBJ_1018" = {
          isa = "PBXBuildFile";
@@ -1207,6 +1217,7 @@
             "OBJ_1015",
             "OBJ_1016",
             "OBJ_1017",
+            "OBJ_2004",
             "OBJ_1018",
             "OBJ_1019",
             "OBJ_1020",

@@ -211,6 +211,40 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
         }
     }
 
+    func testBrokerLogsLifecycleEventsWithoutSecrets() async throws {
+        let logger = InMemoryDiagnosticsLogger()
+        let callbackServer = StubOAuthCallbackServer(
+            redirectURI: URL(string: "http://localhost:1455/auth/callback")!,
+            result: .success(.code("browser-code", state: "expected-state"))
+        )
+        let broker = DesktopCodexLoginBroker(
+            stateGenerator: { "expected-state" },
+            codeVerifierGenerator: { "expected-verifier" },
+            callbackServerFactory: { callbackServer },
+            browserOpener: { _ in true },
+            applicationActivator: {},
+            tokenExchanger: { _, _, _ in
+                CodexOAuthTokenResponse(
+                    accessToken: "access-token",
+                    refreshToken: "refresh-token",
+                    idToken: Self.sampleIDToken(email: "broker@example.com", tier: "team"),
+                    accountID: "account-123"
+                )
+            },
+            logger: logger
+        )
+
+        _ = try await broker.performLogin()
+
+        XCTAssertTrue(logger.entries.contains(where: { $0.contains("browser_login_started") }))
+        XCTAssertTrue(logger.entries.contains(where: { $0.contains("browser_open_primary_result=true") }))
+        XCTAssertTrue(logger.entries.contains(where: { $0.contains("callback_received code=true error=false") }))
+        XCTAssertTrue(logger.entries.contains(where: { $0.contains("token_exchange_started") }))
+        XCTAssertTrue(logger.entries.contains(where: { $0.contains("token_exchange_succeeded") }))
+        XCTAssertFalse(logger.entries.contains(where: { $0.contains("browser-code") }))
+        XCTAssertFalse(logger.entries.contains(where: { $0.contains("access-token") }))
+    }
+
     private static let sampleRefreshDate = Date(timeIntervalSince1970: 1_743_157_872.345)
 
     private static func sampleIDToken(email: String, tier: String) -> String {
@@ -244,6 +278,14 @@ private final class BrowserOpenSpy {
     func open(url: URL) -> Bool {
         openedURLs.append(url)
         return true
+    }
+}
+
+private final class InMemoryDiagnosticsLogger: CodexDiagnosticsLogging {
+    private(set) var entries: [String] = []
+
+    func log(_ message: String) {
+        entries.append(message)
     }
 }
 

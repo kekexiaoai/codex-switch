@@ -30,6 +30,7 @@ public struct CodexLoginCoordinator {
     private let pollIntervalNanoseconds: UInt64
     private let maxPollAttempts: Int
     private let wait: @Sendable (UInt64) async throws -> Void
+    private let logger: any CodexDiagnosticsLogging
 
     public init(
         runner: any CodexLoginRunning,
@@ -37,6 +38,7 @@ public struct CodexLoginCoordinator {
         fileStore: CodexAuthFileStore,
         pollIntervalNanoseconds: UInt64 = 500_000_000,
         maxPollAttempts: Int = 240,
+        logger: (any CodexDiagnosticsLogging)? = nil,
         wait: @escaping @Sendable (UInt64) async throws -> Void = { duration in
             try await Task.sleep(nanoseconds: duration)
         }
@@ -46,26 +48,36 @@ public struct CodexLoginCoordinator {
         self.fileStore = fileStore
         self.pollIntervalNanoseconds = pollIntervalNanoseconds
         self.maxPollAttempts = maxPollAttempts
+        self.logger = logger ?? CodexDiagnosticsFileLogger(paths: fileStore.paths)
         self.wait = wait
     }
 
     public func loginAndImport() async throws -> Account {
+        logger.log("login_import_started")
         let previousAuthData = try? fileStore.readCurrentAuthData()
         let result = try await runner.runLogin()
+        logger.log("login_runner_result=\(String(describing: result))")
         switch result {
         case .success:
-            return try importer.importCurrentAccount(source: .browserLogin)
+            let account = try importer.importCurrentAccount(source: .browserLogin)
+            logger.log("login_import_succeeded account=\(account.id)")
+            return account
         case .started:
             if let updatedAccount = try await waitForUpdatedAuth(since: previousAuthData) {
+                logger.log("login_import_succeeded account=\(updatedAccount.id)")
                 return updatedAccount
             }
+            logger.log("login_import_failed reason=no_auth_change")
             throw CodexAuthError.loginFailed
         case .cancelled:
+            logger.log("login_import_cancelled")
             throw CodexAuthError.loginCancelled
         case .failure:
             if let updatedAccount = try importAccountIfAuthChanged(since: previousAuthData) {
+                logger.log("login_import_succeeded_after_failure account=\(updatedAccount.id)")
                 return updatedAccount
             }
+            logger.log("login_import_failed reason=runner_failure")
             throw CodexAuthError.loginFailed
         }
     }

@@ -23,6 +23,10 @@ public struct CodexPaths: Equatable {
         baseDirectory.appendingPathComponent("sessions", isDirectory: true)
     }
 
+    public var loginDiagnosticsLogURL: URL {
+        baseDirectory.appendingPathComponent("codex-switch-login.log")
+    }
+
     public init(baseDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".codex", isDirectory: true)) {
         self.baseDirectory = baseDirectory
