@@ -1,7 +1,7 @@
 import AppKit
 import CryptoKit
+import Darwin
 import Foundation
-import Network
 
 public protocol CodexDesktopLoginBroking {
     func performLogin() async throws -> Data
@@ -290,60 +290,53 @@ public struct DesktopCodexLoginRunner: CodexLoginRunning {
 public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
     public let redirectURI: URL
 
-    private let listener: NWListener
     private let queue = DispatchQueue(label: "CodexSwitch.OAuthCallbackServer")
     private let stateLock = NSLock()
     private var continuation: CheckedContinuation<OAuthCallbackResult, Error>?
+    private var pendingResult: Result<OAuthCallbackResult, Error>?
     private var isStopped = false
     private let logger: any CodexDiagnosticsLogging
+    private let listeningSocket: Int32
+    private let acceptSource: DispatchSourceRead
 
     public init(port: UInt16? = 1455, logger: any CodexDiagnosticsLogging = NullCodexDiagnosticsLogger()) throws {
         self.logger = logger
-        let parameters = NWParameters.tcp
-        parameters.allowLocalEndpointReuse = true
-        let requestedPort = port.flatMap(NWEndpoint.Port.init(rawValue:))
-        listener = try NWListener(using: parameters, on: requestedPort ?? .any)
-
-        var actualPort: UInt16?
-        var startupError: NWError?
-        let startupSemaphore = DispatchSemaphore(value: 0)
-
-        listener.stateUpdateHandler = { [listener] listenerState in
-            switch listenerState {
-            case .ready:
-                actualPort = listener.port?.rawValue
-                logger.log("callback_listener_ready port=\(listener.port?.rawValue ?? 0)")
-                startupSemaphore.signal()
-            case let .failed(error):
-                logger.log("callback_listener_failed \(String(describing: error))")
-                startupError = error
-                startupSemaphore.signal()
-            default:
-                break
-            }
+        let socket = try Self.makeListeningSocket(port: port, logger: logger)
+        listeningSocket = socket.fileDescriptor
+        redirectURI = URL(string: "http://localhost:\(socket.port)/auth/callback")!
+        acceptSource = DispatchSource.makeReadSource(fileDescriptor: socket.fileDescriptor, queue: queue)
+        acceptSource.setEventHandler { [weak self] in
+            self?.acceptIncomingConnections()
         }
-
-        listener.start(queue: queue)
-        startupSemaphore.wait()
-
-        if startupError != nil {
-            throw CodexAuthError.loginFailed
+        acceptSource.setCancelHandler {
+            close(socket.fileDescriptor)
         }
+        acceptSource.resume()
 
-        guard let actualPort else {
-            throw CodexAuthError.loginFailed
-        }
-
-        redirectURI = URL(string: "http://localhost:\(actualPort)/auth/callback")!
-        listener.newConnectionHandler = { [weak self] connection in
-            self?.handle(connection)
-        }
+        logger.log("callback_listener_ready port=\(socket.port)")
     }
 
     public func waitForCallback() async throws -> OAuthCallbackResult {
         try await withCheckedThrowingContinuation { continuation in
+            let pendingResult: Result<OAuthCallbackResult, Error>?
+
             stateLock.lock()
             defer { stateLock.unlock() }
+
+            pendingResult = self.pendingResult
+            if pendingResult != nil {
+                self.pendingResult = nil
+            }
+
+            if let pendingResult {
+                switch pendingResult {
+                case let .success(result):
+                    continuation.resume(returning: result)
+                case let .failure(error):
+                    continuation.resume(throwing: error)
+                }
+                return
+            }
 
             if isStopped {
                 continuation.resume(throwing: CodexAuthError.loginFailed)
@@ -356,56 +349,106 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
 
     public func stop() {
         logger.log("callback_listener_stopped")
-        listener.cancel()
+        acceptSource.cancel()
 
         let pendingContinuation: CheckedContinuation<OAuthCallbackResult, Error>?
         stateLock.lock()
         isStopped = true
         pendingContinuation = continuation
         continuation = nil
+        if pendingContinuation == nil, pendingResult == nil {
+            pendingResult = .failure(CodexAuthError.loginFailed)
+        }
         stateLock.unlock()
 
         pendingContinuation?.resume(throwing: CodexAuthError.loginFailed)
     }
 
-    private func handle(_ connection: NWConnection) {
-        connection.start(queue: queue)
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 16_384) { [weak self] data, _, _, error in
-            guard let self else {
-                connection.cancel()
+    private func acceptIncomingConnections() {
+        while true {
+            var addressStorage = sockaddr_storage()
+            var addressLength = socklen_t(MemoryLayout<sockaddr_storage>.size)
+            let clientSocket = withUnsafeMutablePointer(to: &addressStorage) { storagePointer in
+                storagePointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPointer in
+                    accept(listeningSocket, sockaddrPointer, &addressLength)
+                }
+            }
+
+            if clientSocket == -1 {
+                if errno == EAGAIN || errno == EWOULDBLOCK {
+                    return
+                }
+
+                logger.log("callback_connection_error accept errno=\(errno) reason=\(Self.socketErrorDescription(errno))")
+                finish(with: .failure(CodexAuthError.loginFailed))
                 return
             }
 
-            if let error {
-                self.logger.log("callback_connection_error \(String(describing: error))")
-                self.finish(with: .failure(CodexAuthError.loginFailed))
-                connection.cancel()
-                _ = error
-                return
-            }
-
-            guard
-                let data,
-                let request = String(data: data, encoding: .utf8),
-                let callbackResult = self.parseCallback(from: request)
-            else {
-                self.logger.log("callback_parse_failed")
-                self.writeHTTPResponse(
-                    body: "<html><body><h1>Codex login failed</h1><p>You can close this window.</p></body></html>",
-                    to: connection
-                )
-                self.finish(with: .failure(CodexAuthError.loginFailed))
-                connection.cancel()
-                return
-            }
-
-            self.writeHTTPResponse(
-                body: "<html><body><h1>Codex login complete</h1><p>You can close this window and return to Codex Switch.</p></body></html>",
-                to: connection
-            )
-            self.finish(with: .success(callbackResult))
-            connection.cancel()
+            handleClientSocket(clientSocket)
         }
+    }
+
+    private func handleClientSocket(_ clientSocket: Int32) {
+        let flags = fcntl(clientSocket, F_GETFL)
+        if flags != -1 {
+            _ = fcntl(clientSocket, F_SETFL, flags & ~O_NONBLOCK)
+        }
+
+        defer {
+            shutdown(clientSocket, SHUT_RDWR)
+            close(clientSocket)
+        }
+
+        guard let request = readRequest(from: clientSocket),
+              let callbackResult = parseCallback(from: request)
+        else {
+            logger.log("callback_parse_failed")
+            writeHTTPResponse(
+                body: "<html><body><h1>Codex login failed</h1><p>You can close this window.</p></body></html>",
+                to: clientSocket
+            )
+            finish(with: .failure(CodexAuthError.loginFailed))
+            return
+        }
+
+        writeHTTPResponse(
+            body: "<html><body><h1>Codex login complete</h1><p>You can close this window and return to Codex Switch.</p></body></html>",
+            to: clientSocket
+        )
+        finish(with: .success(callbackResult))
+    }
+
+    private func readRequest(from clientSocket: Int32) -> String? {
+        var requestData = Data()
+        var buffer = [UInt8](repeating: 0, count: 4_096)
+
+        while requestData.count < 16_384 {
+            let bytesRead = recv(clientSocket, &buffer, buffer.count, 0)
+            if bytesRead > 0 {
+                requestData.append(buffer, count: bytesRead)
+                if requestData.range(of: Data("\r\n\r\n".utf8)) != nil {
+                    break
+                }
+                continue
+            }
+
+            if bytesRead == 0 {
+                break
+            }
+
+            if errno == EINTR {
+                continue
+            }
+
+            logger.log("callback_connection_error recv errno=\(errno) reason=\(Self.socketErrorDescription(errno))")
+            return nil
+        }
+
+        guard !requestData.isEmpty else {
+            return nil
+        }
+
+        return String(data: requestData, encoding: .utf8)
     }
 
     private func parseCallback(from request: String) -> OAuthCallbackResult? {
@@ -450,13 +493,25 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
 
         switch result {
         case let .success(callbackResult):
-            pendingContinuation?.resume(returning: callbackResult)
+            if let pendingContinuation {
+                pendingContinuation.resume(returning: callbackResult)
+            } else {
+                stateLock.lock()
+                pendingResult = .success(callbackResult)
+                stateLock.unlock()
+            }
         case let .failure(error):
-            pendingContinuation?.resume(throwing: error)
+            if let pendingContinuation {
+                pendingContinuation.resume(throwing: error)
+            } else {
+                stateLock.lock()
+                pendingResult = .failure(error)
+                stateLock.unlock()
+            }
         }
     }
 
-    private func writeHTTPResponse(body: String, to connection: NWConnection) {
+    private func writeHTTPResponse(body: String, to clientSocket: Int32) {
         let response = """
         HTTP/1.1 200 OK\r
         Content-Type: text/html; charset=utf-8\r
@@ -465,7 +520,113 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
         \r
         \(body)
         """
-        connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in })
+        let data = Data(response.utf8)
+        data.withUnsafeBytes { rawBufferPointer in
+            guard let baseAddress = rawBufferPointer.baseAddress else {
+                return
+            }
+
+            var bytesSent = 0
+            while bytesSent < data.count {
+                let result = send(clientSocket, baseAddress.advanced(by: bytesSent), data.count - bytesSent, 0)
+                if result > 0 {
+                    bytesSent += result
+                    continue
+                }
+
+                if errno == EINTR {
+                    continue
+                }
+
+                return
+            }
+        }
+    }
+
+    private static func makeListeningSocket(
+        port: UInt16?,
+        logger: any CodexDiagnosticsLogging
+    ) throws -> (fileDescriptor: Int32, port: UInt16) {
+        let requestedService = port.map(String.init) ?? "0"
+        var hints = addrinfo(
+            ai_flags: AI_NUMERICSERV,
+            ai_family: AF_UNSPEC,
+            ai_socktype: SOCK_STREAM,
+            ai_protocol: IPPROTO_TCP,
+            ai_addrlen: 0,
+            ai_canonname: nil,
+            ai_addr: nil,
+            ai_next: nil
+        )
+        var resultPointer: UnsafeMutablePointer<addrinfo>?
+        guard getaddrinfo("localhost", requestedService, &hints, &resultPointer) == 0, let firstResult = resultPointer else {
+            logger.log("callback_listener_failed getaddrinfo service=\(requestedService)")
+            throw CodexAuthError.loginFailed
+        }
+        defer { freeaddrinfo(firstResult) }
+
+        var cursor: UnsafeMutablePointer<addrinfo>? = firstResult
+        var failures: [String] = []
+        while let addressInfo = cursor {
+            let socketFD = socket(addressInfo.pointee.ai_family, addressInfo.pointee.ai_socktype, addressInfo.pointee.ai_protocol)
+            if socketFD == -1 {
+                failures.append("socket family=\(addressInfo.pointee.ai_family) errno=\(errno) reason=\(socketErrorDescription(errno))")
+                cursor = addressInfo.pointee.ai_next
+                continue
+            }
+
+            var reuseAddress: Int32 = 1
+            setsockopt(socketFD, SOL_SOCKET, SO_REUSEADDR, &reuseAddress, socklen_t(MemoryLayout<Int32>.size))
+
+            if bind(socketFD, addressInfo.pointee.ai_addr, addressInfo.pointee.ai_addrlen) == 0,
+               listen(socketFD, 16) == 0 {
+                let flags = fcntl(socketFD, F_GETFL)
+                if flags != -1 {
+                    _ = fcntl(socketFD, F_SETFL, flags | O_NONBLOCK)
+                }
+                return (socketFD, try localPort(for: socketFD))
+            }
+
+            failures.append("bind_listen family=\(addressInfo.pointee.ai_family) errno=\(errno) reason=\(socketErrorDescription(errno))")
+            close(socketFD)
+            cursor = addressInfo.pointee.ai_next
+        }
+
+        logger.log("callback_listener_failed \(failures.joined(separator: "; "))")
+        throw CodexAuthError.loginFailed
+    }
+
+    private static func localPort(for socketFD: Int32) throws -> UInt16 {
+        var addressStorage = sockaddr_storage()
+        var addressLength = socklen_t(MemoryLayout<sockaddr_storage>.size)
+        guard withUnsafeMutablePointer(to: &addressStorage, {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                getsockname(socketFD, $0, &addressLength)
+            }
+        }) == 0 else {
+            throw CodexAuthError.loginFailed
+        }
+
+        switch Int32(addressStorage.ss_family) {
+        case AF_INET:
+            return withUnsafePointer(to: &addressStorage) { storagePointer in
+                storagePointer.withMemoryRebound(to: sockaddr_in.self, capacity: 1) {
+                    UInt16(bigEndian: $0.pointee.sin_port)
+                }
+            }
+        case AF_INET6:
+            return withUnsafePointer(to: &addressStorage) { storagePointer in
+                storagePointer.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) {
+                    UInt16(bigEndian: $0.pointee.sin6_port)
+                }
+            }
+        default:
+            throw CodexAuthError.loginFailed
+        }
+    }
+
+    private static func socketErrorDescription(_ errorNumber: Int32) -> String {
+        String(cString: strerror(errorNumber))
     }
 }
 
