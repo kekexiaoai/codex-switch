@@ -6,16 +6,22 @@ public final class StatusItemController: NSObject {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
     private let viewModel: MenuBarViewModel
+    private let environment: AppEnvironment
 
-    public init(viewModel: MenuBarViewModel = .preview) {
-        self.viewModel = viewModel
+    public init(environment: AppEnvironment = .preview) {
+        self.environment = environment
+        self.viewModel = MenuBarViewModel(
+            service: EnvironmentMenuBarService(environment: environment)
+        )
         super.init()
     }
 
     public func install() {
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 360, height: 560)
-        popover.contentViewController = NSHostingController(rootView: MenuBarShellView(viewModel: viewModel))
+        popover.contentViewController = NSHostingController(
+            rootView: MenuBarShellView(viewModel: viewModel)
+        )
 
         if let button = statusItem.button {
             button.title = "Codex"

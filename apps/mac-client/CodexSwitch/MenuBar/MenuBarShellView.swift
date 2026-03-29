@@ -7,6 +7,14 @@ public struct MenuBarShellView: View {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
 
+    public init(environment: AppEnvironment) {
+        _viewModel = StateObject(
+            wrappedValue: MenuBarViewModel(
+                service: EnvironmentMenuBarService(environment: environment)
+            )
+        )
+    }
+
     public var body: some View {
         MenuBarPanelView(viewModel: viewModel)
             .task {
