@@ -12,9 +12,20 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
     }
 
     public func loadSnapshot() async -> MenuBarSnapshot {
-        let accounts = environment.accountStore.loadAccounts()
+        let repositoryAccounts = try? await environment.accountRepository?.loadAccounts()
+        let accounts = repositoryAccounts?.map(\.emailMask) ?? environment.accountStore.loadAccounts()
         let usageText = environment.usageService.refreshUsage()
-        let headerEmail = accounts.first ?? "No account"
+        let activeAccountID = await environment.activeAccountController?.currentActiveAccountID()
+        let headerEmail: String
+        if
+            let repositoryAccounts,
+            let activeAccountID,
+            let activeAccount = repositoryAccounts.first(where: { $0.id == activeAccountID })
+        {
+            headerEmail = activeAccount.emailMask
+        } else {
+            headerEmail = accounts.first ?? "No account"
+        }
 
         return MenuBarSnapshot(
             headerEmail: headerEmail,

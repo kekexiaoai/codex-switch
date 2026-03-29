@@ -54,7 +54,9 @@ public struct AccountRepository {
 public actor InMemoryAccountMetadataStore: AccountMetadataStore {
     private var accounts: [Account] = []
 
-    public init() {}
+    public init(accounts: [Account] = []) {
+        self.accounts = accounts
+    }
 
     public func loadAccounts() -> [Account] {
         accounts
@@ -68,7 +70,9 @@ public actor InMemoryAccountMetadataStore: AccountMetadataStore {
 public actor InMemoryCredentialStore: CredentialStore {
     private var secrets: [String: String] = [:]
 
-    public init() {}
+    public init(secrets: [String: String] = [:]) {
+        self.secrets = secrets
+    }
 
     public func saveSecret(_ secret: String, for accountID: String) {
         secrets[accountID] = secret

@@ -9,9 +9,11 @@ public final class ActiveAccountController: ObservableObject {
     private let usageService: any UsageRefreshing
 
     public init(
+        activeAccountID: String? = nil,
         switcher: any SwitchCommandRunning,
         usageService: any UsageRefreshing
     ) {
+        self.activeAccountID = activeAccountID
         self.switcher = switcher
         self.usageService = usageService
     }
@@ -21,5 +23,9 @@ public final class ActiveAccountController: ObservableObject {
         activeAccountID = id
         _ = try await usageService.refresh(reason: .switchTriggered)
         lastRefreshSource = "switch"
+    }
+
+    public func currentActiveAccountID() -> String? {
+        activeAccountID
     }
 }

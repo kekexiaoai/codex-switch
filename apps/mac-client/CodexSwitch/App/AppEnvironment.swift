@@ -76,28 +76,52 @@ public struct RuntimeConfiguration {
 public struct AppEnvironment {
     public let accountStore: any AccountStore
     public let usageService: any UsageService
+    public let accountRepository: AccountRepository?
+    public let activeAccountController: ActiveAccountController?
     public let runtimeMode: RuntimeMode
 
     public init(
         accountStore: any AccountStore,
         usageService: any UsageService,
+        accountRepository: AccountRepository? = nil,
+        activeAccountController: ActiveAccountController? = nil,
         runtimeMode: RuntimeMode
     ) {
         self.accountStore = accountStore
         self.usageService = usageService
+        self.accountRepository = accountRepository
+        self.activeAccountController = activeAccountController
         self.runtimeMode = runtimeMode
     }
 
     public static let preview = AppEnvironment(
         accountStore: MockAccountStore(),
         usageService: MockUsageService(),
+        accountRepository: nil,
+        activeAccountController: nil,
         runtimeMode: .preview
     )
 
+    @MainActor
     public static func live(configuration: RuntimeConfiguration) throws -> AppEnvironment {
-        AppEnvironment(
+        let fixtureAccounts = [
+            Account(id: "fixture-1", emailMask: "fixture@example.com", tier: .team),
+        ]
+        let repository = AccountRepository(
+            metadataStore: InMemoryAccountMetadataStore(accounts: fixtureAccounts),
+            credentialStore: InMemoryCredentialStore(secrets: ["fixture-1": "fixture-token"])
+        )
+        let controller = ActiveAccountController(
+            activeAccountID: "fixture-1",
+            switcher: StubSwitchCommandRunner(),
+            usageService: StubUsageRefreshService()
+        )
+
+        return AppEnvironment(
             accountStore: LiveAccountStore(configuration: configuration),
             usageService: LiveUsageService(configuration: configuration),
+            accountRepository: repository,
+            activeAccountController: controller,
             runtimeMode: .live
         )
     }

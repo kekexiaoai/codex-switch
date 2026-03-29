@@ -20,7 +20,7 @@ final class MenuBarViewModelTests: XCTestCase {
 
         await viewModel.refresh()
 
-        XCTAssertEqual(viewModel.headerEmail, "fixture-account")
+        XCTAssertEqual(viewModel.headerEmail, "fixture@example.com")
         XCTAssertEqual(viewModel.updatedText, "live-fixture")
         XCTAssertEqual(viewModel.accountRows.count, 1)
     }
