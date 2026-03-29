@@ -13,3 +13,4 @@ xcuserdata/
 *.lock
 build/
 dist/
+.worktrees/
