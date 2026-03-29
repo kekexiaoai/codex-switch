@@ -42,11 +42,18 @@ public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var usageRefreshEnabled: Bool
     @Published public private(set) var usageSourceMode: CodexUsageSourceMode
     @Published public private(set) var launchAtLogin: Bool
+    @Published public private(set) var pendingConfirmation: SettingsConfirmationRequest?
+    @Published public private(set) var lastActionMessage: SettingsActionMessage?
 
     private let defaults: UserDefaults
+    private let actionHandler: any SettingsActionHandling
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(
+        defaults: UserDefaults = .standard,
+        actionHandler: any SettingsActionHandling = NoopSettingsActionHandler()
+    ) {
         self.defaults = defaults
+        self.actionHandler = actionHandler
         self.showEmails = defaults.bool(forKey: Self.showEmailsKey)
         if defaults.object(forKey: Self.usageRefreshEnabledKey) == nil {
             self.usageRefreshEnabled = true
@@ -57,6 +64,8 @@ public final class SettingsViewModel: ObservableObject {
             rawValue: defaults.string(forKey: Self.usageSourceModeKey) ?? CodexUsageSourceMode.automatic.rawValue
         ) ?? .automatic
         self.launchAtLogin = defaults.bool(forKey: Self.launchAtLoginKey)
+        self.pendingConfirmation = nil
+        self.lastActionMessage = nil
     }
 
     public func setShowEmails(_ enabled: Bool) {
@@ -77,5 +86,26 @@ public final class SettingsViewModel: ObservableObject {
     public func setLaunchAtLogin(_ enabled: Bool) {
         defaults.set(enabled, forKey: Self.launchAtLoginKey)
         launchAtLogin = enabled
+    }
+
+    public func requestDestructiveAction(_ action: SettingsDestructiveAction) {
+        pendingConfirmation = SettingsConfirmationRequest(action: action)
+    }
+
+    public func confirmPendingAction() throws {
+        guard let confirmation = pendingConfirmation else {
+            return
+        }
+
+        lastActionMessage = try actionHandler.performDestructiveAction(confirmation.action)
+        pendingConfirmation = nil
+    }
+
+    public func cancelPendingAction() {
+        pendingConfirmation = nil
+    }
+
+    public func performUtilityAction(_ action: SettingsUtilityAction) throws {
+        lastActionMessage = try actionHandler.performUtilityAction(action)
     }
 }
