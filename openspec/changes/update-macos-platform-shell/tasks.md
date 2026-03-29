@@ -7,6 +7,6 @@
 - [x] 2.2 Validate the change with `openspec validate update-macos-platform-shell --strict`
 
 ## 3. Implementation Follow-Through
-- [ ] 3.1 Generate the app host so macOS 12 uses `NSStatusItem + NSPopover`
+- [x] 3.1 Generate the app host so macOS 12 uses `NSStatusItem + NSPopover`
 - [ ] 3.2 Add a macOS 13+ availability path for `MenuBarExtra`
 - [ ] 3.3 Keep both host paths rendering the same panel content and behavior
