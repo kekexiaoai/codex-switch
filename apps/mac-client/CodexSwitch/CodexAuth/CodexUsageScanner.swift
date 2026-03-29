@@ -155,12 +155,16 @@ public struct CodexUsageScanner {
 
     private func listRolloutLogURLs() throws -> [URL] {
         let todaysDirectory = sessionDirectoryURL(for: now())
-        guard fileManager.fileExists(atPath: todaysDirectory.path) else {
-            return []
+        let searchRootURL: URL
+
+        if fileManager.fileExists(atPath: todaysDirectory.path) {
+            searchRootURL = todaysDirectory
+        } else {
+            searchRootURL = paths.sessionsDirectoryURL
         }
 
         guard let enumerator = fileManager.enumerator(
-            at: todaysDirectory,
+            at: searchRootURL,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else {

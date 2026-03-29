@@ -1,0 +1,46 @@
+name: Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to package
+        required: false
+        default: main
+
+concurrency:
+  group: package-${{ github.event.inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Build Package Artifact
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Run Packaging Script
+        run: ./scripts/package-macos-app.sh
+
+      - name: Create Zip Archive
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/Codex-Switch-${{ github.run_number }}.zip"
+
+      - name: Upload App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: Codex-Switch-app-${{ github.run_number }}
+          path: dist/Codex Switch.app
+
+      - name: Upload Zip Archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: Codex-Switch-zip-${{ github.run_number }}
+          path: dist/Codex-Switch-${{ github.run_number }}.zip
