@@ -117,35 +117,72 @@ public struct MenuBarPanelView: View {
     }
 
     private var addAccountMenu: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            actionRow(
-                title: "Add Account",
-                systemImage: "person.crop.circle.badge.plus",
-                trailingSystemImage: isShowingAddAccountOptions ? "chevron.down" : "chevron.right"
-            ) {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    isShowingAddAccountOptions.toggle()
+        ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 8) {
+                actionRow(
+                    title: "Add Account",
+                    systemImage: "person.crop.circle.badge.plus",
+                    trailingSystemImage: isShowingAddAccountOptions ? "chevron.down" : "chevron.right"
+                ) {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isShowingAddAccountOptions.toggle()
+                    }
                 }
-            }
 
-            if isShowingAddAccountOptions {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(MenuBarViewModel.AddAccountAction.allCases, id: \.title) { action in
-                        actionRow(
-                            title: action.title,
-                            systemImage: action.systemImageName,
-                            isIndented: true
-                        ) {
-                            Task {
-                                await viewModel.performAddAccountAction(action)
+                if isShowingAddAccountOptions {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(MenuBarViewModel.AddAccountAction.allCases, id: \.title) { action in
+                            actionRow(
+                                title: action.title,
+                                systemImage: action.systemImageName,
+                                isIndented: true
+                            ) {
+                                viewModel.startAddAccountAction(action)
                             }
                         }
-                        .disabled(viewModel.isPerformingAddAccountAction)
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let progress = viewModel.addAccountProgress, isShowingAddAccountOptions {
+                addAccountProgressOverlay(progress)
+            }
         }
+    }
+
+    private func addAccountProgressOverlay(_ progress: MenuBarViewModel.AddAccountProgressState) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+                Text(progress.title)
+                    .font(.subheadline.weight(.semibold))
+            }
+
+            Text(progress.message)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if progress.showsCancelButton {
+                Button("Cancel Login") {
+                    viewModel.cancelAddAccountAction()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.regularMaterial)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
     }
 }
 

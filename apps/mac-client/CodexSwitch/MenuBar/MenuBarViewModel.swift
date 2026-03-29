@@ -2,6 +2,18 @@ import Foundation
 
 @MainActor
 public final class MenuBarViewModel: ObservableObject {
+    public struct AddAccountProgressState: Equatable {
+        public let title: String
+        public let message: String
+        public let showsCancelButton: Bool
+
+        public init(title: String, message: String, showsCancelButton: Bool) {
+            self.title = title
+            self.message = message
+            self.showsCancelButton = showsCancelButton
+        }
+    }
+
     public enum AddAccountAction: CaseIterable {
         case importCurrentAccount
         case importBackupAuth
@@ -37,6 +49,7 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var accountRows: [AccountRowModel] = []
     @Published public private(set) var showEmails = false
     @Published public private(set) var isPerformingAddAccountAction = false
+    @Published public private(set) var addAccountProgress: AddAccountProgressState?
     @Published public private(set) var alertMessage: MenuBarAlertMessage?
 
     private let service: any MenuBarSnapshotService
@@ -47,6 +60,8 @@ public final class MenuBarViewModel: ObservableObject {
     private let backupAuthPicker: (any BackupAuthPicking)?
     private let emailVisibilityStore: (any EmailVisibilityMutating)?
     private let actionHandler: (any MenuBarActionHandling)?
+    private var addAccountTask: Task<Void, Never>?
+    private var activeAddAccountOperationID: UUID?
 
     public static let preview = MenuBarViewModel(service: MockMenuBarService())
 
@@ -142,19 +157,66 @@ public final class MenuBarViewModel: ObservableObject {
         return account
     }
 
-    public func performAddAccountAction(_ action: AddAccountAction) async {
-        guard !isPerformingAddAccountAction else {
-            if action == .loginInBrowser {
-                alertMessage = MenuBarAlertMessage(
-                    title: "Browser Login In Progress",
-                    message: "A browser login is already in progress. Finish that sign-in flow, or wait for it to time out before trying again."
-                )
-            }
+    public func startAddAccountAction(_ action: AddAccountAction) {
+        guard addAccountTask == nil else {
             return
         }
 
+        let operationID = UUID()
+        activeAddAccountOperationID = operationID
         isPerformingAddAccountAction = true
-        defer { isPerformingAddAccountAction = false }
+        addAccountProgress = progressState(for: action)
+
+        addAccountTask = Task { [weak self] in
+            await self?.performAddAccountAction(action, operationID: operationID)
+        }
+    }
+
+    public func cancelAddAccountAction() {
+        guard addAccountTask != nil else {
+            return
+        }
+
+        addAccountTask?.cancel()
+        addAccountTask = nil
+        activeAddAccountOperationID = nil
+        isPerformingAddAccountAction = false
+        addAccountProgress = nil
+    }
+
+    public func performAddAccountAction(_ action: AddAccountAction) async {
+        await performAddAccountAction(action, operationID: nil)
+    }
+
+    private func performAddAccountAction(_ action: AddAccountAction, operationID: UUID?) async {
+        if operationID == nil {
+            guard !isPerformingAddAccountAction else {
+                if action == .loginInBrowser {
+                    alertMessage = MenuBarAlertMessage(
+                        title: "Browser Login In Progress",
+                        message: "A browser login is already in progress. Finish that sign-in flow, or wait for it to time out before trying again."
+                    )
+                }
+                return
+            }
+
+            isPerformingAddAccountAction = true
+            addAccountProgress = progressState(for: action)
+        }
+
+        defer {
+            let isCurrentOperation = isCurrentAddAccountOperation(operationID)
+
+            if isCurrentOperation {
+                addAccountTask = nil
+                activeAddAccountOperationID = nil
+            }
+
+            if operationID == nil || isCurrentOperation {
+                isPerformingAddAccountAction = false
+                addAccountProgress = nil
+            }
+        }
 
         do {
             let existingAccountIDs = try await knownAccountIDs()
@@ -168,19 +230,55 @@ public final class MenuBarViewModel: ObservableObject {
                 importedAccount = try await loginInBrowser()
             }
 
+            guard !Task.isCancelled else {
+                return
+            }
+
             if let importedAccount, existingAccountIDs.contains(importedAccount.id) {
                 alertMessage = MenuBarAlertMessage(
                     title: "Account Refreshed",
                     message: "Account already exists, auth refreshed."
                 )
             }
+        } catch is CancellationError {
+            return
         } catch {
+            guard !Task.isCancelled else {
+                return
+            }
             alertMessage = alert(for: action, error: error)
         }
     }
 
     public func dismissAlert() {
         alertMessage = nil
+    }
+
+    private func isCurrentAddAccountOperation(_ operationID: UUID?) -> Bool {
+        guard let operationID else {
+            return true
+        }
+
+        return activeAddAccountOperationID == operationID
+    }
+
+    private func progressState(for action: AddAccountAction) -> AddAccountProgressState? {
+        switch action {
+        case .loginInBrowser:
+            return AddAccountProgressState(
+                title: "Browser Login In Progress",
+                message: "Complete the sign-in flow in your browser. You can cancel here and try again at any time.",
+                showsCancelButton: true
+            )
+        case .importCurrentAccount:
+            return AddAccountProgressState(
+                title: "Importing Current Account",
+                message: "Reading your current Codex auth and adding it to Codex Switch.",
+                showsCancelButton: false
+            )
+        case .importBackupAuth:
+            return nil
+        }
     }
 
     private func knownAccountIDs() async throws -> Set<String> {

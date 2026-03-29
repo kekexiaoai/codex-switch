@@ -394,7 +394,7 @@ final class MenuBarViewModelTests: XCTestCase {
         )
     }
 
-    func testAddAccountActionIgnoresConcurrentLoginRequests() async throws {
+    func testStartAddAccountActionShowsBrowserLoginProgressAndIgnoresSecondTap() async throws {
         let tempDirectoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
@@ -414,7 +414,7 @@ final class MenuBarViewModelTests: XCTestCase {
             ),
             usageService: StubUsageRefreshService()
         )
-        let runner = SlowCountingCodexLoginRunner()
+        let runner = CancellableBlockingCodexLoginRunner()
         let viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(
                 environment: AppEnvironment(
@@ -436,17 +436,30 @@ final class MenuBarViewModelTests: XCTestCase {
             )
         )
 
-        let firstTask = Task { await viewModel.performAddAccountAction(.loginInBrowser) }
-        let secondTask = Task { await viewModel.performAddAccountAction(.loginInBrowser) }
-        await firstTask.value
-        await secondTask.value
+        viewModel.startAddAccountAction(.loginInBrowser)
+        try await waitForCondition { await runner.invocationCount() == 1 }
+
+        XCTAssertTrue(viewModel.isPerformingAddAccountAction)
+        XCTAssertEqual(
+            viewModel.addAccountProgress,
+            MenuBarViewModel.AddAccountProgressState(
+                title: "Browser Login In Progress",
+                message: "Complete the sign-in flow in your browser. You can cancel here and try again at any time.",
+                showsCancelButton: true
+            )
+        )
+
+        viewModel.startAddAccountAction(.loginInBrowser)
         let invocationCount = await runner.invocationCount()
         XCTAssertEqual(invocationCount, 1)
-        XCTAssertEqual(viewModel.alertMessage?.title, "Browser Login In Progress")
-        XCTAssertEqual(
-            viewModel.alertMessage?.message,
-            "A browser login is already in progress. Finish that sign-in flow, or wait for it to time out before trying again."
-        )
+        XCTAssertNil(viewModel.alertMessage)
+
+        viewModel.cancelAddAccountAction()
+        try await waitForCondition { await runner.didObserveCancellation() }
+
+        XCTAssertFalse(viewModel.isPerformingAddAccountAction)
+        XCTAssertNil(viewModel.addAccountProgress)
+        XCTAssertNil(viewModel.alertMessage)
     }
 
     func testAddAccountMenuExposesThreeChoices() {
@@ -495,6 +508,21 @@ final class MenuBarViewModelTests: XCTestCase {
     private func emailVisibilityToggleSystemImage(showEmails: Bool) -> String {
         showEmails ? "eye" : "eye.slash"
     }
+
+    private func waitForCondition(
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        _ condition: @escaping @Sendable () async -> Bool
+    ) async throws {
+        for _ in 0..<200 {
+            if await condition() {
+                return
+            }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTFail("Timed out waiting for condition", file: file, line: line)
+    }
 }
 
 private struct ThrowingCodexLoginRunner: CodexLoginRunning {
@@ -505,16 +533,24 @@ private struct ThrowingCodexLoginRunner: CodexLoginRunning {
     }
 }
 
-private actor SlowCountingCodexLoginRunner: CodexLoginRunning {
+private actor CancellableBlockingCodexLoginRunner: CodexLoginRunning {
     private var count = 0
+    private var observedCancellation = false
 
     func runLogin() async throws -> CodexLoginResult {
         count += 1
-        try? await Task.sleep(nanoseconds: 50_000_000)
-        return .success
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        observedCancellation = true
+        throw CancellationError()
     }
 
     func invocationCount() -> Int {
         count
+    }
+
+    func didObserveCancellation() -> Bool {
+        observedCancellation
     }
 }

@@ -89,56 +89,67 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
     }
 
     public func performLogin() async throws -> Data {
-        logger.log("browser_login_started")
-        let callbackServer = try callbackServerFactory()
-        defer { callbackServer.stop() }
+        let cancellationHandle = CallbackServerCancellationHandle()
 
-        let state = stateGenerator()
-        let codeVerifier = codeVerifierGenerator()
-        let authorizationURL = try buildAuthorizationURL(
-            redirectURI: callbackServer.redirectURI,
-            state: state,
-            codeVerifier: codeVerifier
-        )
-
-        let didOpenBrowser = await MainActor.run {
-            applicationActivator()
-            if browserOpener(authorizationURL) {
-                logger.log("browser_open_primary_result=true")
-                return true
+        return try await withTaskCancellationHandler(operation: {
+            logger.log("browser_login_started")
+            let callbackServer = try callbackServerFactory()
+            cancellationHandle.store(callbackServer)
+            defer {
+                callbackServer.stop()
+                cancellationHandle.clear()
             }
 
-            logger.log("browser_open_primary_result=false")
-            let didFallbackOpen = fallbackBrowserOpener(authorizationURL)
-            logger.log("browser_open_fallback_result=\(didFallbackOpen)")
-            return didFallbackOpen
-        }
+            let state = stateGenerator()
+            let codeVerifier = codeVerifierGenerator()
+            let authorizationURL = try buildAuthorizationURL(
+                redirectURI: callbackServer.redirectURI,
+                state: state,
+                codeVerifier: codeVerifier
+            )
 
-        guard didOpenBrowser else {
-            logger.log("browser_launch_failed")
-            throw CodexAuthError.browserLaunchFailed
-        }
+            let didOpenBrowser = await MainActor.run {
+                applicationActivator()
+                if browserOpener(authorizationURL) {
+                    logger.log("browser_open_primary_result=true")
+                    return true
+                }
 
-        let callbackResult = try await waitForCallback(using: callbackServer)
-        switch callbackResult {
-        case let .code(code, returnedState):
-            logger.log("callback_received code=true error=false")
-            guard returnedState == state else {
-                logger.log("callback_state_mismatch")
+                logger.log("browser_open_primary_result=false")
+                let didFallbackOpen = fallbackBrowserOpener(authorizationURL)
+                logger.log("browser_open_fallback_result=\(didFallbackOpen)")
+                return didFallbackOpen
+            }
+
+            guard didOpenBrowser else {
+                logger.log("browser_launch_failed")
+                throw CodexAuthError.browserLaunchFailed
+            }
+
+            let callbackResult = try await waitForCallback(using: callbackServer)
+            switch callbackResult {
+            case let .code(code, returnedState):
+                logger.log("callback_received code=true error=false")
+                guard returnedState == state else {
+                    logger.log("callback_state_mismatch")
+                    throw CodexAuthError.loginFailed
+                }
+
+                logger.log("token_exchange_started")
+                let tokenResponse = try await tokenExchanger(code, codeVerifier, callbackServer.redirectURI)
+                logger.log("token_exchange_succeeded")
+                return try buildAuthData(from: tokenResponse)
+            case let .failure(error, _):
+                logger.log("callback_received code=false error=true type=\(error)")
+                if error == "access_denied" {
+                    throw CodexAuthError.loginCancelled
+                }
                 throw CodexAuthError.loginFailed
             }
-
-            logger.log("token_exchange_started")
-            let tokenResponse = try await tokenExchanger(code, codeVerifier, callbackServer.redirectURI)
-            logger.log("token_exchange_succeeded")
-            return try buildAuthData(from: tokenResponse)
-        case let .failure(error, _):
-            logger.log("callback_received code=false error=true type=\(error)")
-            if error == "access_denied" {
-                throw CodexAuthError.loginCancelled
-            }
-            throw CodexAuthError.loginFailed
-        }
+        }, onCancel: {
+            logger.log("browser_login_task_cancelled")
+            cancellationHandle.stop()
+        })
     }
 
     private func waitForCallback(using callbackServer: any OAuthCallbackServing) async throws -> OAuthCallbackResult {
@@ -146,6 +157,8 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
             case callback(OAuthCallbackResult)
             case timedOut
         }
+
+        try Task.checkCancellation()
 
         return try await withThrowingTaskGroup(of: AwaitedResult.self) { group in
             group.addTask {
@@ -159,6 +172,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
 
             let firstResult = try await group.next()!
             group.cancelAll()
+            try Task.checkCancellation()
 
             switch firstResult {
             case let .callback(result):
@@ -679,6 +693,30 @@ private struct ShellBrowserOpener {
 private struct SystemApplicationActivator {
     static func activate() {
         NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+}
+
+private final class CallbackServerCancellationHandle: @unchecked Sendable {
+    private let lock = NSLock()
+    private var callbackServer: (any OAuthCallbackServing)?
+
+    func store(_ callbackServer: any OAuthCallbackServing) {
+        lock.lock()
+        self.callbackServer = callbackServer
+        lock.unlock()
+    }
+
+    func clear() {
+        lock.lock()
+        callbackServer = nil
+        lock.unlock()
+    }
+
+    func stop() {
+        lock.lock()
+        let callbackServer = callbackServer
+        lock.unlock()
+        callbackServer?.stop()
     }
 }
 

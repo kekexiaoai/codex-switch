@@ -245,6 +245,33 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
         XCTAssertFalse(logger.entries.contains(where: { $0.contains("access-token") }))
     }
 
+    func testBrokerStopsCallbackServerWhenLoginTaskIsCancelled() async throws {
+        let callbackServer = BlockingOAuthCallbackServer(
+            redirectURI: URL(string: "http://localhost:1455/auth/callback")!
+        )
+        let broker = DesktopCodexLoginBroker(
+            callbackServerFactory: { callbackServer },
+            browserOpener: { _ in true },
+            applicationActivator: {}
+        )
+
+        let loginTask = Task {
+            try await broker.performLogin()
+        }
+
+        try await waitForCondition { callbackServer.didBeginWaiting() }
+        loginTask.cancel()
+
+        do {
+            _ = try await loginTask.value
+            XCTFail("Expected login task to be cancelled")
+        } catch is CancellationError {
+            XCTAssertTrue(callbackServer.stopWasCalled)
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+    }
+
     private static let sampleRefreshDate = Date(timeIntervalSince1970: 1_743_157_872.345)
 
     private static func sampleIDToken(email: String, tier: String) -> String {
@@ -269,6 +296,21 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+
+    private func waitForCondition(
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        _ condition: @escaping @Sendable () async -> Bool
+    ) async throws {
+        for _ in 0..<200 {
+            if await condition() {
+                return
+            }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTFail("Timed out waiting for condition", file: file, line: line)
     }
 }
 
@@ -305,5 +347,59 @@ private final class StubOAuthCallbackServer: OAuthCallbackServing {
 
     func stop() {
         stopWasCalled = true
+    }
+}
+
+private final class BlockingOAuthCallbackServer: OAuthCallbackServing {
+    let redirectURI: URL
+    private let lock = NSLock()
+    private var _stopWasCalled = false
+    private var _hasStartedWaiting = false
+
+    init(redirectURI: URL) {
+        self.redirectURI = redirectURI
+    }
+
+    func waitForCallback() async throws -> OAuthCallbackResult {
+        markStartedWaiting()
+
+        while true {
+            if didStop() {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        throw CodexAuthError.loginFailed
+    }
+
+    func stop() {
+        lock.lock()
+        _stopWasCalled = true
+        lock.unlock()
+    }
+
+    func didBeginWaiting() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return _hasStartedWaiting
+    }
+
+    var stopWasCalled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return _stopWasCalled
+    }
+
+    private func markStartedWaiting() {
+        lock.lock()
+        _hasStartedWaiting = true
+        lock.unlock()
+    }
+
+    private func didStop() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return _stopWasCalled
     }
 }
