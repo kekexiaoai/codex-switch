@@ -6,6 +6,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling {
     private var statusItemController: StatusItemController?
     private var statusWindowPresenter: StatusWindowPresenter?
+    private var settingsWindowPresenter: SettingsWindowPresenter?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -15,6 +16,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
         let controller = StatusItemController(environment: environment, actionHandler: self)
         controller.install()
         statusItemController = controller
+        settingsWindowPresenter = SettingsWindowPresenter(
+            makeViewModel: {
+                environment.makeSettingsViewModel()
+            }
+        )
         statusWindowPresenter = environment.makeStatusSnapshotLoader().map { loader in
             StatusWindowPresenter(
                 loadSnapshot: {
@@ -31,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
     func handle(_ action: MenuBarAction) {
         switch action {
         case .openSettings:
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            settingsWindowPresenter?.present()
         case .openStatusPage:
             openStatusWindow()
         case .quit:

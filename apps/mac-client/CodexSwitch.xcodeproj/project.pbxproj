@@ -275,7 +275,8 @@
             "OBJ_1036",
             "OBJ_3007",
             "OBJ_3008",
-            "OBJ_3011"
+            "OBJ_3011",
+            "OBJ_3014"
          );
       };
       "OBJ_124" = {
@@ -576,6 +577,24 @@
          isa = "PBXBuildFile";
          fileRef = "OBJ_3009";
       };
+      "OBJ_3013" = {
+         isa = "PBXFileReference";
+         path = "SettingsWindowPresenter.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_3014" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_3015";
+      };
+      "OBJ_3015" = {
+         isa = "PBXFileReference";
+         path = "SettingsWindowPresenterTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_3016" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_3013";
+      };
       "OBJ_131" = {
          isa = "PBXFrameworksBuildPhase";
          files = (
@@ -789,7 +808,8 @@
             "OBJ_37",
             "OBJ_3001",
             "OBJ_3002",
-            "OBJ_3009"
+            "OBJ_3009",
+            "OBJ_3013"
          );
          name = "Settings";
          path = "Settings";
@@ -964,7 +984,8 @@
             "OBJ_53",
             "OBJ_3005",
             "OBJ_3006",
-            "OBJ_3010"
+            "OBJ_3010",
+            "OBJ_3015"
          );
          name = "Settings";
          path = "Settings";
@@ -1329,7 +1350,8 @@
             "OBJ_2002",
             "OBJ_3003",
             "OBJ_3004",
-            "OBJ_3012"
+            "OBJ_3012",
+            "OBJ_3016"
          );
       };
       "OBJ_84" = {
