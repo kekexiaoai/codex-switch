@@ -6,6 +6,7 @@ public protocol AccountStore {
 
 public protocol UsageService {
     func refreshUsage() -> String
+    func usageSnapshot(for accountID: String) -> CodexUsageSnapshot?
 }
 
 public struct MockAccountStore: AccountStore {
@@ -22,6 +23,10 @@ public struct MockUsageService: UsageService {
     public func refreshUsage() -> String {
         "preview"
     }
+
+    public func usageSnapshot(for accountID: String) -> CodexUsageSnapshot? {
+        nil
+    }
 }
 
 public struct LiveAccountStore: AccountStore {
@@ -32,10 +37,7 @@ public struct LiveAccountStore: AccountStore {
     }
 
     public func loadAccounts() -> [String] {
-        switch configuration.kind {
-        case .fixture:
-            return ["fixture-account"]
-        }
+        []
     }
 }
 
@@ -47,10 +49,24 @@ public struct LiveUsageService: UsageService {
     }
 
     public func refreshUsage() -> String {
-        switch configuration.kind {
-        case .fixture:
-            return "live-fixture"
+        guard let cache = try? loadUsageCache(), let latest = cache.entries.values.max(by: { $0.updatedAt < $1.updatedAt }) else {
+            return "No usage data"
         }
+
+        return "Updated \(ISO8601DateFormatter().string(from: latest.updatedAt))"
+    }
+
+    public func usageSnapshot(for accountID: String) -> CodexUsageSnapshot? {
+        try? loadUsageCache().entries[accountID]
+    }
+
+    private func loadUsageCache() throws -> CodexUsageCache {
+        let url = configuration.paths.usageCacheURL
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return CodexUsageCache()
+        }
+
+        return try JSONDecoder().decode(CodexUsageCache.self, from: Data(contentsOf: url))
     }
 }
 
@@ -60,16 +76,15 @@ public enum RuntimeMode: Equatable {
 }
 
 public struct RuntimeConfiguration {
-    public enum Kind {
-        case fixture
-    }
+    public let paths: CodexPaths
+    public let loginRunner: any CodexLoginRunning
 
-    public let kind: Kind
-
-    public static let fixture = RuntimeConfiguration(kind: .fixture)
-
-    public init(kind: Kind) {
-        self.kind = kind
+    public init(
+        paths: CodexPaths = CodexPaths(),
+        loginRunner: any CodexLoginRunning = ProcessCodexLoginRunner()
+    ) {
+        self.paths = paths
+        self.loginRunner = loginRunner
     }
 }
 
@@ -78,6 +93,8 @@ public struct AppEnvironment {
     public let usageService: any UsageService
     public let accountRepository: AccountRepository?
     public let activeAccountController: ActiveAccountController?
+    public let accountImporter: CodexAuthImporter?
+    public let loginCoordinator: CodexLoginCoordinator?
     public let emailVisibilityProvider: (any EmailVisibilityProviding)?
     public let runtimeMode: RuntimeMode
 
@@ -86,6 +103,8 @@ public struct AppEnvironment {
         usageService: any UsageService,
         accountRepository: AccountRepository? = nil,
         activeAccountController: ActiveAccountController? = nil,
+        accountImporter: CodexAuthImporter? = nil,
+        loginCoordinator: CodexLoginCoordinator? = nil,
         emailVisibilityProvider: (any EmailVisibilityProviding)? = UserDefaultsEmailVisibilityStore(),
         runtimeMode: RuntimeMode
     ) {
@@ -93,6 +112,8 @@ public struct AppEnvironment {
         self.usageService = usageService
         self.accountRepository = accountRepository
         self.activeAccountController = activeAccountController
+        self.accountImporter = accountImporter
+        self.loginCoordinator = loginCoordinator
         self.emailVisibilityProvider = emailVisibilityProvider
         self.runtimeMode = runtimeMode
     }
@@ -102,23 +123,29 @@ public struct AppEnvironment {
         usageService: MockUsageService(),
         accountRepository: nil,
         activeAccountController: nil,
+        accountImporter: nil,
+        loginCoordinator: nil,
         emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
         runtimeMode: .preview
     )
 
     @MainActor
     public static func live(configuration: RuntimeConfiguration) throws -> AppEnvironment {
-        let fixtureAccounts = [
-            Account(id: "fixture-1", emailMask: "f••••••@example.com", email: "fixture@example.com", tier: .team),
-        ]
-        let repository = AccountRepository(
-            metadataStore: InMemoryAccountMetadataStore(accounts: fixtureAccounts),
-            credentialStore: InMemoryCredentialStore(secrets: ["fixture-1": "fixture-token"])
+        let fileStore = CodexAuthFileStore(paths: configuration.paths)
+        let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
+        let repository = AccountRepository(catalog: archivedAccountStore)
+        let importer = CodexAuthImporter(fileStore: fileStore)
+        let usageRefreshService = CodexUsageRefreshService(
+            fileStore: fileStore,
+            scanner: CodexUsageScanner(paths: configuration.paths)
         )
         let controller = ActiveAccountController(
-            activeAccountID: "fixture-1",
-            switcher: StubSwitchCommandRunner(),
-            usageService: StubUsageRefreshService()
+            activeAccountID: currentActiveAccountID(fileStore: fileStore),
+            switcher: CodexAccountSwitcher(
+                archivedAccountStore: archivedAccountStore,
+                fileStore: fileStore
+            ),
+            usageService: usageRefreshService
         )
 
         return AppEnvironment(
@@ -126,8 +153,27 @@ public struct AppEnvironment {
             usageService: LiveUsageService(configuration: configuration),
             accountRepository: repository,
             activeAccountController: controller,
+            accountImporter: importer,
+            loginCoordinator: CodexLoginCoordinator(
+                runner: configuration.loginRunner,
+                importer: importer
+            ),
             emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
             runtimeMode: .live
         )
+    }
+
+    private static func currentActiveAccountID(fileStore: CodexAuthFileStore) -> String? {
+        guard
+            let data = try? fileStore.readCurrentAuthData(),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let tokens = object["tokens"] as? [String: Any],
+            let idToken = tokens["id_token"] as? String,
+            let claims = try? CodexJWTDecoder().decode(idToken: idToken)
+        else {
+            return nil
+        }
+
+        return claims.accountID
     }
 }

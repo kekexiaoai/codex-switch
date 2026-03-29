@@ -17,6 +17,9 @@ public final class StatusItemController: NSObject {
             service: EnvironmentMenuBarService(environment: environment),
             accountRepository: environment.accountRepository,
             activeAccountController: environment.activeAccountController,
+            accountImporter: environment.accountImporter,
+            loginCoordinator: environment.loginCoordinator,
+            backupAuthPicker: OpenPanelBackupAuthPicker(),
             emailVisibilityStore: environment.emailVisibilityProvider as? any EmailVisibilityMutating,
             actionHandler: actionHandler
         )

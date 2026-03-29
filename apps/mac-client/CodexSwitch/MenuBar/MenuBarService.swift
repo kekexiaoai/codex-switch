@@ -17,6 +17,8 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         let usageText = environment.usageService.refreshUsage()
         let showFullEmails = environment.emailVisibilityProvider?.showEmails() ?? false
         let activeAccountID = await environment.activeAccountController?.currentActiveAccountID()
+        let activeAccount = repositoryAccounts?.first(where: { $0.id == activeAccountID }) ?? repositoryAccounts?.first
+        let activeSnapshot = activeAccount.flatMap { environment.usageService.usageSnapshot(for: $0.id) }
         let headerEmail: String
         if
             let repositoryAccounts,
@@ -32,23 +34,39 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
 
         return MenuBarSnapshot(
             headerEmail: headerEmail,
-            headerTier: environment.runtimeMode == .live ? "LIVE" : "PREVIEW",
+            headerTier: activeAccount?.tier.rawValue.uppercased() ?? (environment.runtimeMode == .live ? "LIVE" : "PREVIEW"),
             updatedText: usageText,
-            summaries: [
+            summaries: activeSnapshot.map { snapshot in
+                [
+                    UsageSummaryModel(
+                        id: "5h",
+                        title: "5 Hours",
+                        percentUsed: snapshot.fiveHour.percentUsed,
+                        resetText: "Resets \(ISO8601DateFormatter().string(from: snapshot.fiveHour.resetsAt))"
+                    ),
+                    UsageSummaryModel(
+                        id: "weekly",
+                        title: "Weekly",
+                        percentUsed: snapshot.weekly.percentUsed,
+                        resetText: "Resets \(ISO8601DateFormatter().string(from: snapshot.weekly.resetsAt))"
+                    ),
+                ]
+            } ?? [
                 UsageSummaryModel(
                     id: "5h",
                     title: "5 Hours",
-                    percentUsed: environment.runtimeMode == .live ? 42 : 56,
+                    percentUsed: environment.runtimeMode == .live ? 0 : 56,
                     resetText: "Usage source: \(usageText)"
                 ),
             ],
             accounts: repositoryAccounts?.map { account in
-                AccountRowModel(
+                let snapshot = environment.usageService.usageSnapshot(for: account.id)
+                return AccountRowModel(
                     id: account.id,
                     emailMask: account.displayEmail(showFullEmail: showFullEmails),
                     tierLabel: account.tier.rawValue.capitalized,
-                    fiveHourPercent: environment.runtimeMode == .live ? 42 : 56,
-                    weeklyPercent: environment.runtimeMode == .live ? 24 : 13
+                    fiveHourPercent: snapshot?.fiveHour.percentUsed ?? (environment.runtimeMode == .live ? 0 : 56),
+                    weeklyPercent: snapshot?.weekly.percentUsed ?? (environment.runtimeMode == .live ? 0 : 13)
                 )
             } ?? accounts.enumerated().map { index, account in
                 AccountRowModel(

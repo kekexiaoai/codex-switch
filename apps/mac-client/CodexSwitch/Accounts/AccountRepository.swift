@@ -11,6 +11,7 @@ public protocol CredentialStore {
 }
 
 public struct AccountRepository {
+    private let catalog: (any AccountCatalog)?
     private let metadataStore: any AccountMetadataStore
     private let credentialStore: any CredentialStore
 
@@ -18,8 +19,15 @@ public struct AccountRepository {
         metadataStore: any AccountMetadataStore,
         credentialStore: any CredentialStore
     ) {
+        self.catalog = nil
         self.metadataStore = metadataStore
         self.credentialStore = credentialStore
+    }
+
+    public init(catalog: any AccountCatalog) {
+        self.catalog = catalog
+        self.metadataStore = InMemoryAccountMetadataStore()
+        self.credentialStore = InMemoryCredentialStore()
     }
 
     public func save(account: Account, secret: String) async throws {
@@ -42,8 +50,20 @@ public struct AccountRepository {
     }
 
     public func loadAccounts() async throws -> [Account] {
-        try await metadataStore.loadAccounts().map {
-            Account(id: $0.id, emailMask: $0.emailMask, email: $0.email, tier: $0.tier)
+        if let catalog {
+            return try await catalog.loadAccounts()
+        }
+
+        return try await metadataStore.loadAccounts().map {
+            Account(
+                id: $0.id,
+                emailMask: $0.emailMask,
+                email: $0.email,
+                tier: $0.tier,
+                archiveFilename: $0.archiveFilename,
+                source: $0.source,
+                lastImportedAt: $0.lastImportedAt
+            )
         }
     }
 

@@ -8,12 +8,12 @@
 - [x] 2.3 Validate the change with `openspec validate add-codex-auth-backend --strict`
 
 ## 3. Implementation
-- [ ] 3.1 Add Codex path/runtime abstractions for `~/.codex/auth.json`, `~/.codex/accounts/`, and `~/.codex/sessions/`
-- [ ] 3.2 Add auth-file parsing, JWT decoding, email masking, and archive filename helpers with unit tests
-- [ ] 3.3 Implement the unified import pipeline for current active auth and backup `auth.json` imports
-- [ ] 3.4 Replace app-owned metadata/secret persistence with archive-backed account repository behavior
-- [ ] 3.5 Implement archived account switching by atomically replacing `~/.codex/auth.json`
-- [ ] 3.6 Implement usage scanning from `~/.codex/sessions/rollout-*.jsonl` plus cached last-known snapshots
-- [ ] 3.7 Implement browser login import by coordinating `codex login`
-- [ ] 3.8 Replace demo/manual add-account actions with import-driven menu bar flows and refresh wiring
-- [ ] 3.9 Add integration tests for import, switch, usage scan, and login coordination fixtures
+- [x] 3.1 Add Codex path/runtime abstractions for `~/.codex/auth.json`, `~/.codex/accounts/`, and `~/.codex/sessions/`
+- [x] 3.2 Add auth-file parsing, JWT decoding, email masking, and archive filename helpers with unit tests
+- [x] 3.3 Implement the unified import pipeline for current active auth and backup `auth.json` imports
+- [x] 3.4 Replace app-owned metadata/secret persistence with archive-backed account repository behavior
+- [x] 3.5 Implement archived account switching by atomically replacing `~/.codex/auth.json`
+- [x] 3.6 Implement usage scanning from `~/.codex/sessions/rollout-*.jsonl` plus cached last-known snapshots
+- [x] 3.7 Implement browser login import by coordinating `codex login`
+- [x] 3.8 Replace demo/manual add-account actions with import-driven menu bar flows and refresh wiring
+- [x] 3.9 Add integration tests for import, switch, usage scan, and login coordination fixtures

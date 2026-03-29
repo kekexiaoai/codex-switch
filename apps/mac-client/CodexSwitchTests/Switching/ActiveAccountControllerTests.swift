@@ -14,4 +14,62 @@ final class ActiveAccountControllerTests: XCTestCase {
         XCTAssertEqual(controller.activeAccountID, "acct-2")
         XCTAssertEqual(controller.lastRefreshSource, "switch")
     }
+
+    func testCodexAccountSwitcherReplacesActiveAuthWithArchivedAuth() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let archiveFilename = CodexArchiveNaming.archiveFilename(for: "alex@example.com")
+        try FileManager.default.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
+        let archivedData = try sampleAuthData(email: "alex@example.com", tier: "team")
+        try archivedData.write(to: paths.accountsDirectoryURL.appendingPathComponent(archiveFilename))
+        let metadata = CodexAccountMetadataCache(entries: [
+            archiveFilename: CodexAccountMetadataEntry(
+                source: .currentAuth,
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+            ),
+        ])
+        try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
+        try Data("old-auth".utf8).write(to: paths.authFileURL)
+
+        let switcher = CodexAccountSwitcher(
+            archivedAccountStore: CodexArchivedAccountStore(fileStore: CodexAuthFileStore(paths: paths)),
+            fileStore: CodexAuthFileStore(paths: paths)
+        )
+
+        try await switcher.activateAccount(id: "subject-alex@example.com")
+
+        let activeData = try Data(contentsOf: paths.authFileURL)
+        XCTAssertEqual(activeData, archivedData)
+    }
+
+    private func sampleAuthData(email: String, tier: String) throws -> Data {
+        let payload = [
+            "sub": "subject-\(email)",
+            "email": email,
+            "tier": tier,
+        ]
+        let token = [
+            base64URL(#"{"alg":"none","typ":"JWT"}"#),
+            base64URL(String(data: try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]), encoding: .utf8)!),
+            "signature",
+        ].joined(separator: ".")
+        let object: [String: Any] = [
+            "tokens": [
+                "id_token": token,
+            ],
+        ]
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    private func base64URL(_ string: String) -> String {
+        Data(string.utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
 }

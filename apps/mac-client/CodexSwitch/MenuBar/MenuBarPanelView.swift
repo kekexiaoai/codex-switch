@@ -33,8 +33,20 @@ public struct MenuBarPanelView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 10) {
-                actionRow(title: "Add Account") {
-                    viewModel.startAddingAccount()
+                actionRow(title: "Import Current Account") {
+                    Task {
+                        try? await viewModel.importCurrentAccount()
+                    }
+                }
+                actionRow(title: "Import Backup Auth") {
+                    Task {
+                        try? await viewModel.importBackupAccount()
+                    }
+                }
+                actionRow(title: "Login in Browser") {
+                    Task {
+                        try? await viewModel.loginInBrowser()
+                    }
                 }
                 actionRow(title: "Status Page") {
                     viewModel.openStatusPage()
@@ -50,11 +62,6 @@ public struct MenuBarPanelView: View {
                 actionRow(title: "Quit") {
                     viewModel.quit()
                 }
-            }
-
-            if viewModel.isPresentingAddAccount {
-                Divider()
-                addAccountForm
             }
         }
         .padding(20)
@@ -87,40 +94,5 @@ public struct MenuBarPanelView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
-    }
-
-    private var addAccountForm: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Add Account")
-                .font(.headline)
-
-            TextField("Email", text: $viewModel.draftEmail)
-                .textFieldStyle(.roundedBorder)
-
-            SecureField("Secret", text: $viewModel.draftSecret)
-                .textFieldStyle(.roundedBorder)
-
-            Picker("Tier", selection: $viewModel.draftTier) {
-                Text("Plus").tag(AccountTier.plus)
-                Text("Pro").tag(AccountTier.pro)
-                Text("Team").tag(AccountTier.team)
-            }
-            .pickerStyle(.segmented)
-
-            HStack {
-                Button("Cancel") {
-                    viewModel.cancelAddingAccount()
-                }
-
-                Spacer()
-
-                Button("Save") {
-                    Task {
-                        try? await viewModel.submitNewAccount()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-            }
-        }
     }
 }

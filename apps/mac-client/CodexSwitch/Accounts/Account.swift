@@ -4,6 +4,14 @@ public enum AccountTier: String, Codable, Equatable {
     case plus
     case pro
     case team
+    case unknown
+}
+
+public enum AccountSource: String, Codable, Equatable {
+    case fixture
+    case currentAuth
+    case backupImport
+    case browserLogin
 }
 
 public struct Account: Codable, Equatable, Identifiable {
@@ -11,6 +19,9 @@ public struct Account: Codable, Equatable, Identifiable {
     public let emailMask: String
     public let email: String?
     public let tier: AccountTier
+    public let archiveFilename: String
+    public let source: AccountSource
+    public let lastImportedAt: Date
     public var embeddedSecret: String?
 
     public init(
@@ -18,12 +29,18 @@ public struct Account: Codable, Equatable, Identifiable {
         emailMask: String,
         email: String? = nil,
         tier: AccountTier,
+        archiveFilename: String? = nil,
+        source: AccountSource = .fixture,
+        lastImportedAt: Date = .distantPast,
         embeddedSecret: String? = nil
     ) {
         self.id = id
         self.emailMask = emailMask
         self.email = email
         self.tier = tier
+        self.archiveFilename = archiveFilename ?? "\(id).json"
+        self.source = source
+        self.lastImportedAt = lastImportedAt
         self.embeddedSecret = embeddedSecret
     }
 

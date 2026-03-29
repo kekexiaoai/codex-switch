@@ -18,7 +18,40 @@ final class MenuBarViewModelTests: XCTestCase {
     }
 
     func testEnvironmentBackedServiceLoadsLiveSnapshot() async throws {
-        let environment = try AppEnvironment.live(configuration: .fixture)
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let archiveFilename = CodexArchiveNaming.archiveFilename(for: "fixture@example.com")
+        try FileManager.default.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
+        try sampleAuthData(email: "fixture@example.com", tier: "team").write(
+            to: paths.accountsDirectoryURL.appendingPathComponent(archiveFilename)
+        )
+        let metadata = CodexAccountMetadataCache(entries: [
+            archiveFilename: CodexAccountMetadataEntry(
+                source: .currentAuth,
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+            ),
+        ])
+        try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
+        let usageCache = CodexUsageCache(entries: [
+            "subject-fixture@example.com": CodexUsageSnapshot(
+                accountID: "subject-fixture@example.com",
+                updatedAt: Date(timeIntervalSince1970: 1_711_584_800),
+                fiveHour: CodexUsageWindow(percentUsed: 42, resetsAt: Date(timeIntervalSince1970: 1_711_591_000)),
+                weekly: CodexUsageWindow(percentUsed: 24, resetsAt: Date(timeIntervalSince1970: 1_711_900_000))
+            ),
+        ])
+        try JSONEncoder().encode(usageCache).write(to: paths.usageCacheURL)
+
+        let environment = try AppEnvironment.live(
+            configuration: RuntimeConfiguration(
+                paths: paths,
+                loginRunner: StubCodexLoginRunner(result: .success)
+            )
+        )
         let viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(environment: environment)
         )
@@ -26,8 +59,9 @@ final class MenuBarViewModelTests: XCTestCase {
         await viewModel.refresh()
 
         XCTAssertEqual(viewModel.headerEmail, "f••••••@example.com")
-        XCTAssertEqual(viewModel.updatedText, "live-fixture")
+        XCTAssertTrue(viewModel.updatedText.hasPrefix("Updated "))
         XCTAssertEqual(viewModel.accountRows.count, 1)
+        XCTAssertEqual(viewModel.accountRows.first?.fiveHourPercent, 42)
     }
 
     func testSwitchingAccountRefreshesHeaderState() async throws {
@@ -66,20 +100,24 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.headerEmail, "b@example.com")
     }
 
-    func testAddDemoAccountAppendsAccountAndActivatesIt() async throws {
-        let metadataStore = InMemoryAccountMetadataStore(
-            accounts: [
-                Account(id: "acct-1", emailMask: "a••••@example.com", email: "a@example.com", tier: .team),
-            ]
-        )
-        let credentialStore = InMemoryCredentialStore()
-        let repository = AccountRepository(
-            metadataStore: metadataStore,
-            credentialStore: credentialStore
-        )
+    func testImportCurrentAccountArchivesAccountAndActivatesIt() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        try sampleAuthData(email: "imported@example.com", tier: "pro").write(to: paths.authFileURL)
+
+        let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
+        let repository = AccountRepository(catalog: archivedAccountStore)
         let controller = ActiveAccountController(
-            activeAccountID: "acct-1",
-            switcher: StubSwitchCommandRunner(),
+            activeAccountID: nil,
+            switcher: CodexAccountSwitcher(
+                archivedAccountStore: archivedAccountStore,
+                fileStore: fileStore
+            ),
             usageService: StubUsageRefreshService()
         )
         let environment = AppEnvironment(
@@ -87,20 +125,22 @@ final class MenuBarViewModelTests: XCTestCase {
             usageService: MockUsageService(),
             accountRepository: repository,
             activeAccountController: controller,
+            accountImporter: CodexAuthImporter(fileStore: fileStore),
             runtimeMode: .live
         )
         let viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(environment: environment),
             accountRepository: repository,
-            activeAccountController: controller
+            activeAccountController: controller,
+            accountImporter: environment.accountImporter
         )
 
         await viewModel.refresh()
-        try await viewModel.addDemoAccount()
+        try await viewModel.importCurrentAccount()
 
-        XCTAssertEqual(viewModel.accountRows.count, 2)
-        XCTAssertEqual(controller.currentActiveAccountID(), "demo-2")
-        XCTAssertEqual(viewModel.headerEmail, "d••••@example.com")
+        XCTAssertEqual(viewModel.accountRows.count, 1)
+        XCTAssertEqual(controller.currentActiveAccountID(), "subject-imported@example.com")
+        XCTAssertEqual(viewModel.headerEmail, "i•••••••@example.com")
     }
 
     func testEnvironmentBackedServiceShowsFullEmailsWhenPreferenceEnabled() async throws {
@@ -168,20 +208,25 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.headerEmail, "a@example.com")
     }
 
-    func testSubmitNewAccountPersistsDraftAndActivatesIt() async throws {
-        let metadataStore = InMemoryAccountMetadataStore(
-            accounts: [
-                Account(id: "acct-1", emailMask: "a••••@example.com", email: "a@example.com", tier: .team),
-            ]
-        )
-        let credentialStore = InMemoryCredentialStore()
-        let repository = AccountRepository(
-            metadataStore: metadataStore,
-            credentialStore: credentialStore
-        )
+    func testImportBackupAccountUsesPickerResultAndActivatesIt() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        let backupURL = tempDirectoryURL.appendingPathComponent("backup-auth.json")
+        try sampleAuthData(email: "backup@example.com", tier: "team").write(to: backupURL)
+
+        let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
+        let repository = AccountRepository(catalog: archivedAccountStore)
         let controller = ActiveAccountController(
-            activeAccountID: "acct-1",
-            switcher: StubSwitchCommandRunner(),
+            activeAccountID: nil,
+            switcher: CodexAccountSwitcher(
+                archivedAccountStore: archivedAccountStore,
+                fileStore: fileStore
+            ),
             usageService: StubUsageRefreshService()
         )
         let environment = AppEnvironment(
@@ -189,26 +234,50 @@ final class MenuBarViewModelTests: XCTestCase {
             usageService: MockUsageService(),
             accountRepository: repository,
             activeAccountController: controller,
+            accountImporter: CodexAuthImporter(fileStore: fileStore),
             runtimeMode: .live
         )
         let viewModel = MenuBarViewModel(
             service: EnvironmentMenuBarService(environment: environment),
             accountRepository: repository,
-            activeAccountController: controller
+            activeAccountController: controller,
+            accountImporter: environment.accountImporter,
+            backupAuthPicker: StubBackupAuthPicker(selectedURL: backupURL)
         )
 
-        viewModel.startAddingAccount()
-        viewModel.draftEmail = "newperson@example.com"
-        viewModel.draftSecret = "secret-2"
-        viewModel.draftTier = .pro
-
-        try await viewModel.submitNewAccount()
+        try await viewModel.importBackupAccount()
 
         let savedAccounts = try await repository.loadAccounts()
-        XCTAssertEqual(savedAccounts.count, 2)
-        XCTAssertEqual(savedAccounts.last?.email, "newperson@example.com")
-        XCTAssertEqual(savedAccounts.last?.emailMask, "n••••••••@example.com")
-        XCTAssertEqual(savedAccounts.last?.tier, .pro)
-        XCTAssertEqual(controller.currentActiveAccountID(), "acct-2")
+        XCTAssertEqual(savedAccounts.count, 1)
+        XCTAssertEqual(savedAccounts.last?.email, "backup@example.com")
+        XCTAssertEqual(savedAccounts.last?.tier, .team)
+        XCTAssertEqual(controller.currentActiveAccountID(), "subject-backup@example.com")
+    }
+
+    private func sampleAuthData(email: String, tier: String) throws -> Data {
+        let payload = [
+            "sub": "subject-\(email)",
+            "email": email,
+            "tier": tier,
+        ]
+        let token = [
+            base64URL(#"{"alg":"none","typ":"JWT"}"#),
+            base64URL(String(data: try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]), encoding: .utf8)!),
+            "signature",
+        ].joined(separator: ".")
+        let object: [String: Any] = [
+            "tokens": [
+                "id_token": token,
+            ],
+        ]
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    private func base64URL(_ string: String) -> String {
+        Data(string.utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }

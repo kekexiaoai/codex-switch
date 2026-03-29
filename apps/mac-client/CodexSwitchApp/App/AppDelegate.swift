@@ -10,10 +10,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        let controller = StatusItemController(
-            environment: .preview,
-            actionHandler: self
-        )
+        let environment = (try? AppEnvironment.live(configuration: RuntimeConfiguration())) ?? .preview
+        let controller = StatusItemController(environment: environment, actionHandler: self)
         controller.install()
         statusItemController = controller
     }
