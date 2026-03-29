@@ -53,6 +53,20 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.menuBarIconStyle, .highContrastLight)
     }
 
+    func testSettingsViewModelDefaultsMenuBarDiagnosticsToDisabledAndPersistsChanges() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.MenuBarDiagnostics")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.MenuBarDiagnostics")
+
+        let viewModel = SettingsViewModel(defaults: defaults)
+
+        XCTAssertFalse(viewModel.menuBarDiagnosticsEnabled)
+
+        viewModel.setMenuBarDiagnosticsEnabled(true)
+
+        XCTAssertTrue(defaults.bool(forKey: SettingsViewModel.menuBarDiagnosticsEnabledKey))
+        XCTAssertTrue(viewModel.menuBarDiagnosticsEnabled)
+    }
+
     func testSettingsViewModelDefaultsToHighContrastMenuBarIconStyle() {
         let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.MenuBarIcon.Default")!
         defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.MenuBarIcon.Default")

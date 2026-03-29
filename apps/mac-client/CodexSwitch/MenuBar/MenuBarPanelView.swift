@@ -3,6 +3,7 @@ import SwiftUI
 public struct MenuBarPanelView: View {
     @ObservedObject private var viewModel: MenuBarViewModel
     @State private var isShowingAddAccountOptions = false
+    @State private var lastReportedPreferredHeight: CGFloat?
     private let onPreferredHeightChange: ((CGFloat) -> Void)?
 
     public init(
@@ -55,19 +56,30 @@ public struct MenuBarPanelView: View {
             .background(measurementReader)
             .opacity(0.001)
             .allowsHitTesting(false)
+            .transaction { transaction in
+                transaction.animation = nil
+            }
     }
 
     private var measurementReader: some View {
         GeometryReader { proxy in
-            let height = proxy.size.height
+            let height = Self.normalizedPreferredHeight(proxy.size.height)
             Color.clear
-                .task(id: height) {
-                    guard height > 0 else {
-                        return
-                    }
-                    onPreferredHeightChange?(height)
+                .onAppear {
+                    reportPreferredHeight(height)
+                }
+                .onChange(of: height) { nextHeight in
+                    reportPreferredHeight(nextHeight)
                 }
         }
+    }
+
+    private func reportPreferredHeight(_ height: CGFloat) {
+        guard Self.shouldReportPreferredHeight(height, previous: lastReportedPreferredHeight) else {
+            return
+        }
+        lastReportedPreferredHeight = height
+        onPreferredHeightChange?(height)
     }
 
     private var contentBody: some View {
@@ -262,9 +274,7 @@ public struct MenuBarPanelView: View {
                     systemImage: "person.crop.circle.badge.plus",
                     trailingSystemImage: isShowingAddAccountOptions ? "chevron.down" : "chevron.right"
                 ) {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        isShowingAddAccountOptions.toggle()
-                    }
+                    isShowingAddAccountOptions.toggle()
                 }
 
                 if isShowingAddAccountOptions {
@@ -321,6 +331,25 @@ public struct MenuBarPanelView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
+    }
+}
+
+extension MenuBarPanelView {
+    static func normalizedPreferredHeight(_ height: CGFloat) -> CGFloat {
+        guard height > 0 else {
+            return 0
+        }
+        return (height * 2).rounded() / 2
+    }
+
+    static func shouldReportPreferredHeight(_ nextHeight: CGFloat, previous: CGFloat?) -> Bool {
+        guard nextHeight > 0 else {
+            return false
+        }
+        guard let previous else {
+            return true
+        }
+        return abs(nextHeight - previous) >= 1
     }
 }
 

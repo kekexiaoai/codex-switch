@@ -113,6 +113,7 @@ public final class SettingsViewModel: ObservableObject {
     public static let usageSourceModeKey = "usageSourceMode"
     public static let launchAtLoginKey = "launchAtLogin"
     public static let menuBarIconStyleKey = "menuBarIconStyle"
+    public static let menuBarDiagnosticsEnabledKey = "menuBarDiagnosticsEnabled"
     public static let menuBarIconStyleDidChangeNotification = Notification.Name("SettingsViewModel.menuBarIconStyleDidChange")
 
     @Published public private(set) var showEmails: Bool
@@ -120,6 +121,7 @@ public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var usageSourceMode: CodexUsageSourceMode
     @Published public private(set) var launchAtLogin: Bool
     @Published public private(set) var menuBarIconStyle: MenuBarIconStyle
+    @Published public private(set) var menuBarDiagnosticsEnabled: Bool
     @Published public private(set) var pendingConfirmation: SettingsConfirmationRequest?
     @Published public private(set) var lastActionMessage: SettingsActionMessage?
 
@@ -148,6 +150,7 @@ public final class SettingsViewModel: ObservableObject {
         let resolvedLaunchAtLogin = launchAtLoginController?.isEnabled() ?? storedLaunchAtLogin
         self.launchAtLogin = resolvedLaunchAtLogin
         self.menuBarIconStyle = MenuBarIconStyle.resolved(from: defaults.string(forKey: Self.menuBarIconStyleKey))
+        self.menuBarDiagnosticsEnabled = defaults.bool(forKey: Self.menuBarDiagnosticsEnabledKey)
         self.pendingConfirmation = nil
         self.lastActionMessage = nil
 
@@ -200,6 +203,11 @@ public final class SettingsViewModel: ObservableObject {
             name: Self.menuBarIconStyleDidChangeNotification,
             object: defaults
         )
+    }
+
+    public func setMenuBarDiagnosticsEnabled(_ enabled: Bool) {
+        defaults.set(enabled, forKey: Self.menuBarDiagnosticsEnabledKey)
+        menuBarDiagnosticsEnabled = enabled
     }
 
     public func requestDestructiveAction(_ action: SettingsDestructiveAction) {

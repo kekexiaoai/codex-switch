@@ -38,77 +38,39 @@ final class StatusItemControllerTests: XCTestCase {
         )
     }
 
-    func testHostingControllerReportsPositiveMeasuredHeight() async {
-        let service = SnapshotSequenceMenuBarService(
-            snapshots: [
-                makeSnapshot(accountCount: 8),
-            ]
+    func testPanelOnlyReportsMeaningfulHeightChanges() {
+        XCTAssertTrue(
+            MenuBarPanelView.shouldReportPreferredHeight(
+                MenuBarPanelView.normalizedPreferredHeight(605.5),
+                previous: nil
+            )
         )
-        let viewModel = MenuBarViewModel(service: service)
-        var reportedHeights: [CGFloat] = []
-        let hostingController = MenuBarHostingController(
-            rootView: MenuBarShellView(viewModel: viewModel),
-            contentWidth: StatusItemController.popoverWidth,
-            onHeightChange: { reportedHeights.append($0) }
+        XCTAssertFalse(
+            MenuBarPanelView.shouldReportPreferredHeight(
+                MenuBarPanelView.normalizedPreferredHeight(605.49),
+                previous: MenuBarPanelView.normalizedPreferredHeight(605.5)
+            )
         )
-
-        _ = hostingController.view
-        hostingController.view.frame = NSRect(
-            x: 0,
-            y: 0,
-            width: StatusItemController.popoverWidth,
-            height: StatusItemController.maxPopoverHeight
+        XCTAssertFalse(
+            MenuBarPanelView.shouldReportPreferredHeight(
+                MenuBarPanelView.normalizedPreferredHeight(605.74),
+                previous: MenuBarPanelView.normalizedPreferredHeight(605.5)
+            )
         )
-
-        await viewModel.refresh()
-        await Task.yield()
-        hostingController.scheduleHeightRefresh()
-        await Task.yield()
-        XCTAssertGreaterThan(reportedHeights.last ?? 0, 0)
+        XCTAssertTrue(
+            MenuBarPanelView.shouldReportPreferredHeight(
+                MenuBarPanelView.normalizedPreferredHeight(702.0),
+                previous: MenuBarPanelView.normalizedPreferredHeight(605.5)
+            )
+        )
     }
 
-    func testHostingControllerRefreshIgnoresStalePreferredContentSize() async {
-        let service = SnapshotSequenceMenuBarService(
-            snapshots: [
-                makeSnapshot(accountCount: 8),
-                makeSnapshot(accountCount: 2),
-            ]
-        )
-        let viewModel = MenuBarViewModel(service: service)
-        var reportedHeights: [CGFloat] = []
+    func testHostingControllerCanBeCreatedForMenuBarShellView() {
         let hostingController = MenuBarHostingController(
-            rootView: MenuBarShellView(viewModel: viewModel),
-            contentWidth: StatusItemController.popoverWidth,
-            onHeightChange: { reportedHeights.append($0) }
+            rootView: MenuBarShellView(viewModel: .preview)
         )
 
-        _ = hostingController.view
-        hostingController.view.frame = NSRect(
-            x: 0,
-            y: 0,
-            width: StatusItemController.popoverWidth,
-            height: StatusItemController.maxPopoverHeight
-        )
-
-        await viewModel.refresh()
-        await Task.yield()
-        hostingController.scheduleHeightRefresh()
-        await Task.yield()
-        let expandedHeight = reportedHeights.last ?? 0
-
-        hostingController.preferredContentSize = NSSize(
-            width: StatusItemController.popoverWidth,
-            height: StatusItemController.maxPopoverHeight
-        )
-
-        await viewModel.refresh()
-        await Task.yield()
-        hostingController.scheduleHeightRefresh()
-        await Task.yield()
-        let shrunkenHeight = reportedHeights.last ?? 0
-
-        XCTAssertGreaterThan(expandedHeight, 0)
-        XCTAssertGreaterThan(shrunkenHeight, 0)
+        XCTAssertNotNil(hostingController.view)
     }
 
     func testPanelReportsDifferentContentHeightsWhenAccountCountChanges() async {

@@ -12,7 +12,7 @@ final class SettingsViewTests: XCTestCase {
         XCTAssertEqual(view.sectionTitles, ["General", "Privacy", "Usage", "Advanced"])
         XCTAssertEqual(
             view.generalControlLabels,
-            ["Launch at Login", "Menu Bar Icon", "High Contrast", "High Contrast Bold"]
+            ["Launch at Login", "Menu Bar Icon", "High Contrast", "High Contrast Bold", "Enable Menu Bar Diagnostics"]
         )
         XCTAssertEqual(
             view.menuBarIconPreviewResourceNames,

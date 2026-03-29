@@ -21,7 +21,7 @@ public struct SettingsView: View {
     public var generalControlLabels: [String] {
         ["Launch at Login", "Menu Bar Icon"] + MenuBarIconStyle.allCases.map { style in
             Self.label(for: style)
-        }
+        } + ["Enable Menu Bar Diagnostics"]
     }
 
     public var menuBarIconPreviewResourceNames: [String] {
@@ -89,6 +89,16 @@ public struct SettingsView: View {
                             menuBarIconPreview(for: style)
                         }
                     }
+
+                    Divider()
+
+                    Toggle(
+                        "Enable Menu Bar Diagnostics",
+                        isOn: Binding(
+                            get: { viewModel.menuBarDiagnosticsEnabled },
+                            set: { viewModel.setMenuBarDiagnosticsEnabled($0) }
+                        )
+                    )
                 }
 
                 settingsSection("Privacy") {
