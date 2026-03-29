@@ -161,6 +161,7 @@ public struct DesktopCodexLoginBroker: CodexDesktopLoginBroking {
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "originator", value: originator),
             URLQueryItem(name: "id_token_add_organizations", value: "true"),
+            URLQueryItem(name: "codex_cli_simplified_flow", value: "true"),
             URLQueryItem(name: "allowed_workspace_id", value: ""),
         ]
 
@@ -269,7 +270,7 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
     private var continuation: CheckedContinuation<OAuthCallbackResult, Error>?
     private var isStopped = false
 
-    public init(port: UInt16? = nil) throws {
+    public init(port: UInt16? = 1455) throws {
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
         let requestedPort = port.flatMap(NWEndpoint.Port.init(rawValue:))
@@ -303,7 +304,7 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
             throw CodexAuthError.loginFailed
         }
 
-        redirectURI = URL(string: "http://127.0.0.1:\(actualPort)/auth/callback")!
+        redirectURI = URL(string: "http://localhost:\(actualPort)/auth/callback")!
         listener.newConnectionHandler = { [weak self] connection in
             self?.handle(connection)
         }
@@ -389,7 +390,7 @@ public final class LocalhostOAuthCallbackServer: OAuthCallbackServing {
             return nil
         }
 
-        guard let components = URLComponents(string: "http://127.0.0.1\(pathWithQuery)") else {
+        guard let components = URLComponents(string: "http://localhost\(pathWithQuery)") else {
             return nil
         }
 

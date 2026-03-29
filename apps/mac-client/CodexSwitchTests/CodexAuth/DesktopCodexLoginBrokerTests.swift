@@ -5,7 +5,7 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
     func testBrokerBuildsCodexCompatibleAuthDataAfterBrowserCallbackSucceeds() async throws {
         let opener = BrowserOpenSpy()
         let callbackServer = StubOAuthCallbackServer(
-            redirectURI: URL(string: "http://127.0.0.1:8787/auth/callback")!,
+            redirectURI: URL(string: "http://localhost:1455/auth/callback")!,
             result: .success(.code("browser-code", state: "expected-state"))
         )
         let broker = DesktopCodexLoginBroker(
@@ -16,7 +16,7 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
             tokenExchanger: { code, verifier, redirectURI in
                 XCTAssertEqual(code, "browser-code")
                 XCTAssertEqual(verifier, "expected-verifier")
-                XCTAssertEqual(redirectURI.absoluteString, "http://127.0.0.1:8787/auth/callback")
+                XCTAssertEqual(redirectURI.absoluteString, "http://localhost:1455/auth/callback")
                 return CodexOAuthTokenResponse(
                     accessToken: "access-token",
                     refreshToken: "refresh-token",
@@ -41,7 +41,7 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
         XCTAssertEqual(tokens["id_token"], Self.sampleIDToken(email: "broker@example.com", tier: "team"))
         XCTAssertEqual(
             opener.openedURLs.first?.absoluteString,
-            "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http://127.0.0.1:8787/auth/callback&scope=openid%20profile%20email%20offline_access&code_challenge=a7vAnVI-b6qjdd18p8m2utvFMMIs0_T3n9RWc495DxQ&code_challenge_method=S256&state=expected-state&originator=codex_chatgpt_desktop&id_token_add_organizations=true&allowed_workspace_id="
+            "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http://localhost:1455/auth/callback&scope=openid%20profile%20email%20offline_access&code_challenge=a7vAnVI-b6qjdd18p8m2utvFMMIs0_T3n9RWc495DxQ&code_challenge_method=S256&state=expected-state&originator=codex_chatgpt_desktop&id_token_add_organizations=true&codex_cli_simplified_flow=true&allowed_workspace_id="
         )
         XCTAssertTrue(callbackServer.stopWasCalled)
     }
@@ -52,7 +52,7 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
             codeVerifierGenerator: { "expected-verifier" },
             callbackServerFactory: {
                 StubOAuthCallbackServer(
-                    redirectURI: URL(string: "http://127.0.0.1:8787/auth/callback")!,
+                    redirectURI: URL(string: "http://localhost:1455/auth/callback")!,
                     result: .success(.failure(error: "access_denied", description: "cancelled"))
                 )
             },
@@ -82,7 +82,7 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
             codeVerifierGenerator: { "expected-verifier" },
             callbackServerFactory: {
                 StubOAuthCallbackServer(
-                    redirectURI: URL(string: "http://127.0.0.1:8787/auth/callback")!,
+                    redirectURI: URL(string: "http://localhost:1455/auth/callback")!,
                     result: .failure(CodexAuthError.loginTimedOut)
                 )
             },
@@ -113,7 +113,7 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
             codeVerifierGenerator: { "expected-verifier" },
             callbackServerFactory: {
                 StubOAuthCallbackServer(
-                    redirectURI: URL(string: "http://127.0.0.1:8787/auth/callback")!,
+                    redirectURI: URL(string: "http://localhost:1455/auth/callback")!,
                     result: .success(.failure(error: "access_denied", description: "cancelled"))
                 )
             },
@@ -152,7 +152,7 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
             codeVerifierGenerator: { "expected-verifier" },
             callbackServerFactory: {
                 StubOAuthCallbackServer(
-                    redirectURI: URL(string: "http://127.0.0.1:8787/auth/callback")!,
+                    redirectURI: URL(string: "http://localhost:1455/auth/callback")!,
                     result: .success(.failure(error: "access_denied", description: "cancelled"))
                 )
             },
@@ -194,7 +194,7 @@ final class DesktopCodexLoginBrokerTests: XCTestCase {
             codeVerifierGenerator: { "expected-verifier" },
             callbackServerFactory: {
                 StubOAuthCallbackServer(
-                    redirectURI: URL(string: "http://127.0.0.1:8787/auth/callback")!,
+                    redirectURI: URL(string: "http://localhost:1455/auth/callback")!,
                     result: .failure(CodexAuthError.loginTimedOut)
                 )
             },
