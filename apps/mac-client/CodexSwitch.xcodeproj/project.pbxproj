@@ -17,7 +17,7 @@
             "en"
          );
          mainGroup = "OBJ_5";
-         productRefGroup = "OBJ_38";
+         productRefGroup = "OBJ_44";
          projectDirPath = ".";
          targets = (
             "mac-client::CodexSwitch::ProductTarget",
@@ -34,34 +34,157 @@
          sourceTree = "<group>";
       };
       "OBJ_100" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_37";
+         isa = "XCBuildConfiguration";
+         buildSettings = {
+         };
+         name = "Release";
       };
       "OBJ_101" = {
-         isa = "PBXFrameworksBuildPhase";
-         files = (
-            "OBJ_102"
-         );
-      };
-      "OBJ_102" = {
-         isa = "PBXBuildFile";
-         fileRef = "mac-client::CodexSwitchKit::Product";
+         isa = "PBXTargetDependency";
+         target = "mac-client::CodexSwitchTests";
       };
       "OBJ_103" = {
-         isa = "PBXTargetDependency";
-         target = "mac-client::CodexSwitchKit";
+         isa = "XCConfigurationList";
+         buildConfigurations = (
+            "OBJ_104",
+            "OBJ_105"
+         );
+         defaultConfigurationIsVisible = "0";
+         defaultConfigurationName = "Release";
+      };
+      "OBJ_104" = {
+         isa = "XCBuildConfiguration";
+         buildSettings = {
+            CLANG_ENABLE_MODULES = "YES";
+            CURRENT_PROJECT_VERSION = "1";
+            DRIVERKIT_DEPLOYMENT_TARGET = "19.0";
+            EMBEDDED_CONTENT_CONTAINS_SWIFT = "YES";
+            FRAMEWORK_SEARCH_PATHS = (
+               "$(inherited)",
+               "$(PLATFORM_DIR)/Developer/Library/Frameworks"
+            );
+            HEADER_SEARCH_PATHS = (
+               "$(inherited)"
+            );
+            INFOPLIST_FILE = "CodexSwitch.xcodeproj/CodexSwitchTests_Info.plist";
+            IPHONEOS_DEPLOYMENT_TARGET = "14.0";
+            LD_RUNPATH_SEARCH_PATHS = (
+               "$(inherited)",
+               "@loader_path/../Frameworks",
+               "@loader_path/Frameworks"
+            );
+            MACOSX_DEPLOYMENT_TARGET = "12.0";
+            OTHER_CFLAGS = (
+               "$(inherited)"
+            );
+            OTHER_LDFLAGS = (
+               "$(inherited)"
+            );
+            OTHER_SWIFT_FLAGS = (
+               "$(inherited)"
+            );
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+               "$(inherited)"
+            );
+            SWIFT_VERSION = "5.0";
+            TARGET_NAME = "CodexSwitchTests";
+            TVOS_DEPLOYMENT_TARGET = "14.0";
+            WATCHOS_DEPLOYMENT_TARGET = "7.0";
+         };
+         name = "Debug";
+      };
+      "OBJ_105" = {
+         isa = "XCBuildConfiguration";
+         buildSettings = {
+            CLANG_ENABLE_MODULES = "YES";
+            CURRENT_PROJECT_VERSION = "1";
+            DRIVERKIT_DEPLOYMENT_TARGET = "19.0";
+            EMBEDDED_CONTENT_CONTAINS_SWIFT = "YES";
+            FRAMEWORK_SEARCH_PATHS = (
+               "$(inherited)",
+               "$(PLATFORM_DIR)/Developer/Library/Frameworks"
+            );
+            HEADER_SEARCH_PATHS = (
+               "$(inherited)"
+            );
+            INFOPLIST_FILE = "CodexSwitch.xcodeproj/CodexSwitchTests_Info.plist";
+            IPHONEOS_DEPLOYMENT_TARGET = "14.0";
+            LD_RUNPATH_SEARCH_PATHS = (
+               "$(inherited)",
+               "@loader_path/../Frameworks",
+               "@loader_path/Frameworks"
+            );
+            MACOSX_DEPLOYMENT_TARGET = "12.0";
+            OTHER_CFLAGS = (
+               "$(inherited)"
+            );
+            OTHER_LDFLAGS = (
+               "$(inherited)"
+            );
+            OTHER_SWIFT_FLAGS = (
+               "$(inherited)"
+            );
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+               "$(inherited)"
+            );
+            SWIFT_VERSION = "5.0";
+            TARGET_NAME = "CodexSwitchTests";
+            TVOS_DEPLOYMENT_TARGET = "14.0";
+            WATCHOS_DEPLOYMENT_TARGET = "7.0";
+         };
+         name = "Release";
+      };
+      "OBJ_106" = {
+         isa = "PBXSourcesBuildPhase";
+         files = (
+            "OBJ_107",
+            "OBJ_108",
+            "OBJ_109",
+            "OBJ_110"
+         );
+      };
+      "OBJ_107" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_38";
+      };
+      "OBJ_108" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_39";
+      };
+      "OBJ_109" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_41";
       };
       "OBJ_11" = {
          isa = "PBXFileReference";
          path = "CodexSwitchApp.swift";
          sourceTree = "<group>";
       };
+      "OBJ_110" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_43";
+      };
+      "OBJ_111" = {
+         isa = "PBXFrameworksBuildPhase";
+         files = (
+            "OBJ_112"
+         );
+      };
+      "OBJ_112" = {
+         isa = "PBXBuildFile";
+         fileRef = "mac-client::CodexSwitchKit::Product";
+      };
+      "OBJ_113" = {
+         isa = "PBXTargetDependency";
+         target = "mac-client::CodexSwitchKit";
+      };
       "OBJ_12" = {
          isa = "PBXGroup";
          children = (
             "OBJ_13",
             "OBJ_18",
-            "OBJ_22"
+            "OBJ_22",
+            "OBJ_31"
          );
          name = "CodexSwitchKit";
          path = "CodexSwitch";
@@ -230,66 +353,68 @@
       "OBJ_31" = {
          isa = "PBXGroup";
          children = (
-            "OBJ_32"
+            "OBJ_32",
+            "OBJ_33",
+            "OBJ_34"
+         );
+         name = "Switching";
+         path = "Switching";
+         sourceTree = "<group>";
+      };
+      "OBJ_32" = {
+         isa = "PBXFileReference";
+         path = "ActiveAccountController.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_33" = {
+         isa = "PBXFileReference";
+         path = "SwitchCommandRunner.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_34" = {
+         isa = "PBXFileReference";
+         path = "UsageRefreshService.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_35" = {
+         isa = "PBXGroup";
+         children = (
+            "OBJ_36"
          );
          name = "Tests";
          path = "";
          sourceTree = "SOURCE_ROOT";
       };
-      "OBJ_32" = {
+      "OBJ_36" = {
          isa = "PBXGroup";
          children = (
-            "OBJ_33",
-            "OBJ_35",
-            "OBJ_36"
+            "OBJ_37",
+            "OBJ_39",
+            "OBJ_40",
+            "OBJ_42"
          );
          name = "CodexSwitchTests";
          path = "CodexSwitchTests";
          sourceTree = "SOURCE_ROOT";
       };
-      "OBJ_33" = {
+      "OBJ_37" = {
          isa = "PBXGroup";
          children = (
-            "OBJ_34"
+            "OBJ_38"
          );
          name = "Accounts";
          path = "Accounts";
          sourceTree = "<group>";
       };
-      "OBJ_34" = {
+      "OBJ_38" = {
          isa = "PBXFileReference";
          path = "AccountRepositoryTests.swift";
          sourceTree = "<group>";
       };
-      "OBJ_35" = {
+      "OBJ_39" = {
          isa = "PBXFileReference";
          path = "CodexSwitchTests.swift";
          sourceTree = "<group>";
-      };
-      "OBJ_36" = {
-         isa = "PBXGroup";
-         children = (
-            "OBJ_37"
-         );
-         name = "MenuBar";
-         path = "MenuBar";
-         sourceTree = "<group>";
-      };
-      "OBJ_37" = {
-         isa = "PBXFileReference";
-         path = "MenuBarViewModelTests.swift";
-         sourceTree = "<group>";
-      };
-      "OBJ_38" = {
-         isa = "PBXGroup";
-         children = (
-            "mac-client::CodexSwitchApp::Product",
-            "mac-client::CodexSwitchKit::Product",
-            "mac-client::CodexSwitchTests::Product"
-         );
-         name = "Products";
-         path = "";
-         sourceTree = "BUILT_PRODUCTS_DIR";
       };
       "OBJ_4" = {
          isa = "XCBuildConfiguration";
@@ -324,76 +449,115 @@
          };
          name = "Release";
       };
+      "OBJ_40" = {
+         isa = "PBXGroup";
+         children = (
+            "OBJ_41"
+         );
+         name = "MenuBar";
+         path = "MenuBar";
+         sourceTree = "<group>";
+      };
+      "OBJ_41" = {
+         isa = "PBXFileReference";
+         path = "MenuBarViewModelTests.swift";
+         sourceTree = "<group>";
+      };
       "OBJ_42" = {
+         isa = "PBXGroup";
+         children = (
+            "OBJ_43"
+         );
+         name = "Switching";
+         path = "Switching";
+         sourceTree = "<group>";
+      };
+      "OBJ_43" = {
+         isa = "PBXFileReference";
+         path = "ActiveAccountControllerTests.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_44" = {
+         isa = "PBXGroup";
+         children = (
+            "mac-client::CodexSwitchApp::Product",
+            "mac-client::CodexSwitchKit::Product",
+            "mac-client::CodexSwitchTests::Product"
+         );
+         name = "Products";
+         path = "";
+         sourceTree = "BUILT_PRODUCTS_DIR";
+      };
+      "OBJ_48" = {
          isa = "PBXFileReference";
          path = "CodexSwitchApp";
          sourceTree = "SOURCE_ROOT";
       };
-      "OBJ_43" = {
+      "OBJ_49" = {
          isa = "PBXFileReference";
          path = "CodexSwitchTests";
          sourceTree = "SOURCE_ROOT";
-      };
-      "OBJ_44" = {
-         isa = "PBXFileReference";
-         path = "CodexSwitch";
-         sourceTree = "SOURCE_ROOT";
-      };
-      "OBJ_45" = {
-         isa = "PBXFileReference";
-         path = "README.md";
-         sourceTree = "<group>";
-      };
-      "OBJ_47" = {
-         isa = "XCConfigurationList";
-         buildConfigurations = (
-            "OBJ_48",
-            "OBJ_49"
-         );
-         defaultConfigurationIsVisible = "0";
-         defaultConfigurationName = "Release";
-      };
-      "OBJ_48" = {
-         isa = "XCBuildConfiguration";
-         buildSettings = {
-         };
-         name = "Debug";
-      };
-      "OBJ_49" = {
-         isa = "XCBuildConfiguration";
-         buildSettings = {
-         };
-         name = "Release";
       };
       "OBJ_5" = {
          isa = "PBXGroup";
          children = (
             "OBJ_6",
             "OBJ_7",
-            "OBJ_31",
-            "OBJ_38",
-            "OBJ_42",
-            "OBJ_43",
+            "OBJ_35",
             "OBJ_44",
-            "OBJ_45"
+            "OBJ_48",
+            "OBJ_49",
+            "OBJ_50",
+            "OBJ_51"
          );
          path = "";
          sourceTree = "<group>";
       };
       "OBJ_50" = {
-         isa = "PBXTargetDependency";
-         target = "mac-client::CodexSwitchApp";
+         isa = "PBXFileReference";
+         path = "CodexSwitch";
+         sourceTree = "SOURCE_ROOT";
       };
-      "OBJ_52" = {
+      "OBJ_51" = {
+         isa = "PBXFileReference";
+         path = "README.md";
+         sourceTree = "<group>";
+      };
+      "OBJ_53" = {
          isa = "XCConfigurationList";
          buildConfigurations = (
-            "OBJ_53",
-            "OBJ_54"
+            "OBJ_54",
+            "OBJ_55"
          );
          defaultConfigurationIsVisible = "0";
          defaultConfigurationName = "Release";
       };
-      "OBJ_53" = {
+      "OBJ_54" = {
+         isa = "XCBuildConfiguration";
+         buildSettings = {
+         };
+         name = "Debug";
+      };
+      "OBJ_55" = {
+         isa = "XCBuildConfiguration";
+         buildSettings = {
+         };
+         name = "Release";
+      };
+      "OBJ_56" = {
+         isa = "PBXTargetDependency";
+         target = "mac-client::CodexSwitchApp";
+      };
+      "OBJ_58" = {
+         isa = "XCConfigurationList";
+         buildConfigurations = (
+            "OBJ_59",
+            "OBJ_60"
+         );
+         defaultConfigurationIsVisible = "0";
+         defaultConfigurationName = "Release";
+      };
+      "OBJ_59" = {
          isa = "XCBuildConfiguration";
          buildSettings = {
             CURRENT_PROJECT_VERSION = "1";
@@ -433,72 +597,6 @@
             WATCHOS_DEPLOYMENT_TARGET = "4.0";
          };
          name = "Debug";
-      };
-      "OBJ_54" = {
-         isa = "XCBuildConfiguration";
-         buildSettings = {
-            CURRENT_PROJECT_VERSION = "1";
-            DRIVERKIT_DEPLOYMENT_TARGET = "19.0";
-            FRAMEWORK_SEARCH_PATHS = (
-               "$(inherited)",
-               "$(PLATFORM_DIR)/Developer/Library/Frameworks"
-            );
-            HEADER_SEARCH_PATHS = (
-               "$(inherited)"
-            );
-            INFOPLIST_FILE = "CodexSwitch.xcodeproj/CodexSwitchApp_Info.plist";
-            IPHONEOS_DEPLOYMENT_TARGET = "11.0";
-            LD_RUNPATH_SEARCH_PATHS = (
-               "$(inherited)",
-               "$(TOOLCHAIN_DIR)/usr/lib/swift/macosx",
-               "@executable_path"
-            );
-            MACOSX_DEPLOYMENT_TARGET = "12.0";
-            OTHER_CFLAGS = (
-               "$(inherited)"
-            );
-            OTHER_LDFLAGS = (
-               "$(inherited)"
-            );
-            OTHER_SWIFT_FLAGS = (
-               "$(inherited)"
-            );
-            SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
-               "$(inherited)"
-            );
-            SWIFT_FORCE_DYNAMIC_LINK_STDLIB = "YES";
-            SWIFT_FORCE_STATIC_LINK_STDLIB = "NO";
-            SWIFT_VERSION = "5.0";
-            TARGET_NAME = "CodexSwitchApp";
-            TVOS_DEPLOYMENT_TARGET = "11.0";
-            WATCHOS_DEPLOYMENT_TARGET = "4.0";
-         };
-         name = "Release";
-      };
-      "OBJ_55" = {
-         isa = "PBXSourcesBuildPhase";
-         files = (
-            "OBJ_56",
-            "OBJ_57"
-         );
-      };
-      "OBJ_56" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_10";
-      };
-      "OBJ_57" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_11";
-      };
-      "OBJ_58" = {
-         isa = "PBXFrameworksBuildPhase";
-         files = (
-            "OBJ_59"
-         );
-      };
-      "OBJ_59" = {
-         isa = "PBXBuildFile";
-         fileRef = "mac-client::CodexSwitchKit::Product";
       };
       "OBJ_6" = {
          isa = "PBXFileReference";
@@ -507,19 +605,85 @@
          sourceTree = "<group>";
       };
       "OBJ_60" = {
+         isa = "XCBuildConfiguration";
+         buildSettings = {
+            CURRENT_PROJECT_VERSION = "1";
+            DRIVERKIT_DEPLOYMENT_TARGET = "19.0";
+            FRAMEWORK_SEARCH_PATHS = (
+               "$(inherited)",
+               "$(PLATFORM_DIR)/Developer/Library/Frameworks"
+            );
+            HEADER_SEARCH_PATHS = (
+               "$(inherited)"
+            );
+            INFOPLIST_FILE = "CodexSwitch.xcodeproj/CodexSwitchApp_Info.plist";
+            IPHONEOS_DEPLOYMENT_TARGET = "11.0";
+            LD_RUNPATH_SEARCH_PATHS = (
+               "$(inherited)",
+               "$(TOOLCHAIN_DIR)/usr/lib/swift/macosx",
+               "@executable_path"
+            );
+            MACOSX_DEPLOYMENT_TARGET = "12.0";
+            OTHER_CFLAGS = (
+               "$(inherited)"
+            );
+            OTHER_LDFLAGS = (
+               "$(inherited)"
+            );
+            OTHER_SWIFT_FLAGS = (
+               "$(inherited)"
+            );
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+               "$(inherited)"
+            );
+            SWIFT_FORCE_DYNAMIC_LINK_STDLIB = "YES";
+            SWIFT_FORCE_STATIC_LINK_STDLIB = "NO";
+            SWIFT_VERSION = "5.0";
+            TARGET_NAME = "CodexSwitchApp";
+            TVOS_DEPLOYMENT_TARGET = "11.0";
+            WATCHOS_DEPLOYMENT_TARGET = "4.0";
+         };
+         name = "Release";
+      };
+      "OBJ_61" = {
+         isa = "PBXSourcesBuildPhase";
+         files = (
+            "OBJ_62",
+            "OBJ_63"
+         );
+      };
+      "OBJ_62" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_10";
+      };
+      "OBJ_63" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_11";
+      };
+      "OBJ_64" = {
+         isa = "PBXFrameworksBuildPhase";
+         files = (
+            "OBJ_65"
+         );
+      };
+      "OBJ_65" = {
+         isa = "PBXBuildFile";
+         fileRef = "mac-client::CodexSwitchKit::Product";
+      };
+      "OBJ_66" = {
          isa = "PBXTargetDependency";
          target = "mac-client::CodexSwitchKit";
       };
-      "OBJ_62" = {
+      "OBJ_68" = {
          isa = "XCConfigurationList";
          buildConfigurations = (
-            "OBJ_63",
-            "OBJ_64"
+            "OBJ_69",
+            "OBJ_70"
          );
          defaultConfigurationIsVisible = "0";
          defaultConfigurationName = "Release";
       };
-      "OBJ_63" = {
+      "OBJ_69" = {
          isa = "XCBuildConfiguration";
          buildSettings = {
             CURRENT_PROJECT_VERSION = "1";
@@ -561,85 +725,6 @@
             WATCHOS_DEPLOYMENT_TARGET = "4.0";
          };
          name = "Debug";
-      };
-      "OBJ_64" = {
-         isa = "XCBuildConfiguration";
-         buildSettings = {
-            CURRENT_PROJECT_VERSION = "1";
-            DRIVERKIT_DEPLOYMENT_TARGET = "19.0";
-            ENABLE_TESTABILITY = "YES";
-            FRAMEWORK_SEARCH_PATHS = (
-               "$(inherited)",
-               "$(PLATFORM_DIR)/Developer/Library/Frameworks"
-            );
-            HEADER_SEARCH_PATHS = (
-               "$(inherited)"
-            );
-            INFOPLIST_FILE = "CodexSwitch.xcodeproj/CodexSwitchKit_Info.plist";
-            IPHONEOS_DEPLOYMENT_TARGET = "11.0";
-            LD_RUNPATH_SEARCH_PATHS = (
-               "$(inherited)",
-               "$(TOOLCHAIN_DIR)/usr/lib/swift/macosx"
-            );
-            MACOSX_DEPLOYMENT_TARGET = "12.0";
-            OTHER_CFLAGS = (
-               "$(inherited)"
-            );
-            OTHER_LDFLAGS = (
-               "$(inherited)"
-            );
-            OTHER_SWIFT_FLAGS = (
-               "$(inherited)"
-            );
-            PRODUCT_BUNDLE_IDENTIFIER = "CodexSwitchKit";
-            PRODUCT_MODULE_NAME = "$(TARGET_NAME:c99extidentifier)";
-            PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
-            SKIP_INSTALL = "YES";
-            SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
-               "$(inherited)"
-            );
-            SWIFT_VERSION = "5.0";
-            TARGET_NAME = "CodexSwitchKit";
-            TVOS_DEPLOYMENT_TARGET = "11.0";
-            WATCHOS_DEPLOYMENT_TARGET = "4.0";
-         };
-         name = "Release";
-      };
-      "OBJ_65" = {
-         isa = "PBXSourcesBuildPhase";
-         files = (
-            "OBJ_66",
-            "OBJ_67",
-            "OBJ_68",
-            "OBJ_69",
-            "OBJ_70",
-            "OBJ_71",
-            "OBJ_72",
-            "OBJ_73",
-            "OBJ_74",
-            "OBJ_75",
-            "OBJ_76",
-            "OBJ_77",
-            "OBJ_78",
-            "OBJ_79",
-            "OBJ_80"
-         );
-      };
-      "OBJ_66" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_14";
-      };
-      "OBJ_67" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_15";
-      };
-      "OBJ_68" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_16";
-      };
-      "OBJ_69" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_17";
       };
       "OBJ_7" = {
          isa = "PBXGroup";
@@ -652,44 +737,102 @@
          sourceTree = "SOURCE_ROOT";
       };
       "OBJ_70" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_19";
+         isa = "XCBuildConfiguration";
+         buildSettings = {
+            CURRENT_PROJECT_VERSION = "1";
+            DRIVERKIT_DEPLOYMENT_TARGET = "19.0";
+            ENABLE_TESTABILITY = "YES";
+            FRAMEWORK_SEARCH_PATHS = (
+               "$(inherited)",
+               "$(PLATFORM_DIR)/Developer/Library/Frameworks"
+            );
+            HEADER_SEARCH_PATHS = (
+               "$(inherited)"
+            );
+            INFOPLIST_FILE = "CodexSwitch.xcodeproj/CodexSwitchKit_Info.plist";
+            IPHONEOS_DEPLOYMENT_TARGET = "11.0";
+            LD_RUNPATH_SEARCH_PATHS = (
+               "$(inherited)",
+               "$(TOOLCHAIN_DIR)/usr/lib/swift/macosx"
+            );
+            MACOSX_DEPLOYMENT_TARGET = "12.0";
+            OTHER_CFLAGS = (
+               "$(inherited)"
+            );
+            OTHER_LDFLAGS = (
+               "$(inherited)"
+            );
+            OTHER_SWIFT_FLAGS = (
+               "$(inherited)"
+            );
+            PRODUCT_BUNDLE_IDENTIFIER = "CodexSwitchKit";
+            PRODUCT_MODULE_NAME = "$(TARGET_NAME:c99extidentifier)";
+            PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+            SKIP_INSTALL = "YES";
+            SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
+               "$(inherited)"
+            );
+            SWIFT_VERSION = "5.0";
+            TARGET_NAME = "CodexSwitchKit";
+            TVOS_DEPLOYMENT_TARGET = "11.0";
+            WATCHOS_DEPLOYMENT_TARGET = "4.0";
+         };
+         name = "Release";
       };
       "OBJ_71" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_20";
+         isa = "PBXSourcesBuildPhase";
+         files = (
+            "OBJ_72",
+            "OBJ_73",
+            "OBJ_74",
+            "OBJ_75",
+            "OBJ_76",
+            "OBJ_77",
+            "OBJ_78",
+            "OBJ_79",
+            "OBJ_80",
+            "OBJ_81",
+            "OBJ_82",
+            "OBJ_83",
+            "OBJ_84",
+            "OBJ_85",
+            "OBJ_86",
+            "OBJ_87",
+            "OBJ_88",
+            "OBJ_89"
+         );
       };
       "OBJ_72" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_21";
+         fileRef = "OBJ_14";
       };
       "OBJ_73" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_23";
+         fileRef = "OBJ_15";
       };
       "OBJ_74" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_24";
+         fileRef = "OBJ_16";
       };
       "OBJ_75" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_25";
+         fileRef = "OBJ_17";
       };
       "OBJ_76" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_26";
+         fileRef = "OBJ_19";
       };
       "OBJ_77" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_27";
+         fileRef = "OBJ_20";
       };
       "OBJ_78" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_28";
+         fileRef = "OBJ_21";
       };
       "OBJ_79" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_29";
+         fileRef = "OBJ_23";
       };
       "OBJ_8" = {
          isa = "PBXGroup";
@@ -702,76 +845,43 @@
       };
       "OBJ_80" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_30";
+         fileRef = "OBJ_24";
       };
       "OBJ_81" = {
-         isa = "PBXFrameworksBuildPhase";
-         files = (
-         );
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_25";
+      };
+      "OBJ_82" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_26";
       };
       "OBJ_83" = {
-         isa = "XCConfigurationList";
-         buildConfigurations = (
-            "OBJ_84",
-            "OBJ_85"
-         );
-         defaultConfigurationIsVisible = "0";
-         defaultConfigurationName = "Release";
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_27";
       };
       "OBJ_84" = {
-         isa = "XCBuildConfiguration";
-         buildSettings = {
-            LD = "/usr/bin/true";
-            OTHER_SWIFT_FLAGS = (
-               "-swift-version",
-               "5",
-               "-I",
-               "$(TOOLCHAIN_DIR)/usr/lib/swift/pm/ManifestAPI",
-               "-sdk",
-               "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.1.sdk",
-               "-package-description-version",
-               "5.7.0"
-            );
-            SWIFT_VERSION = "5.0";
-         };
-         name = "Debug";
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_28";
       };
       "OBJ_85" = {
-         isa = "XCBuildConfiguration";
-         buildSettings = {
-            LD = "/usr/bin/true";
-            OTHER_SWIFT_FLAGS = (
-               "-swift-version",
-               "5",
-               "-I",
-               "$(TOOLCHAIN_DIR)/usr/lib/swift/pm/ManifestAPI",
-               "-sdk",
-               "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.1.sdk",
-               "-package-description-version",
-               "5.7.0"
-            );
-            SWIFT_VERSION = "5.0";
-         };
-         name = "Release";
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_29";
       };
       "OBJ_86" = {
-         isa = "PBXSourcesBuildPhase";
-         files = (
-            "OBJ_87"
-         );
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_30";
       };
       "OBJ_87" = {
          isa = "PBXBuildFile";
-         fileRef = "OBJ_6";
+         fileRef = "OBJ_32";
+      };
+      "OBJ_88" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_33";
       };
       "OBJ_89" = {
-         isa = "XCConfigurationList";
-         buildConfigurations = (
-            "OBJ_90",
-            "OBJ_91"
-         );
-         defaultConfigurationIsVisible = "0";
-         defaultConfigurationName = "Release";
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_34";
       };
       "OBJ_9" = {
          isa = "PBXGroup";
@@ -784,148 +894,100 @@
          sourceTree = "<group>";
       };
       "OBJ_90" = {
-         isa = "XCBuildConfiguration";
-         buildSettings = {
-         };
-         name = "Debug";
-      };
-      "OBJ_91" = {
-         isa = "XCBuildConfiguration";
-         buildSettings = {
-         };
-         name = "Release";
+         isa = "PBXFrameworksBuildPhase";
+         files = (
+         );
       };
       "OBJ_92" = {
-         isa = "PBXTargetDependency";
-         target = "mac-client::CodexSwitchTests";
-      };
-      "OBJ_94" = {
          isa = "XCConfigurationList";
          buildConfigurations = (
-            "OBJ_95",
-            "OBJ_96"
+            "OBJ_93",
+            "OBJ_94"
          );
          defaultConfigurationIsVisible = "0";
          defaultConfigurationName = "Release";
       };
-      "OBJ_95" = {
+      "OBJ_93" = {
          isa = "XCBuildConfiguration";
          buildSettings = {
-            CLANG_ENABLE_MODULES = "YES";
-            CURRENT_PROJECT_VERSION = "1";
-            DRIVERKIT_DEPLOYMENT_TARGET = "19.0";
-            EMBEDDED_CONTENT_CONTAINS_SWIFT = "YES";
-            FRAMEWORK_SEARCH_PATHS = (
-               "$(inherited)",
-               "$(PLATFORM_DIR)/Developer/Library/Frameworks"
-            );
-            HEADER_SEARCH_PATHS = (
-               "$(inherited)"
-            );
-            INFOPLIST_FILE = "CodexSwitch.xcodeproj/CodexSwitchTests_Info.plist";
-            IPHONEOS_DEPLOYMENT_TARGET = "14.0";
-            LD_RUNPATH_SEARCH_PATHS = (
-               "$(inherited)",
-               "@loader_path/../Frameworks",
-               "@loader_path/Frameworks"
-            );
-            MACOSX_DEPLOYMENT_TARGET = "12.0";
-            OTHER_CFLAGS = (
-               "$(inherited)"
-            );
-            OTHER_LDFLAGS = (
-               "$(inherited)"
-            );
+            LD = "/usr/bin/true";
             OTHER_SWIFT_FLAGS = (
-               "$(inherited)"
-            );
-            SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
-               "$(inherited)"
+               "-swift-version",
+               "5",
+               "-I",
+               "$(TOOLCHAIN_DIR)/usr/lib/swift/pm/ManifestAPI",
+               "-sdk",
+               "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.1.sdk",
+               "-package-description-version",
+               "5.7.0"
             );
             SWIFT_VERSION = "5.0";
-            TARGET_NAME = "CodexSwitchTests";
-            TVOS_DEPLOYMENT_TARGET = "14.0";
-            WATCHOS_DEPLOYMENT_TARGET = "7.0";
          };
          name = "Debug";
       };
-      "OBJ_96" = {
+      "OBJ_94" = {
          isa = "XCBuildConfiguration";
          buildSettings = {
-            CLANG_ENABLE_MODULES = "YES";
-            CURRENT_PROJECT_VERSION = "1";
-            DRIVERKIT_DEPLOYMENT_TARGET = "19.0";
-            EMBEDDED_CONTENT_CONTAINS_SWIFT = "YES";
-            FRAMEWORK_SEARCH_PATHS = (
-               "$(inherited)",
-               "$(PLATFORM_DIR)/Developer/Library/Frameworks"
-            );
-            HEADER_SEARCH_PATHS = (
-               "$(inherited)"
-            );
-            INFOPLIST_FILE = "CodexSwitch.xcodeproj/CodexSwitchTests_Info.plist";
-            IPHONEOS_DEPLOYMENT_TARGET = "14.0";
-            LD_RUNPATH_SEARCH_PATHS = (
-               "$(inherited)",
-               "@loader_path/../Frameworks",
-               "@loader_path/Frameworks"
-            );
-            MACOSX_DEPLOYMENT_TARGET = "12.0";
-            OTHER_CFLAGS = (
-               "$(inherited)"
-            );
-            OTHER_LDFLAGS = (
-               "$(inherited)"
-            );
+            LD = "/usr/bin/true";
             OTHER_SWIFT_FLAGS = (
-               "$(inherited)"
-            );
-            SWIFT_ACTIVE_COMPILATION_CONDITIONS = (
-               "$(inherited)"
+               "-swift-version",
+               "5",
+               "-I",
+               "$(TOOLCHAIN_DIR)/usr/lib/swift/pm/ManifestAPI",
+               "-sdk",
+               "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.1.sdk",
+               "-package-description-version",
+               "5.7.0"
             );
             SWIFT_VERSION = "5.0";
-            TARGET_NAME = "CodexSwitchTests";
-            TVOS_DEPLOYMENT_TARGET = "14.0";
-            WATCHOS_DEPLOYMENT_TARGET = "7.0";
          };
          name = "Release";
       };
-      "OBJ_97" = {
+      "OBJ_95" = {
          isa = "PBXSourcesBuildPhase";
          files = (
-            "OBJ_98",
+            "OBJ_96"
+         );
+      };
+      "OBJ_96" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_6";
+      };
+      "OBJ_98" = {
+         isa = "XCConfigurationList";
+         buildConfigurations = (
             "OBJ_99",
             "OBJ_100"
          );
-      };
-      "OBJ_98" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_34";
+         defaultConfigurationIsVisible = "0";
+         defaultConfigurationName = "Release";
       };
       "OBJ_99" = {
-         isa = "PBXBuildFile";
-         fileRef = "OBJ_35";
+         isa = "XCBuildConfiguration";
+         buildSettings = {
+         };
+         name = "Debug";
       };
       "mac-client::CodexSwitch::ProductTarget" = {
          isa = "PBXAggregateTarget";
-         buildConfigurationList = "OBJ_47";
+         buildConfigurationList = "OBJ_53";
          buildPhases = (
          );
          dependencies = (
-            "OBJ_50"
+            "OBJ_56"
          );
          name = "CodexSwitch";
          productName = "CodexSwitch";
       };
       "mac-client::CodexSwitchApp" = {
          isa = "PBXNativeTarget";
-         buildConfigurationList = "OBJ_52";
+         buildConfigurationList = "OBJ_58";
          buildPhases = (
-            "OBJ_55",
-            "OBJ_58"
+            "OBJ_61",
+            "OBJ_64"
          );
          dependencies = (
-            "OBJ_60"
+            "OBJ_66"
          );
          name = "CodexSwitchApp";
          productName = "CodexSwitchApp";
@@ -939,10 +1001,10 @@
       };
       "mac-client::CodexSwitchKit" = {
          isa = "PBXNativeTarget";
-         buildConfigurationList = "OBJ_62";
+         buildConfigurationList = "OBJ_68";
          buildPhases = (
-            "OBJ_65",
-            "OBJ_81"
+            "OBJ_71",
+            "OBJ_90"
          );
          dependencies = (
          );
@@ -958,24 +1020,24 @@
       };
       "mac-client::CodexSwitchPackageTests::ProductTarget" = {
          isa = "PBXAggregateTarget";
-         buildConfigurationList = "OBJ_89";
+         buildConfigurationList = "OBJ_98";
          buildPhases = (
          );
          dependencies = (
-            "OBJ_92"
+            "OBJ_101"
          );
          name = "CodexSwitchPackageTests";
          productName = "CodexSwitchPackageTests";
       };
       "mac-client::CodexSwitchTests" = {
          isa = "PBXNativeTarget";
-         buildConfigurationList = "OBJ_94";
+         buildConfigurationList = "OBJ_103";
          buildPhases = (
-            "OBJ_97",
-            "OBJ_101"
+            "OBJ_106",
+            "OBJ_111"
          );
          dependencies = (
-            "OBJ_103"
+            "OBJ_113"
          );
          name = "CodexSwitchTests";
          productName = "CodexSwitchTests";
@@ -989,9 +1051,9 @@
       };
       "mac-client::SwiftPMPackageDescription" = {
          isa = "PBXNativeTarget";
-         buildConfigurationList = "OBJ_83";
+         buildConfigurationList = "OBJ_92";
          buildPhases = (
-            "OBJ_86"
+            "OBJ_95"
          );
          dependencies = (
          );
