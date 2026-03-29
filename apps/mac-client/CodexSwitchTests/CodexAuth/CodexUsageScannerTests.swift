@@ -66,4 +66,27 @@ final class CodexUsageScannerTests: XCTestCase {
 
         XCTAssertEqual(snapshot, cachedSnapshot)
     }
+
+    func testUsageScannerParsesNestedTokenCountRateLimitsFromRolloutEntry() throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        try FileManager.default.createDirectory(at: paths.sessionsDirectoryURL, withIntermediateDirectories: true)
+        let logURL = paths.sessionsDirectoryURL.appendingPathComponent("rollout-2026-03-29.jsonl")
+        let lines = [
+            #"{"timestamp":"2026-03-29T09:00:00Z","email":"alex@example.com","event_msg":{"token_count":{"rate_limits":{"five_hour":{"used_percent":61,"resets_at":"2026-03-29T10:30:00Z"},"weekly":{"used_percent":33,"resets_at":"2026-04-02T00:00:00Z"}}}}}"#,
+        ].joined(separator: "\n")
+        try Data(lines.utf8).write(to: logURL)
+
+        let scanner = CodexUsageScanner(paths: paths)
+        let account = Account(
+            id: "google-oauth2|123",
+            emailMask: "a•••@example.com",
+            email: "alex@example.com",
+            tier: .team
+        )
+
+        let snapshot = try scanner.refreshUsage(for: account)
+
+        XCTAssertEqual(snapshot.fiveHour.percentUsed, 61)
+        XCTAssertEqual(snapshot.weekly.percentUsed, 33)
+    }
 }

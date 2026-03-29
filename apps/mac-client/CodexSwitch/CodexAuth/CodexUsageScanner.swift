@@ -86,12 +86,10 @@ public struct CodexUsageScanner {
             return nil
         }
 
-        let entry: RolloutEntry
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            entry = try decoder.decode(RolloutEntry.self, from: data)
-        } catch {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let entry = decodeEntry(from: object)
+        else {
             return nil
         }
 
@@ -111,6 +109,91 @@ public struct CodexUsageScanner {
                 resetsAt: entry.rateLimits.weekly.resetsAt
             )
         )
+    }
+
+    private func decodeEntry(from object: [String: Any]) -> RolloutEntry? {
+        guard
+            let timestampString = stringValue(in: object, paths: [["timestamp"], ["event_msg", "timestamp"]]),
+            let timestamp = parseDate(timestampString),
+            let email = stringValue(in: object, paths: [["email"], ["event_msg", "email"]]),
+            let rateLimitsObject = dictionaryValue(
+                in: object,
+                paths: [["rate_limits"], ["event_msg", "token_count", "rate_limits"]]
+            ),
+            let rateLimits = decodeRateLimits(from: rateLimitsObject)
+        else {
+            return nil
+        }
+
+        return RolloutEntry(timestamp: timestamp, email: email, rateLimits: rateLimits)
+    }
+
+    private func decodeRateLimits(from object: [String: Any]) -> RateLimits? {
+        guard
+            let fiveHourObject = object["five_hour"] as? [String: Any],
+            let weeklyObject = object["weekly"] as? [String: Any],
+            let fiveHour = decodeWindow(from: fiveHourObject),
+            let weekly = decodeWindow(from: weeklyObject)
+        else {
+            return nil
+        }
+
+        return RateLimits(fiveHour: fiveHour, weekly: weekly)
+    }
+
+    private func decodeWindow(from object: [String: Any]) -> Window? {
+        guard
+            let usedPercent = object["used_percent"] as? Int,
+            let resetsAtString = object["resets_at"] as? String,
+            let resetsAt = parseDate(resetsAtString)
+        else {
+            return nil
+        }
+
+        return Window(usedPercent: usedPercent, resetsAt: resetsAt)
+    }
+
+    private func stringValue(in object: [String: Any], paths: [[String]]) -> String? {
+        for path in paths {
+            if let value = value(in: object, path: path) as? String, !value.isEmpty {
+                return value
+            }
+        }
+
+        return nil
+    }
+
+    private func dictionaryValue(in object: [String: Any], paths: [[String]]) -> [String: Any]? {
+        for path in paths {
+            if let value = value(in: object, path: path) as? [String: Any] {
+                return value
+            }
+        }
+
+        return nil
+    }
+
+    private func value(in object: [String: Any], path: [String]) -> Any? {
+        var current: Any = object
+        for component in path {
+            guard let dictionary = current as? [String: Any], let next = dictionary[component] else {
+                return nil
+            }
+            current = next
+        }
+
+        return current
+    }
+
+    private func parseDate(_ string: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: string) {
+            return date
+        }
+
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: string)
     }
 
     private func loadCachedSnapshot(for accountID: String) throws -> CodexUsageSnapshot? {
@@ -139,35 +222,19 @@ public struct CodexUsageScanner {
 }
 
 private extension CodexUsageScanner {
-    struct RolloutEntry: Decodable {
+    struct RolloutEntry {
         let timestamp: Date
         let email: String
         let rateLimits: RateLimits
-
-        enum CodingKeys: String, CodingKey {
-            case timestamp
-            case email
-            case rateLimits = "rate_limits"
-        }
     }
 
-    struct RateLimits: Decodable {
+    struct RateLimits {
         let fiveHour: Window
         let weekly: Window
-
-        enum CodingKeys: String, CodingKey {
-            case fiveHour = "five_hour"
-            case weekly
-        }
     }
 
-    struct Window: Decodable {
+    struct Window {
         let usedPercent: Int
         let resetsAt: Date
-
-        enum CodingKeys: String, CodingKey {
-            case usedPercent = "used_percent"
-            case resetsAt = "resets_at"
-        }
     }
 }
