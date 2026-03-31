@@ -22,8 +22,8 @@ jobs:
           - label: arm64 / macOS 14
             runner: macos-14
             arch: arm64
-          - label: x86_64 / macOS 13
-            runner: macos-13
+          - label: x86_64 / macOS 15 Intel
+            runner: macos-15-intel
             arch: x86_64
 
     steps:
@@ -39,6 +39,9 @@ jobs:
           uname -m
           swift --version
           xcodebuild -version
+
+      - name: Validate Workflow Runner Labels
+        run: ./scripts/verify-github-workflow-runners.sh
 
       - name: Xcode Project Tests
         run: xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'
