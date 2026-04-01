@@ -3,6 +3,7 @@ import Foundation
 public enum MenuBarAction: Equatable {
     case openStatusPage
     case openSettings
+    case openProviderSync
     case quit
 }
 

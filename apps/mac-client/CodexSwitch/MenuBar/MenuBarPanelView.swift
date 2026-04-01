@@ -87,6 +87,9 @@ public struct MenuBarPanelView: View {
                         await viewModel.toggleShowEmails()
                     }
                 }
+                actionRow(title: "Provider Sync", systemImage: "arrow.triangle.2.circlepath") {
+                    viewModel.openProviderSync()
+                }
                 actionRow(title: "Settings", systemImage: "gearshape") {
                     viewModel.openSettings()
                 }

@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
     private var statusItemController: StatusItemController?
     private var statusWindowPresenter: StatusWindowPresenter?
     private var settingsWindowPresenter: SettingsWindowPresenter?
+    private var providerSyncWindowPresenter: ProviderSyncWindowPresenter?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -19,6 +20,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
         settingsWindowPresenter = SettingsWindowPresenter(
             makeViewModel: {
                 environment.makeSettingsViewModel()
+            }
+        )
+        providerSyncWindowPresenter = ProviderSyncWindowPresenter(
+            makeViewModel: {
+                environment.makeProviderSyncViewModel()
             }
         )
         statusWindowPresenter = environment.makeStatusSnapshotLoader().map { loader in
@@ -40,6 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
             settingsWindowPresenter?.present()
         case .openStatusPage:
             openStatusWindow()
+        case .openProviderSync:
+            providerSyncWindowPresenter?.present()
         case .quit:
             NSApp.terminate(nil)
         }

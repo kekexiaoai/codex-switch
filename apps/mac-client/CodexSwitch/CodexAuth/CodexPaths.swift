@@ -23,6 +23,30 @@ public struct CodexPaths: Equatable {
         baseDirectory.appendingPathComponent("sessions", isDirectory: true)
     }
 
+    public var configFileURL: URL {
+        baseDirectory.appendingPathComponent("config.toml")
+    }
+
+    public var sqliteDatabaseURL: URL {
+        baseDirectory.appendingPathComponent("state_5.sqlite")
+    }
+
+    public var archivedSessionsDirectoryURL: URL {
+        baseDirectory.appendingPathComponent("archived_sessions", isDirectory: true)
+    }
+
+    public var providerSyncBackupsDirectoryURL: URL {
+        baseDirectory
+            .appendingPathComponent("backups_state", isDirectory: true)
+            .appendingPathComponent("provider-sync", isDirectory: true)
+    }
+
+    public var providerSyncLockFileURL: URL {
+        baseDirectory
+            .appendingPathComponent("tmp", isDirectory: true)
+            .appendingPathComponent("provider-sync.lock")
+    }
+
     public var diagnosticsDirectoryURL: URL {
         baseDirectory.appendingPathComponent("codex-switch", isDirectory: true)
     }

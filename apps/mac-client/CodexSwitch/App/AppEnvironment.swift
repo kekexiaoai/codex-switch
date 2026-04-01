@@ -182,6 +182,7 @@ public final class AppEnvironment {
     public let emailVisibilityProvider: (any EmailVisibilityProviding)?
     public let runtimeMode: RuntimeMode
     public let codexPaths: CodexPaths?
+    public let providerSyncService: (any ProviderSyncServiceProtocol)?
 
     public init(
         accountStore: any AccountStore,
@@ -195,7 +196,8 @@ public final class AppEnvironment {
         launchAtLoginController: (any LaunchAtLoginControlling)? = nil,
         emailVisibilityProvider: (any EmailVisibilityProviding)? = UserDefaultsEmailVisibilityStore(),
         runtimeMode: RuntimeMode,
-        codexPaths: CodexPaths? = nil
+        codexPaths: CodexPaths? = nil,
+        providerSyncService: (any ProviderSyncServiceProtocol)? = nil
     ) {
         self.accountStore = accountStore
         self.usageService = usageService
@@ -209,6 +211,7 @@ public final class AppEnvironment {
         self.emailVisibilityProvider = emailVisibilityProvider
         self.runtimeMode = runtimeMode
         self.codexPaths = codexPaths
+        self.providerSyncService = providerSyncService
     }
 
     public static let preview = AppEnvironment(
@@ -223,7 +226,8 @@ public final class AppEnvironment {
         launchAtLoginController: nil,
         emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
         runtimeMode: .preview,
-        codexPaths: nil
+        codexPaths: nil,
+        providerSyncService: MockProviderSyncService()
     )
 
     @MainActor
@@ -279,7 +283,8 @@ public final class AppEnvironment {
             launchAtLoginController: LiveLaunchAtLoginController(),
             emailVisibilityProvider: UserDefaultsEmailVisibilityStore(defaults: configuration.settingsDefaults),
             runtimeMode: .live,
-            codexPaths: configuration.paths
+            codexPaths: configuration.paths,
+            providerSyncService: LiveProviderSyncService(paths: configuration.paths)
         )
     }
 
@@ -289,6 +294,13 @@ public final class AppEnvironment {
             defaults: settingsDefaults,
             actionHandler: settingsActionHandler,
             launchAtLoginController: launchAtLoginController
+        )
+    }
+
+    @MainActor
+    public func makeProviderSyncViewModel() -> ProviderSyncViewModel {
+        ProviderSyncViewModel(
+            service: providerSyncService ?? MockProviderSyncService()
         )
     }
 

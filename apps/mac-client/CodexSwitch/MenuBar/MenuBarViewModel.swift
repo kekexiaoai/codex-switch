@@ -138,6 +138,10 @@ public final class MenuBarViewModel: ObservableObject {
         actionHandler?.handle(.openSettings)
     }
 
+    public func openProviderSync() {
+        actionHandler?.handle(.openProviderSync)
+    }
+
     public func quit() {
         actionHandler?.handle(.quit)
     }
