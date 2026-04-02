@@ -159,6 +159,7 @@
             "OBJ_22",
             "OBJ_1000",
             "OBJ_25",
+            "OBJ_4001",
             "OBJ_35",
             "OBJ_38"
          );
@@ -614,6 +615,104 @@
       "OBJ_3016" = {
          isa = "PBXBuildFile";
          fileRef = "OBJ_3013";
+      };
+      "OBJ_4001" = {
+         isa = "PBXGroup";
+         children = (
+            "OBJ_4002",
+            "OBJ_4003",
+            "OBJ_4004",
+            "OBJ_4005",
+            "OBJ_4006",
+            "OBJ_4007",
+            "OBJ_4008",
+            "OBJ_4009",
+            "OBJ_4010"
+         );
+         name = "ProviderSync";
+         path = "ProviderSync";
+         sourceTree = "<group>";
+      };
+      "OBJ_4002" = {
+         isa = "PBXFileReference";
+         path = "CodexConfigParser.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4003" = {
+         isa = "PBXFileReference";
+         path = "CodexProviderSQLite.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4004" = {
+         isa = "PBXFileReference";
+         path = "CodexSessionScanner.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4005" = {
+         isa = "PBXFileReference";
+         path = "ProviderSyncActions.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4006" = {
+         isa = "PBXFileReference";
+         path = "ProviderSyncBackupManager.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4007" = {
+         isa = "PBXFileReference";
+         path = "ProviderSyncService.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4008" = {
+         isa = "PBXFileReference";
+         path = "ProviderSyncView.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4009" = {
+         isa = "PBXFileReference";
+         path = "ProviderSyncViewModel.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4010" = {
+         isa = "PBXFileReference";
+         path = "ProviderSyncWindowPresenter.swift";
+         sourceTree = "<group>";
+      };
+      "OBJ_4011" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4002";
+      };
+      "OBJ_4012" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4003";
+      };
+      "OBJ_4013" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4004";
+      };
+      "OBJ_4014" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4005";
+      };
+      "OBJ_4015" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4006";
+      };
+      "OBJ_4016" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4007";
+      };
+      "OBJ_4017" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4008";
+      };
+      "OBJ_4018" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4009";
+      };
+      "OBJ_4019" = {
+         isa = "PBXBuildFile";
+         fileRef = "OBJ_4010";
       };
       "OBJ_131" = {
          isa = "PBXFrameworksBuildPhase";
@@ -1373,7 +1472,16 @@
             "OBJ_3003",
             "OBJ_3004",
             "OBJ_3012",
-            "OBJ_3016"
+            "OBJ_3016",
+            "OBJ_4011",
+            "OBJ_4012",
+            "OBJ_4013",
+            "OBJ_4014",
+            "OBJ_4015",
+            "OBJ_4016",
+            "OBJ_4017",
+            "OBJ_4018",
+            "OBJ_4019"
          );
       };
       "OBJ_84" = {
