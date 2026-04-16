@@ -128,6 +128,18 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertIn("识别格式：chatgpt", result.stdout)
         self.assertIn("可转换为：codex", result.stdout)
 
+    def test_export_sub2api_help_uses_subcommand_parser(self):
+        result = subprocess.run(
+            ["python3", str(SCRIPT_PATH), "export-sub2api", "-h"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("sub2api.json 输出路径", result.stdout)
+        self.assertIn("--proxy-key", result.stdout)
+
     def test_convert_subcommand_writes_detected_target_format(self):
         chatgpt_data = {
             "OPENAI_API_KEY": "",

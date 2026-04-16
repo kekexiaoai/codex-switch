@@ -761,7 +761,15 @@ def export_sub2api(input_path, output_path, proxy_key=None):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="探测、转换并导出 chatgpt / codex auth.json"
+        description="探测、转换并导出 chatgpt / codex auth.json",
+        epilog=(
+            "示例:\n"
+            "  openai_format_convert.py detect auth.json\n"
+            "  openai_format_convert.py convert auth.json\n"
+            "  openai_format_convert.py convert auths/ output-dir/\n"
+            "  openai_format_convert.py export-sub2api auths/ sub2api.json --proxy-key proxy-demo"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="command")
 
@@ -793,7 +801,8 @@ def build_parser():
 
 
 def parse_args(argv):
-    if argv and argv[0] not in {"detect", "convert", "-h", "--help"}:
+    known_commands = {"detect", "convert", "export-sub2api", "-h", "--help"}
+    if argv and argv[0] not in known_commands:
         if len(argv) == 1:
             return argparse.Namespace(
                 command="convert",
