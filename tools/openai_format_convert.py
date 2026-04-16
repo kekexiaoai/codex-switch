@@ -184,19 +184,31 @@ def rename_for_target(input_path, target_format):
     return f"{target_format}-{filename}"
 
 
-def extract_id_token(data):
+def extract_token_value(data, token_name):
     tokens = data.get("tokens")
-    if isinstance(tokens, dict) and isinstance(tokens.get("id_token"), str):
-        return tokens["id_token"]
-    if isinstance(data.get("id_token"), str):
-        return data["id_token"]
+    if isinstance(tokens, dict) and isinstance(tokens.get(token_name), str):
+        return tokens[token_name]
+    if isinstance(data.get(token_name), str):
+        return data[token_name]
     return None
 
 
-def decode_jwt_payload(id_token):
-    parts = id_token.split(".")
+def extract_access_token(data):
+    return extract_token_value(data, "access_token")
+
+
+def extract_id_token(data):
+    return extract_token_value(data, "id_token")
+
+
+def extract_refresh_token(data):
+    return extract_token_value(data, "refresh_token")
+
+
+def decode_jwt_payload(token):
+    parts = token.split(".")
     if len(parts) < 2:
-        raise ValueError("id_token 不是合法的 JWT")
+        raise ValueError("token 不是合法的 JWT")
 
     payload_segment = parts[1]
     padding = "=" * (-len(payload_segment) % 4)
@@ -209,7 +221,7 @@ def decode_jwt_payload(id_token):
         raise ValueError("无法解析 id_token 载荷") from error
 
     if not isinstance(payload, dict):
-        raise ValueError("id_token 载荷必须是对象")
+        raise ValueError("token 载荷必须是对象")
     return payload
 
 
@@ -234,29 +246,50 @@ def resolve_tier(payload):
     return candidate or "unknown"
 
 
-def resolve_account_metadata(data, analysis):
-    payload = None
-    id_token = extract_id_token(data)
-    if id_token:
-        payload = decode_jwt_payload(id_token)
+def extract_openai_auth_info(payload):
+    auth_info = payload.get("https://api.openai.com/auth")
+    if isinstance(auth_info, dict):
+        return auth_info
+    return {}
+
+
+def resolve_account_metadata(data, analysis, access_payload=None, id_payload=None):
+    if access_payload is None:
+        access_token = extract_access_token(data)
+        if access_token:
+            try:
+                access_payload = decode_jwt_payload(access_token)
+            except ValueError:
+                access_payload = None
+    if id_payload is None:
+        id_token = extract_id_token(data)
+        if id_token:
+            try:
+                id_payload = decode_jwt_payload(id_token)
+            except ValueError:
+                id_payload = None
+
+    access_auth_info = extract_openai_auth_info(access_payload or {})
 
     if analysis["format"] == "chatgpt":
         account_id = get_nested_value(data, "tokens.account_id")
     else:
         account_id = data.get("account_id")
 
-    if (not isinstance(account_id, str) or not account_id.strip()) and payload:
-        account_id = payload.get("sub")
+    if (not isinstance(account_id, str) or not account_id.strip()) and access_auth_info:
+        account_id = access_auth_info.get("chatgpt_account_id")
+    if (not isinstance(account_id, str) or not account_id.strip()) and id_payload:
+        account_id = id_payload.get("sub")
     if not isinstance(account_id, str) or not account_id.strip():
         raise ValueError("无法从 JSON 中解析 account_id")
     account_id = account_id.strip()
 
     raw_email = data.get("email")
-    if (not isinstance(raw_email, str) or not raw_email.strip()) and payload:
-        raw_email = payload.get("email")
+    if (not isinstance(raw_email, str) or not raw_email.strip()) and id_payload:
+        raw_email = id_payload.get("email")
     email = normalize_email(raw_email)
 
-    tier = resolve_tier(payload or {})
+    tier = resolve_tier(id_payload or access_payload or {})
     return {
         "account_id": account_id,
         "email": email,
@@ -270,11 +303,35 @@ def build_account_filename(data, analysis):
     return f"{analysis['target_format']}-{account_hash}-{metadata['email']}-{metadata['tier']}.json"
 
 
-def resolve_single_output_path(input_path, analysis, data, output_path=None, force_account_filename=False):
-    if force_account_filename:
-        filename = build_account_filename(data, analysis)
-    else:
-        filename = rename_for_target(input_path, analysis["target_format"])
+def should_use_account_filename(output_path, force_account_filename):
+    if force_account_filename is True:
+        return True
+    if force_account_filename is False:
+        return False
+    if output_path is None:
+        return True
+    output_path = Path(output_path)
+    return output_path.exists() and output_path.is_dir()
+
+
+def resolve_output_filename(input_path, analysis, data, output_path=None, force_account_filename=None):
+    if should_use_account_filename(output_path, force_account_filename):
+        try:
+            return build_account_filename(data, analysis)
+        except ValueError:
+            if force_account_filename is True:
+                raise
+    return rename_for_target(input_path, analysis["target_format"])
+
+
+def resolve_single_output_path(input_path, analysis, data, output_path=None, force_account_filename=None):
+    filename = resolve_output_filename(
+        input_path,
+        analysis,
+        data,
+        output_path=output_path,
+        force_account_filename=force_account_filename,
+    )
 
     if output_path is None:
         return input_path.with_name(filename)
@@ -313,7 +370,7 @@ def detect_path(input_path):
     return analyses
 
 
-def convert_file(input_path, output_path=None, force_account_filename=False):
+def convert_file(input_path, output_path=None, force_account_filename=None):
     input_path = Path(input_path)
     data = load_json(input_path)
     analysis = analyze_format(data)
@@ -338,7 +395,7 @@ def ensure_output_directory(output_path):
     output_path.mkdir(parents=True, exist_ok=True)
 
 
-def build_batch_plan(input_dir, output_dir=None, force_account_filename=False):
+def build_batch_plan(input_dir, output_dir=None, force_account_filename=None):
     json_files = collect_json_files(input_dir)
     if not json_files:
         raise ValueError(f"未找到可处理的 JSON 文件：{input_dir}")
@@ -376,7 +433,7 @@ def build_batch_plan(input_dir, output_dir=None, force_account_filename=False):
     return plan
 
 
-def convert_directory(input_dir, output_dir=None, force_account_filename=False):
+def convert_directory(input_dir, output_dir=None, force_account_filename=None):
     input_dir = Path(input_dir)
     if not input_dir.exists():
         raise FileNotFoundError(f"输入路径不存在：{input_dir}")
@@ -398,7 +455,7 @@ def convert_directory(input_dir, output_dir=None, force_account_filename=False):
     return results
 
 
-def convert_path(input_path, output_path=None, force_account_filename=False):
+def convert_path(input_path, output_path=None, force_account_filename=None):
     input_path = Path(input_path)
     if input_path.is_dir():
         return convert_directory(input_path, output_path, force_account_filename=force_account_filename)
@@ -407,9 +464,156 @@ def convert_path(input_path, output_path=None, force_account_filename=False):
     raise FileNotFoundError(f"输入路径不存在：{input_path}")
 
 
+def load_sub2api_config(output_path, proxy_key=None):
+    output_path = Path(output_path)
+    if output_path.exists():
+        data = load_json(output_path)
+        if not isinstance(data, dict):
+            raise ValueError("sub2api 配置文件根节点必须是对象")
+    else:
+        data = {}
+
+    accounts = data.get("accounts")
+    if accounts is None:
+        accounts = []
+        data["accounts"] = accounts
+    if not isinstance(accounts, list):
+        raise ValueError("sub2api 配置中的 accounts 必须是数组")
+
+    proxies = data.get("proxies")
+    if proxies is None:
+        proxies = []
+        data["proxies"] = proxies
+    if not isinstance(proxies, list):
+        raise ValueError("sub2api 配置中的 proxies 必须是数组")
+
+    resolved_proxy_key = proxy_key
+    if resolved_proxy_key is None and proxies:
+        first_proxy = proxies[0]
+        if isinstance(first_proxy, dict):
+            resolved_proxy_key = first_proxy.get("proxy_key")
+
+    if not resolved_proxy_key:
+        raise ValueError("缺少 proxy_key；请提供 --proxy-key，或在现有 sub2api.json 中配置 proxies[0].proxy_key")
+
+    if not proxies:
+        data["proxies"] = [{"proxy_key": resolved_proxy_key}]
+
+    return data, resolved_proxy_key
+
+
+def collect_existing_sub2api_emails(sub2api_data):
+    emails = set()
+    for account in sub2api_data.get("accounts", []):
+        if not isinstance(account, dict):
+            continue
+        extra = account.get("extra")
+        if isinstance(extra, dict):
+            email = extra.get("email")
+            if isinstance(email, str) and email:
+                emails.add(email)
+    return emails
+
+
+def build_sub2api_account_entry(data, source_path):
+    analysis = analyze_format(data)
+    access_token = extract_access_token(data)
+    if not access_token:
+        raise ValueError("缺少 access_token，无法导出 sub2api")
+
+    access_payload = decode_jwt_payload(access_token)
+    access_auth_info = extract_openai_auth_info(access_payload)
+
+    id_payload = {}
+    id_token = extract_id_token(data)
+    if id_token:
+        id_payload = decode_jwt_payload(id_token)
+
+    metadata = resolve_account_metadata(
+        data,
+        analysis,
+        access_payload=access_payload,
+        id_payload=id_payload or None,
+    )
+    id_auth_info = extract_openai_auth_info(id_payload)
+    organizations = id_auth_info.get("organizations")
+    if isinstance(organizations, list) and organizations and isinstance(organizations[0], dict):
+        organization_id = organizations[0].get("id", "")
+    else:
+        organization_id = ""
+
+    exp = access_payload.get("exp")
+    iat = access_payload.get("iat")
+    expires_in = exp - iat if isinstance(exp, int) and isinstance(iat, int) and exp and iat else 864000
+    refresh_token = extract_refresh_token(data) or ""
+    email = metadata["email"]
+
+    return {
+        "name": email.split("@", 1)[0] if email else source_path.stem,
+        "platform": "openai",
+        "type": "oauth",
+        "credentials": {
+            "access_token": access_token,
+            "chatgpt_account_id": access_auth_info.get("chatgpt_account_id", metadata["account_id"]),
+            "chatgpt_user_id": access_auth_info.get("chatgpt_user_id", ""),
+            "expires_at": exp if isinstance(exp, int) else 0,
+            "expires_in": expires_in,
+            "organization_id": organization_id,
+            "refresh_token": refresh_token,
+        },
+        "extra": {
+            "email": email,
+        },
+    }
+
+
+def export_sub2api(input_path, output_path, proxy_key=None):
+    input_path = Path(input_path)
+    if not input_path.exists():
+        raise FileNotFoundError(f"输入路径不存在：{input_path}")
+
+    json_files = collect_json_files(input_path)
+    if not json_files:
+        raise ValueError(f"未找到可处理的 JSON 文件：{input_path}")
+
+    output_path = Path(output_path)
+    ensure_output_directory(output_path.parent)
+    sub2api_data, resolved_proxy_key = load_sub2api_config(output_path, proxy_key=proxy_key)
+    existing_emails = collect_existing_sub2api_emails(sub2api_data)
+
+    added = 0
+    skipped = 0
+    for file_path in json_files:
+        data = load_json(file_path)
+        account_entry = build_sub2api_account_entry(data, file_path)
+        email = account_entry["extra"]["email"]
+        if email in existing_emails:
+            print(f"  跳过（已存在）: {email}")
+            skipped += 1
+            continue
+
+        account_entry.update(
+            {
+                "proxy_key": resolved_proxy_key,
+                "concurrency": 10,
+                "priority": 1,
+                "rate_multiplier": 1,
+                "auto_pause_on_expired": True,
+            }
+        )
+        sub2api_data["accounts"].append(account_entry)
+        existing_emails.add(email)
+        added += 1
+        print(f"  添加: {email}")
+
+    save_json(output_path, sub2api_data)
+    print(f"\n完成！新增 {added} 个，跳过 {skipped} 个，总计 {len(sub2api_data['accounts'])} 个账户")
+    return sub2api_data
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="探测并转换 chatgpt / codex 两种 auth.json 格式"
+        description="探测、转换并导出 chatgpt / codex auth.json"
     )
     subparsers = parser.add_subparsers(dest="command")
 
@@ -422,7 +626,19 @@ def build_parser():
     convert_parser.add_argument(
         "--force-account-filename",
         action="store_true",
+        default=None,
         help="强制输出为 <类型>-<account_id的sha256前8位>-<email>-<tier>.json",
+    )
+
+    sub2api_parser = subparsers.add_parser(
+        "export-sub2api",
+        help="将 auth.json 文件导出或追加到 sub2api.json",
+    )
+    sub2api_parser.add_argument("input_path", help="输入 JSON 文件或文件夹路径")
+    sub2api_parser.add_argument("output_path", help="sub2api.json 输出路径")
+    sub2api_parser.add_argument(
+        "--proxy-key",
+        help="当目标 sub2api.json 不存在或未配置 proxy_key 时使用的代理键",
     )
 
     return parser
@@ -431,9 +647,19 @@ def build_parser():
 def parse_args(argv):
     if argv and argv[0] not in {"detect", "convert", "-h", "--help"}:
         if len(argv) == 1:
-            return argparse.Namespace(command="convert", input_path=argv[0], output_path=None)
+            return argparse.Namespace(
+                command="convert",
+                input_path=argv[0],
+                output_path=None,
+                force_account_filename=None,
+            )
         if len(argv) == 2:
-            return argparse.Namespace(command="convert", input_path=argv[0], output_path=argv[1])
+            return argparse.Namespace(
+                command="convert",
+                input_path=argv[0],
+                output_path=argv[1],
+                force_account_filename=None,
+            )
     return build_parser().parse_args(argv)
 
 
@@ -447,11 +673,13 @@ def main(argv=None):
     try:
         if args.command == "detect":
             detect_path(args.input_path)
+        elif args.command == "export-sub2api":
+            export_sub2api(args.input_path, args.output_path, proxy_key=getattr(args, "proxy_key", None))
         else:
             convert_path(
                 args.input_path,
                 args.output_path,
-                force_account_filename=getattr(args, "force_account_filename", False),
+                force_account_filename=getattr(args, "force_account_filename", None),
             )
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"错误：{error}", file=sys.stderr)

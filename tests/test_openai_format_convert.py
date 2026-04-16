@@ -37,6 +37,26 @@ class OpenAIFormatConvertTests(unittest.TestCase):
     def base64url_encode(self, text):
         return base64.urlsafe_b64encode(text.encode("utf-8")).decode("utf-8").rstrip("=")
 
+    def make_access_token(
+        self,
+        account_id,
+        user_id="user-123",
+        plan_type="team",
+        exp=200,
+        iat=100,
+    ):
+        return self.make_jwt(
+            {
+                "exp": exp,
+                "iat": iat,
+                "https://api.openai.com/auth": {
+                    "chatgpt_account_id": account_id,
+                    "chatgpt_plan_type": plan_type,
+                    "chatgpt_user_id": user_id,
+                },
+            }
+        )
+
     def test_chatgpt_to_codex_accepts_minimal_payload(self):
         chatgpt_data = {
             "OPENAI_API_KEY": "",
@@ -142,15 +162,27 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertEqual(converted["id_token"], "id-token")
 
     def test_convert_subcommand_uses_default_output_name_for_single_file(self):
+        account_id = "account-123"
+        email = "demo@example.com"
+        tier = "team"
         codex_data = {
-            "access_token": "access-token",
-            "id_token": "id-token",
+            "access_token": self.make_access_token(account_id, plan_type=tier),
+            "account_id": account_id,
+            "email": email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": account_id,
+                    "email": email,
+                    "tier": tier,
+                }
+            ),
             "type": "codex",
         }
+        expected_hash = hashlib.sha256(account_id.encode("utf-8")).hexdigest()[:8]
 
         with tempfile.TemporaryDirectory() as temp_dir:
             input_path = Path(temp_dir) / "codex-demo.json"
-            expected_output_path = Path(temp_dir) / "chatgpt-demo.json"
+            expected_output_path = Path(temp_dir) / f"chatgpt-{expected_hash}-{email}-{tier}.json"
             input_path.write_text(json.dumps(codex_data), encoding="utf-8")
 
             result = subprocess.run(
@@ -171,19 +203,42 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertEqual(converted["auth_mode"], "chatgpt")
 
     def test_convert_subcommand_converts_directory_into_default_output_names(self):
+        alpha_account_id = "alpha-account"
+        alpha_email = "alpha@example.com"
+        alpha_tier = "team"
         chatgpt_data = {
             "OPENAI_API_KEY": "",
             "auth_mode": "chatgpt",
             "tokens": {
-                "access_token": "access-token",
-                "id_token": "id-token",
+                "access_token": self.make_access_token(alpha_account_id, plan_type=alpha_tier),
+                "account_id": alpha_account_id,
+                "id_token": self.make_jwt(
+                    {
+                        "sub": alpha_account_id,
+                        "email": alpha_email,
+                        "tier": alpha_tier,
+                    }
+                ),
             },
         }
+        beta_account_id = "beta-account"
+        beta_email = "beta@example.com"
+        beta_tier = "pro"
         codex_data = {
-            "access_token": "another-access-token",
-            "id_token": "another-id-token",
+            "access_token": self.make_access_token(beta_account_id, plan_type=beta_tier),
+            "account_id": beta_account_id,
+            "email": beta_email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": beta_account_id,
+                    "email": beta_email,
+                    "tier": beta_tier,
+                }
+            ),
             "type": "codex",
         }
+        alpha_hash = hashlib.sha256(alpha_account_id.encode("utf-8")).hexdigest()[:8]
+        beta_hash = hashlib.sha256(beta_account_id.encode("utf-8")).hexdigest()[:8]
 
         with tempfile.TemporaryDirectory() as temp_dir:
             input_dir = Path(temp_dir) / "inputs"
@@ -198,8 +253,8 @@ class OpenAIFormatConvertTests(unittest.TestCase):
                 check=False,
             )
 
-            output_one = input_dir / "codex-alpha.json"
-            output_two = input_dir / "chatgpt-beta.json"
+            output_one = input_dir / f"codex-{alpha_hash}-{alpha_email}-{alpha_tier}.json"
+            output_two = input_dir / f"chatgpt-{beta_hash}-{beta_email}-{beta_tier}.json"
 
             converted_one = json.loads(output_one.read_text(encoding="utf-8")) if output_one.exists() else None
             converted_two = json.loads(output_two.read_text(encoding="utf-8")) if output_two.exists() else None
@@ -255,6 +310,92 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertIn(str(expected_output_path), result.stdout)
         self.assertIsNotNone(converted)
         self.assertEqual(converted["type"], "codex")
+
+    def test_export_sub2api_subcommand_merges_directory_accounts(self):
+        alpha_account_id = "sub2api-alpha-account"
+        alpha_email = "alpha@example.com"
+        alpha_tier = "team"
+        beta_account_id = "sub2api-beta-account"
+        beta_email = "beta@example.com"
+        beta_tier = "pro"
+
+        chatgpt_data = {
+            "OPENAI_API_KEY": "",
+            "auth_mode": "chatgpt",
+            "tokens": {
+                "access_token": self.make_access_token(alpha_account_id, user_id="user-alpha", plan_type=alpha_tier, exp=500, iat=100),
+                "account_id": alpha_account_id,
+                "id_token": self.make_jwt(
+                    {
+                        "sub": alpha_account_id,
+                        "email": alpha_email,
+                        "tier": alpha_tier,
+                        "https://api.openai.com/auth": {
+                            "organizations": [{"id": "org-alpha"}],
+                        },
+                    }
+                ),
+                "refresh_token": "refresh-alpha",
+            },
+        }
+        codex_data = {
+            "access_token": self.make_access_token(beta_account_id, user_id="user-beta", plan_type=beta_tier, exp=900, iat=300),
+            "account_id": beta_account_id,
+            "email": beta_email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": beta_account_id,
+                    "email": beta_email,
+                    "tier": beta_tier,
+                    "https://api.openai.com/auth": {
+                        "organizations": [{"id": "org-beta"}],
+                    },
+                }
+            ),
+            "refresh_token": "refresh-beta",
+            "type": "codex",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "auths"
+            input_dir.mkdir()
+            (input_dir / "chatgpt-alpha.json").write_text(json.dumps(chatgpt_data), encoding="utf-8")
+            (input_dir / "codex-beta.json").write_text(json.dumps(codex_data), encoding="utf-8")
+            output_path = Path(temp_dir) / "sub2api.json"
+            output_path.write_text(
+                json.dumps(
+                    {
+                        "proxies": [{"proxy_key": "proxy-demo"}],
+                        "accounts": [
+                            {
+                                "extra": {"email": alpha_email},
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                ["python3", str(SCRIPT_PATH), "export-sub2api", str(input_dir), str(output_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            exported = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn("跳过（已存在）", result.stdout)
+        self.assertIn("添加: beta@example.com", result.stdout)
+        self.assertEqual(len(exported["accounts"]), 2)
+        beta_account = next(account for account in exported["accounts"] if account.get("extra", {}).get("email") == beta_email)
+        self.assertEqual(beta_account["proxy_key"], "proxy-demo")
+        self.assertEqual(beta_account["credentials"]["chatgpt_account_id"], beta_account_id)
+        self.assertEqual(beta_account["credentials"]["chatgpt_user_id"], "user-beta")
+        self.assertEqual(beta_account["credentials"]["organization_id"], "org-beta")
+        self.assertEqual(beta_account["credentials"]["refresh_token"], "refresh-beta")
+        self.assertEqual(beta_account["credentials"]["expires_at"], 900)
+        self.assertEqual(beta_account["credentials"]["expires_in"], 600)
 
 
 if __name__ == "__main__":
