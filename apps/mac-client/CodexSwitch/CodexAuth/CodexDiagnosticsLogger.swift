@@ -1,10 +1,10 @@
 import Foundation
 
 public struct CodexUserFacingTimeFormatter {
-    public let timeZone: TimeZone
+    private let explicitTimeZone: TimeZone?
 
-    public init(timeZone: TimeZone = .current) {
-        self.timeZone = timeZone
+    public init(timeZone: TimeZone? = nil) {
+        self.explicitTimeZone = timeZone
     }
 
     public func displayTimestamp(from date: Date) -> String {
@@ -21,6 +21,10 @@ public struct CodexUserFacingTimeFormatter {
 
     public func filenameTimestamp(from date: Date) -> String {
         formatter(dateFormat: "yyyyMMdd'T'HHmmss").string(from: date)
+    }
+
+    public var timeZone: TimeZone {
+        explicitTimeZone ?? NSTimeZone.default
     }
 
     private func formatter(dateFormat: String) -> DateFormatter {
