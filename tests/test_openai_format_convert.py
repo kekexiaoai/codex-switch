@@ -44,9 +44,11 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         plan_type="team",
         exp=200,
         iat=100,
+        client_id="app_test_client",
     ):
         return self.make_jwt(
             {
+                "client_id": client_id,
                 "exp": exp,
                 "iat": iat,
                 "https://api.openai.com/auth": {
@@ -415,10 +417,15 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertEqual(beta_account["proxy_key"], "proxy-demo")
         self.assertEqual(beta_account["credentials"]["chatgpt_account_id"], beta_account_id)
         self.assertEqual(beta_account["credentials"]["chatgpt_user_id"], "user-beta")
+        self.assertEqual(beta_account["credentials"]["client_id"], "app_test_client")
+        self.assertEqual(beta_account["credentials"]["email"], beta_email)
+        self.assertEqual(beta_account["credentials"]["id_token"], codex_data["id_token"])
         self.assertEqual(beta_account["credentials"]["organization_id"], "org-beta")
+        self.assertEqual(beta_account["credentials"]["plan_type"], beta_tier)
         self.assertEqual(beta_account["credentials"]["refresh_token"], "refresh-beta")
         self.assertEqual(beta_account["credentials"]["expires_at"], 900)
         self.assertEqual(beta_account["credentials"]["expires_in"], 600)
+        self.assertNotIn("plan_type", beta_account["extra"])
 
     def test_export_sub2api_allows_empty_proxies_without_proxy_key(self):
         account_id = "empty-proxy-account"
@@ -557,7 +564,7 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         email = "member@example.com"
         user_id = "user-member"
         existing_entry = {
-            "name": "member",
+            "name": "custom-member-name",
             "platform": "openai",
             "type": "oauth",
             "credentials": {
@@ -576,6 +583,7 @@ class OpenAIFormatConvertTests(unittest.TestCase):
                 "chatgpt_account_id": account_id,
                 "chatgpt_user_id": user_id,
                 "last_refresh": "2026-04-15T09:00:00+00:00",
+                "privacy_mode": "training_off",
             },
             "proxy_key": "proxy-demo",
             "concurrency": 10,
@@ -629,8 +637,12 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertEqual(len(exported["accounts"]), 1)
         account = exported["accounts"][0]
+        self.assertEqual(account["name"], "custom-member-name")
         self.assertEqual(account["credentials"]["refresh_token"], "new-refresh")
         self.assertEqual(account["credentials"]["expires_at"], 999)
+        self.assertEqual(account["credentials"]["plan_type"], "team")
+        self.assertEqual(account["credentials"]["email"], email)
+        self.assertEqual(account["extra"]["privacy_mode"], "training_off")
 
     def test_export_sub2api_keeps_existing_entry_when_last_refresh_is_newer(self):
         account_id = "same-account"

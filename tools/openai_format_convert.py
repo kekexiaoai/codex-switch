@@ -538,10 +538,10 @@ def build_sub2api_dedupe_key(account):
         access_hash = hashlib.sha256(access_token.encode("utf-8")).hexdigest()
         return f"access:{access_hash}"
 
-    email = extra.get("email")
+    email = credentials.get("email") or extra.get("email")
     account_id = credentials.get("chatgpt_account_id") or extra.get("chatgpt_account_id") or ""
     organization_id = credentials.get("organization_id") or extra.get("organization_id") or ""
-    plan_type = extra.get("plan_type") or ""
+    plan_type = credentials.get("plan_type") or extra.get("plan_type") or ""
     if isinstance(email, str) and email:
         return f"account:{email}|{account_id}|{organization_id}|{plan_type}"
 
@@ -638,6 +638,22 @@ def should_replace_sub2api_entry(existing_entry, incoming_entry):
 
 def apply_sub2api_defaults(account_entry, proxy_key, existing_entry=None):
     existing_entry = existing_entry if isinstance(existing_entry, dict) else {}
+    existing_credentials = existing_entry.get("credentials")
+    if not isinstance(existing_credentials, dict):
+        existing_credentials = {}
+    existing_extra = existing_entry.get("extra")
+    if not isinstance(existing_extra, dict):
+        existing_extra = {}
+
+    merged_credentials = dict(existing_credentials)
+    merged_credentials.update(account_entry.get("credentials", {}))
+    account_entry["credentials"] = merged_credentials
+
+    merged_extra = dict(existing_extra)
+    merged_extra.update(account_entry.get("extra", {}))
+    account_entry["extra"] = merged_extra
+
+    account_entry["name"] = existing_entry.get("name", account_entry.get("name"))
     existing_proxy_key = existing_entry.get("proxy_key")
     if existing_proxy_key is not None:
         account_entry["proxy_key"] = existing_proxy_key
@@ -687,6 +703,8 @@ def build_sub2api_account_entry(data, source_path):
     plan_type = resolve_tier(id_payload or access_payload or {})
     chatgpt_account_id = access_auth_info.get("chatgpt_account_id", metadata["account_id"])
     last_refresh = data.get("last_refresh") if isinstance(data.get("last_refresh"), str) and data.get("last_refresh") else ""
+    client_id = access_payload.get("client_id") if isinstance(access_payload.get("client_id"), str) else ""
+    id_token_value = id_token if isinstance(id_token, str) else ""
 
     return {
         "name": email.split("@", 1)[0] if email else source_path.stem,
@@ -696,17 +714,17 @@ def build_sub2api_account_entry(data, source_path):
             "access_token": access_token,
             "chatgpt_account_id": chatgpt_account_id,
             "chatgpt_user_id": access_auth_info.get("chatgpt_user_id", ""),
+            "client_id": client_id,
+            "email": email,
             "expires_at": exp if isinstance(exp, int) else 0,
             "expires_in": expires_in,
+            "id_token": id_token_value,
             "organization_id": organization_id,
+            "plan_type": plan_type,
             "refresh_token": refresh_token,
         },
         "extra": {
             "email": email,
-            "plan_type": plan_type,
-            "organization_id": organization_id,
-            "chatgpt_account_id": chatgpt_account_id,
-            "chatgpt_user_id": access_auth_info.get("chatgpt_user_id", ""),
             "last_refresh": last_refresh,
         },
     }
