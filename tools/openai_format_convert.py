@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import base64
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -182,13 +184,104 @@ def rename_for_target(input_path, target_format):
     return f"{target_format}-{filename}"
 
 
-def resolve_single_output_path(input_path, analysis, output_path=None):
+def extract_id_token(data):
+    tokens = data.get("tokens")
+    if isinstance(tokens, dict) and isinstance(tokens.get("id_token"), str):
+        return tokens["id_token"]
+    if isinstance(data.get("id_token"), str):
+        return data["id_token"]
+    return None
+
+
+def decode_jwt_payload(id_token):
+    parts = id_token.split(".")
+    if len(parts) < 2:
+        raise ValueError("id_token 不是合法的 JWT")
+
+    payload_segment = parts[1]
+    padding = "=" * (-len(payload_segment) % 4)
+    normalized = (payload_segment + padding).replace("-", "+").replace("_", "/")
+
+    try:
+        payload_data = base64.b64decode(normalized)
+        payload = json.loads(payload_data.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ValueError("无法解析 id_token 载荷") from error
+
+    if not isinstance(payload, dict):
+        raise ValueError("id_token 载荷必须是对象")
+    return payload
+
+
+def normalize_email(value):
+    value = normalize_string(value, "email").strip().lower()
+    if not value:
+        raise ValueError("无法从 JSON 中解析 email")
+    return value
+
+
+def resolve_tier(payload):
+    openai_auth = payload.get("https://api.openai.com/auth")
+    auth_plan = openai_auth.get("chatgpt_plan_type") if isinstance(openai_auth, dict) else None
+    candidate = str(payload.get("tier") or payload.get("plan") or auth_plan or "unknown").strip().lower()
+
+    if "team" in candidate:
+        return "team"
+    if "pro" in candidate:
+        return "pro"
+    if "plus" in candidate:
+        return "plus"
+    return candidate or "unknown"
+
+
+def resolve_account_metadata(data, analysis):
+    payload = None
+    id_token = extract_id_token(data)
+    if id_token:
+        payload = decode_jwt_payload(id_token)
+
+    if analysis["format"] == "chatgpt":
+        account_id = get_nested_value(data, "tokens.account_id")
+    else:
+        account_id = data.get("account_id")
+
+    if (not isinstance(account_id, str) or not account_id.strip()) and payload:
+        account_id = payload.get("sub")
+    if not isinstance(account_id, str) or not account_id.strip():
+        raise ValueError("无法从 JSON 中解析 account_id")
+    account_id = account_id.strip()
+
+    raw_email = data.get("email")
+    if (not isinstance(raw_email, str) or not raw_email.strip()) and payload:
+        raw_email = payload.get("email")
+    email = normalize_email(raw_email)
+
+    tier = resolve_tier(payload or {})
+    return {
+        "account_id": account_id,
+        "email": email,
+        "tier": tier,
+    }
+
+
+def build_account_filename(data, analysis):
+    metadata = resolve_account_metadata(data, analysis)
+    account_hash = hashlib.sha256(metadata["account_id"].encode("utf-8")).hexdigest()[:8]
+    return f"{analysis['target_format']}-{account_hash}-{metadata['email']}-{metadata['tier']}.json"
+
+
+def resolve_single_output_path(input_path, analysis, data, output_path=None, force_account_filename=False):
+    if force_account_filename:
+        filename = build_account_filename(data, analysis)
+    else:
+        filename = rename_for_target(input_path, analysis["target_format"])
+
     if output_path is None:
-        return input_path.with_name(rename_for_target(input_path, analysis["target_format"]))
+        return input_path.with_name(filename)
 
     output_path = Path(output_path)
     if output_path.exists() and output_path.is_dir():
-        return output_path / rename_for_target(input_path, analysis["target_format"])
+        return output_path / filename
     return output_path
 
 
@@ -220,7 +313,7 @@ def detect_path(input_path):
     return analyses
 
 
-def convert_file(input_path, output_path=None):
+def convert_file(input_path, output_path=None, force_account_filename=False):
     input_path = Path(input_path)
     data = load_json(input_path)
     analysis = analyze_format(data)
@@ -228,7 +321,13 @@ def convert_file(input_path, output_path=None):
     print_analysis(analysis)
 
     converted = convert_data(data, analysis)
-    output_path = resolve_single_output_path(input_path, analysis, output_path)
+    output_path = resolve_single_output_path(
+        input_path,
+        analysis,
+        data,
+        output_path,
+        force_account_filename=force_account_filename,
+    )
     print(f"正在转换：{analysis['format']} -> {analysis['target_format']}")
     save_json(output_path, converted)
     print(f"转换完成！已保存到：{output_path}")
@@ -239,18 +338,30 @@ def ensure_output_directory(output_path):
     output_path.mkdir(parents=True, exist_ok=True)
 
 
-def build_batch_plan(input_dir, output_dir=None):
+def build_batch_plan(input_dir, output_dir=None, force_account_filename=False):
     json_files = collect_json_files(input_dir)
     if not json_files:
         raise ValueError(f"未找到可处理的 JSON 文件：{input_dir}")
 
     plan = []
     for file_path in json_files:
-        analysis = analyze_format(load_json(file_path))
+        data = load_json(file_path)
+        analysis = analyze_format(data)
         if output_dir is None:
-            destination = file_path.with_name(rename_for_target(file_path, analysis["target_format"]))
+            destination = resolve_single_output_path(
+                file_path,
+                analysis,
+                data,
+                force_account_filename=force_account_filename,
+            )
         else:
-            destination = output_dir / rename_for_target(file_path, analysis["target_format"])
+            destination = resolve_single_output_path(
+                file_path,
+                analysis,
+                data,
+                output_dir,
+                force_account_filename=force_account_filename,
+            )
         plan.append((file_path, analysis, destination))
 
     destination_map = {}
@@ -265,7 +376,7 @@ def build_batch_plan(input_dir, output_dir=None):
     return plan
 
 
-def convert_directory(input_dir, output_dir=None):
+def convert_directory(input_dir, output_dir=None, force_account_filename=False):
     input_dir = Path(input_dir)
     if not input_dir.exists():
         raise FileNotFoundError(f"输入路径不存在：{input_dir}")
@@ -278,21 +389,21 @@ def convert_directory(input_dir, output_dir=None):
     if output_dir_path is not None:
         ensure_output_directory(output_dir_path)
 
-    plan = build_batch_plan(input_dir, output_dir_path)
+    plan = build_batch_plan(input_dir, output_dir_path, force_account_filename=force_account_filename)
     results = []
     for index, (file_path, _, destination) in enumerate(plan):
         if index > 0:
             print()
-        results.append(convert_file(file_path, destination))
+        results.append(convert_file(file_path, destination, force_account_filename=force_account_filename))
     return results
 
 
-def convert_path(input_path, output_path=None):
+def convert_path(input_path, output_path=None, force_account_filename=False):
     input_path = Path(input_path)
     if input_path.is_dir():
-        return convert_directory(input_path, output_path)
+        return convert_directory(input_path, output_path, force_account_filename=force_account_filename)
     if input_path.is_file():
-        return [convert_file(input_path, output_path)]
+        return [convert_file(input_path, output_path, force_account_filename=force_account_filename)]
     raise FileNotFoundError(f"输入路径不存在：{input_path}")
 
 
@@ -308,6 +419,11 @@ def build_parser():
     convert_parser = subparsers.add_parser("convert", help="探测后执行双向转换")
     convert_parser.add_argument("input_path", help="输入 JSON 文件或文件夹路径")
     convert_parser.add_argument("output_path", nargs="?", help="输出 JSON 文件或文件夹路径")
+    convert_parser.add_argument(
+        "--force-account-filename",
+        action="store_true",
+        help="强制输出为 <类型>-<account_id的sha256前8位>-<email>-<tier>.json",
+    )
 
     return parser
 
@@ -332,7 +448,11 @@ def main(argv=None):
         if args.command == "detect":
             detect_path(args.input_path)
         else:
-            convert_path(args.input_path, args.output_path)
+            convert_path(
+                args.input_path,
+                args.output_path,
+                force_account_filename=getattr(args, "force_account_filename", False),
+            )
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"错误：{error}", file=sys.stderr)
         return 1

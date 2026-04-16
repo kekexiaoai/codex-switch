@@ -1,8 +1,10 @@
 import importlib.util
+import hashlib
 import json
 import subprocess
 import tempfile
 import unittest
+import base64
 from pathlib import Path
 
 
@@ -22,6 +24,19 @@ MODULE = load_module()
 
 
 class OpenAIFormatConvertTests(unittest.TestCase):
+    def make_jwt(self, payload):
+        header = {"alg": "none", "typ": "JWT"}
+        return ".".join(
+            [
+                self.base64url_encode(json.dumps(header, separators=(",", ":"))),
+                self.base64url_encode(json.dumps(payload, separators=(",", ":"), sort_keys=True)),
+                "signature",
+            ]
+        )
+
+    def base64url_encode(self, text):
+        return base64.urlsafe_b64encode(text.encode("utf-8")).decode("utf-8").rstrip("=")
+
     def test_chatgpt_to_codex_accepts_minimal_payload(self):
         chatgpt_data = {
             "OPENAI_API_KEY": "",
@@ -194,6 +209,52 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertIsNotNone(converted_two)
         self.assertEqual(converted_one["type"], "codex")
         self.assertEqual(converted_two["auth_mode"], "chatgpt")
+
+    def test_convert_subcommand_uses_forced_account_filename_pattern(self):
+        account_id = "18fd2654-0e5b-4026-9f8c-adef4dce58a1"
+        email = "2983537233@qq.com"
+        tier = "team"
+        chatgpt_data = {
+            "OPENAI_API_KEY": "",
+            "auth_mode": "chatgpt",
+            "tokens": {
+                "access_token": "access-token",
+                "account_id": account_id,
+                "id_token": self.make_jwt(
+                    {
+                        "sub": account_id,
+                        "email": email,
+                        "tier": tier,
+                    }
+                ),
+            },
+        }
+        expected_hash = hashlib.sha256(account_id.encode("utf-8")).hexdigest()[:8]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "input.json"
+            expected_output_path = Path(temp_dir) / f"codex-{expected_hash}-{email}-{tier}.json"
+            input_path.write_text(json.dumps(chatgpt_data), encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    "python3",
+                    str(SCRIPT_PATH),
+                    "convert",
+                    str(input_path),
+                    "--force-account-filename",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            converted = json.loads(expected_output_path.read_text(encoding="utf-8")) if expected_output_path.exists() else None
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn(str(expected_output_path), result.stdout)
+        self.assertIsNotNone(converted)
+        self.assertEqual(converted["type"], "codex")
 
 
 if __name__ == "__main__":
