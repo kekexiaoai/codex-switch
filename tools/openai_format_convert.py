@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import datetime
 import hashlib
 import json
 import sys
@@ -515,6 +516,139 @@ def collect_existing_sub2api_emails(sub2api_data):
     return emails
 
 
+def build_sub2api_dedupe_key(account):
+    if not isinstance(account, dict):
+        return None
+
+    credentials = account.get("credentials")
+    if not isinstance(credentials, dict):
+        credentials = {}
+    extra = account.get("extra")
+    if not isinstance(extra, dict):
+        extra = {}
+
+    chatgpt_user_id = credentials.get("chatgpt_user_id") or extra.get("chatgpt_user_id") or ""
+    chatgpt_account_id = credentials.get("chatgpt_account_id") or extra.get("chatgpt_account_id") or ""
+    if isinstance(chatgpt_user_id, str) and chatgpt_user_id and isinstance(chatgpt_account_id, str) and chatgpt_account_id:
+        return f"account-user:{chatgpt_user_id}|{chatgpt_account_id}"
+
+    refresh_token = credentials.get("refresh_token")
+    if isinstance(refresh_token, str) and refresh_token:
+        return f"refresh:{refresh_token}"
+
+    access_token = credentials.get("access_token")
+    if isinstance(access_token, str) and access_token:
+        access_hash = hashlib.sha256(access_token.encode("utf-8")).hexdigest()
+        return f"access:{access_hash}"
+
+    email = extra.get("email")
+    account_id = credentials.get("chatgpt_account_id") or extra.get("chatgpt_account_id") or ""
+    organization_id = credentials.get("organization_id") or extra.get("organization_id") or ""
+    plan_type = extra.get("plan_type") or ""
+    if isinstance(email, str) and email:
+        return f"account:{email}|{account_id}|{organization_id}|{plan_type}"
+
+    return None
+
+
+def collect_existing_sub2api_keys(sub2api_data):
+    keys = {}
+    for index, account in enumerate(sub2api_data.get("accounts", [])):
+        dedupe_key = build_sub2api_dedupe_key(account)
+        if dedupe_key:
+            keys[dedupe_key] = index
+    return keys
+
+
+def parse_iso8601_timestamp(value):
+    if not isinstance(value, str) or not value.strip():
+        return None
+
+    normalized = value.strip().replace("Z", "+00:00")
+    try:
+        parsed = datetime.datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+    return parsed.timestamp()
+
+
+def extract_sub2api_last_refresh(account):
+    if not isinstance(account, dict):
+        return None
+    extra = account.get("extra")
+    if not isinstance(extra, dict):
+        return None
+    return parse_iso8601_timestamp(extra.get("last_refresh"))
+
+
+def extract_sub2api_iat(account):
+    if not isinstance(account, dict):
+        return None
+
+    credentials = account.get("credentials")
+    if not isinstance(credentials, dict):
+        return None
+
+    access_token = credentials.get("access_token")
+    if isinstance(access_token, str) and access_token:
+        try:
+            payload = decode_jwt_payload(access_token)
+        except ValueError:
+            payload = {}
+        iat = payload.get("iat")
+        if isinstance(iat, int):
+            return iat
+
+    expires_at = credentials.get("expires_at")
+    expires_in = credentials.get("expires_in")
+    if isinstance(expires_at, int) and isinstance(expires_in, int):
+        return expires_at - expires_in
+    return None
+
+
+def extract_sub2api_expires_at(account):
+    if not isinstance(account, dict):
+        return None
+    credentials = account.get("credentials")
+    if not isinstance(credentials, dict):
+        return None
+    expires_at = credentials.get("expires_at")
+    return expires_at if isinstance(expires_at, int) else None
+
+
+def should_replace_sub2api_entry(existing_entry, incoming_entry):
+    comparators = [
+        (extract_sub2api_last_refresh(existing_entry), extract_sub2api_last_refresh(incoming_entry)),
+        (extract_sub2api_iat(existing_entry), extract_sub2api_iat(incoming_entry)),
+        (extract_sub2api_expires_at(existing_entry), extract_sub2api_expires_at(incoming_entry)),
+    ]
+
+    for existing_value, incoming_value in comparators:
+        if existing_value is None and incoming_value is None:
+            continue
+        if existing_value is None:
+            return True
+        if incoming_value is None:
+            return False
+        if incoming_value != existing_value:
+            return incoming_value > existing_value
+
+    return False
+
+
+def apply_sub2api_defaults(account_entry, proxy_key, existing_entry=None):
+    existing_entry = existing_entry if isinstance(existing_entry, dict) else {}
+    account_entry["proxy_key"] = existing_entry.get("proxy_key", proxy_key)
+    account_entry["concurrency"] = existing_entry.get("concurrency", 10)
+    account_entry["priority"] = existing_entry.get("priority", 1)
+    account_entry["rate_multiplier"] = existing_entry.get("rate_multiplier", 1)
+    account_entry["auto_pause_on_expired"] = existing_entry.get("auto_pause_on_expired", True)
+    return account_entry
+
+
 def build_sub2api_account_entry(data, source_path):
     analysis = analyze_format(data)
     access_token = extract_access_token(data)
@@ -547,6 +681,9 @@ def build_sub2api_account_entry(data, source_path):
     expires_in = exp - iat if isinstance(exp, int) and isinstance(iat, int) and exp and iat else 864000
     refresh_token = extract_refresh_token(data) or ""
     email = metadata["email"]
+    plan_type = resolve_tier(id_payload or access_payload or {})
+    chatgpt_account_id = access_auth_info.get("chatgpt_account_id", metadata["account_id"])
+    last_refresh = data.get("last_refresh") if isinstance(data.get("last_refresh"), str) and data.get("last_refresh") else ""
 
     return {
         "name": email.split("@", 1)[0] if email else source_path.stem,
@@ -554,7 +691,7 @@ def build_sub2api_account_entry(data, source_path):
         "type": "oauth",
         "credentials": {
             "access_token": access_token,
-            "chatgpt_account_id": access_auth_info.get("chatgpt_account_id", metadata["account_id"]),
+            "chatgpt_account_id": chatgpt_account_id,
             "chatgpt_user_id": access_auth_info.get("chatgpt_user_id", ""),
             "expires_at": exp if isinstance(exp, int) else 0,
             "expires_in": expires_in,
@@ -563,6 +700,11 @@ def build_sub2api_account_entry(data, source_path):
         },
         "extra": {
             "email": email,
+            "plan_type": plan_type,
+            "organization_id": organization_id,
+            "chatgpt_account_id": chatgpt_account_id,
+            "chatgpt_user_id": access_auth_info.get("chatgpt_user_id", ""),
+            "last_refresh": last_refresh,
         },
     }
 
@@ -579,35 +721,41 @@ def export_sub2api(input_path, output_path, proxy_key=None):
     output_path = Path(output_path)
     ensure_output_directory(output_path.parent)
     sub2api_data, resolved_proxy_key = load_sub2api_config(output_path, proxy_key=proxy_key)
-    existing_emails = collect_existing_sub2api_emails(sub2api_data)
+    existing_key_to_index = collect_existing_sub2api_keys(sub2api_data)
 
     added = 0
+    updated = 0
     skipped = 0
     for file_path in json_files:
         data = load_json(file_path)
         account_entry = build_sub2api_account_entry(data, file_path)
         email = account_entry["extra"]["email"]
-        if email in existing_emails:
-            print(f"  跳过（已存在）: {email}")
-            skipped += 1
+        dedupe_key = build_sub2api_dedupe_key(account_entry)
+        if dedupe_key and dedupe_key in existing_key_to_index:
+            existing_index = existing_key_to_index[dedupe_key]
+            existing_entry = sub2api_data["accounts"][existing_index]
+            if should_replace_sub2api_entry(existing_entry, account_entry):
+                sub2api_data["accounts"][existing_index] = apply_sub2api_defaults(
+                    account_entry,
+                    resolved_proxy_key,
+                    existing_entry=existing_entry,
+                )
+                updated += 1
+                print(f"  更新: {email}")
+            else:
+                skipped += 1
+                print(f"  跳过（较旧）: {email}")
             continue
 
-        account_entry.update(
-            {
-                "proxy_key": resolved_proxy_key,
-                "concurrency": 10,
-                "priority": 1,
-                "rate_multiplier": 1,
-                "auto_pause_on_expired": True,
-            }
-        )
+        apply_sub2api_defaults(account_entry, resolved_proxy_key)
         sub2api_data["accounts"].append(account_entry)
-        existing_emails.add(email)
+        if dedupe_key:
+            existing_key_to_index[dedupe_key] = len(sub2api_data["accounts"]) - 1
         added += 1
         print(f"  添加: {email}")
 
     save_json(output_path, sub2api_data)
-    print(f"\n完成！新增 {added} 个，跳过 {skipped} 个，总计 {len(sub2api_data['accounts'])} 个账户")
+    print(f"\n完成！新增 {added} 个，更新 {updated} 个，跳过 {skipped} 个，总计 {len(sub2api_data['accounts'])} 个账户")
     return sub2api_data
 
 

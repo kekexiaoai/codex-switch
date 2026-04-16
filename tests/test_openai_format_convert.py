@@ -368,7 +368,16 @@ class OpenAIFormatConvertTests(unittest.TestCase):
                         "proxies": [{"proxy_key": "proxy-demo"}],
                         "accounts": [
                             {
-                                "extra": {"email": alpha_email},
+                                "credentials": {
+                                    "chatgpt_account_id": alpha_account_id,
+                                    "chatgpt_user_id": "user-alpha",
+                                    "refresh_token": "stale-refresh-alpha",
+                                },
+                                "extra": {
+                                    "email": alpha_email,
+                                    "chatgpt_account_id": alpha_account_id,
+                                    "chatgpt_user_id": "user-alpha",
+                                },
                             }
                         ],
                     }
@@ -385,9 +394,11 @@ class OpenAIFormatConvertTests(unittest.TestCase):
             exported = json.loads(output_path.read_text(encoding="utf-8"))
 
         self.assertEqual(result.returncode, 0, msg=result.stderr)
-        self.assertIn("跳过（已存在）", result.stdout)
+        self.assertIn("更新: alpha@example.com", result.stdout)
         self.assertIn("添加: beta@example.com", result.stdout)
         self.assertEqual(len(exported["accounts"]), 2)
+        alpha_account = next(account for account in exported["accounts"] if account.get("extra", {}).get("email") == alpha_email)
+        self.assertEqual(alpha_account["credentials"]["refresh_token"], "refresh-alpha")
         beta_account = next(account for account in exported["accounts"] if account.get("extra", {}).get("email") == beta_email)
         self.assertEqual(beta_account["proxy_key"], "proxy-demo")
         self.assertEqual(beta_account["credentials"]["chatgpt_account_id"], beta_account_id)
@@ -396,6 +407,250 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertEqual(beta_account["credentials"]["refresh_token"], "refresh-beta")
         self.assertEqual(beta_account["credentials"]["expires_at"], 900)
         self.assertEqual(beta_account["credentials"]["expires_in"], 600)
+
+    def test_export_sub2api_preserves_same_email_plus_and_multiple_team_accounts(self):
+        shared_email = "shared@example.com"
+        plus_account_id = "plus-account"
+        team_one_account_id = "team-one-account"
+        team_two_account_id = "team-two-account"
+
+        plus_auth = {
+            "access_token": self.make_access_token(plus_account_id, user_id="user-plus", plan_type="plus", exp=400, iat=100),
+            "account_id": plus_account_id,
+            "email": shared_email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": plus_account_id,
+                    "email": shared_email,
+                    "plan": "plus",
+                    "https://api.openai.com/auth": {
+                        "organizations": [{"id": "org-personal"}],
+                        "chatgpt_plan_type": "plus",
+                    },
+                }
+            ),
+            "refresh_token": "refresh-plus",
+            "type": "codex",
+        }
+        team_one_auth = {
+            "access_token": self.make_access_token(team_one_account_id, user_id="user-team-1", plan_type="team", exp=500, iat=100),
+            "account_id": team_one_account_id,
+            "email": shared_email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": team_one_account_id,
+                    "email": shared_email,
+                    "tier": "team",
+                    "https://api.openai.com/auth": {
+                        "organizations": [{"id": "org-team-1"}],
+                        "chatgpt_plan_type": "team",
+                    },
+                }
+            ),
+            "refresh_token": "refresh-team-1",
+            "type": "codex",
+        }
+        team_two_auth = {
+            "access_token": self.make_access_token(team_two_account_id, user_id="user-team-2", plan_type="team", exp=600, iat=100),
+            "account_id": team_two_account_id,
+            "email": shared_email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": team_two_account_id,
+                    "email": shared_email,
+                    "tier": "team",
+                    "https://api.openai.com/auth": {
+                        "organizations": [{"id": "org-team-2"}],
+                        "chatgpt_plan_type": "team",
+                    },
+                }
+            ),
+            "refresh_token": "refresh-team-2",
+            "type": "codex",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "auths"
+            input_dir.mkdir()
+            (input_dir / "plus.json").write_text(json.dumps(plus_auth), encoding="utf-8")
+            (input_dir / "team-1.json").write_text(json.dumps(team_one_auth), encoding="utf-8")
+            (input_dir / "team-2.json").write_text(json.dumps(team_two_auth), encoding="utf-8")
+            output_path = Path(temp_dir) / "sub2api.json"
+
+            result = subprocess.run(
+                ["python3", str(SCRIPT_PATH), "export-sub2api", str(input_dir), str(output_path), "--proxy-key", "proxy-demo"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            exported = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        shared_accounts = [account for account in exported["accounts"] if account.get("extra", {}).get("email") == shared_email]
+        self.assertEqual(len(shared_accounts), 3)
+        self.assertEqual(
+            sorted(account["credentials"]["refresh_token"] for account in shared_accounts),
+            ["refresh-plus", "refresh-team-1", "refresh-team-2"],
+        )
+
+    def test_export_sub2api_updates_existing_same_account_user_instead_of_duplicating(self):
+        account_id = "shared-team-account"
+        email = "member@example.com"
+        user_id = "user-member"
+        existing_entry = {
+            "name": "member",
+            "platform": "openai",
+            "type": "oauth",
+            "credentials": {
+                "access_token": "old-access",
+                "chatgpt_account_id": account_id,
+                "chatgpt_user_id": user_id,
+                "expires_at": 1,
+                "expires_in": 1,
+                "organization_id": "org-team",
+                "refresh_token": "old-refresh",
+            },
+            "extra": {
+                "email": email,
+                "plan_type": "team",
+                "organization_id": "org-team",
+                "chatgpt_account_id": account_id,
+                "chatgpt_user_id": user_id,
+                "last_refresh": "2026-04-15T09:00:00+00:00",
+            },
+            "proxy_key": "proxy-demo",
+            "concurrency": 10,
+            "priority": 1,
+            "rate_multiplier": 1,
+            "auto_pause_on_expired": True,
+        }
+        updated_auth = {
+            "access_token": self.make_access_token(account_id, user_id=user_id, plan_type="team", exp=999, iat=100),
+            "account_id": account_id,
+            "email": email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": account_id,
+                    "email": email,
+                    "tier": "team",
+                    "https://api.openai.com/auth": {
+                        "organizations": [{"id": "org-team"}],
+                        "chatgpt_plan_type": "team",
+                    },
+                }
+            ),
+            "refresh_token": "new-refresh",
+            "last_refresh": "2026-04-16T09:00:00+00:00",
+            "type": "codex",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "auths"
+            input_dir.mkdir()
+            (input_dir / "member.json").write_text(json.dumps(updated_auth), encoding="utf-8")
+            output_path = Path(temp_dir) / "sub2api.json"
+            output_path.write_text(
+                json.dumps(
+                    {
+                        "proxies": [{"proxy_key": "proxy-demo"}],
+                        "accounts": [existing_entry],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                ["python3", str(SCRIPT_PATH), "export-sub2api", str(input_dir), str(output_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            exported = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(len(exported["accounts"]), 1)
+        account = exported["accounts"][0]
+        self.assertEqual(account["credentials"]["refresh_token"], "new-refresh")
+        self.assertEqual(account["credentials"]["expires_at"], 999)
+
+    def test_export_sub2api_keeps_existing_entry_when_last_refresh_is_newer(self):
+        account_id = "same-account"
+        email = "same@example.com"
+        user_id = "same-user"
+        existing_entry = {
+            "name": "same",
+            "platform": "openai",
+            "type": "oauth",
+            "credentials": {
+                "access_token": "old-access",
+                "chatgpt_account_id": account_id,
+                "chatgpt_user_id": user_id,
+                "expires_at": 1000,
+                "expires_in": 900,
+                "organization_id": "org-team",
+                "refresh_token": "existing-refresh",
+            },
+            "extra": {
+                "email": email,
+                "plan_type": "team",
+                "organization_id": "org-team",
+                "chatgpt_account_id": account_id,
+                "chatgpt_user_id": user_id,
+                "last_refresh": "2026-04-17T09:00:00+00:00",
+            },
+            "proxy_key": "proxy-demo",
+            "concurrency": 10,
+            "priority": 1,
+            "rate_multiplier": 1,
+            "auto_pause_on_expired": True,
+        }
+        incoming_auth = {
+            "access_token": self.make_access_token(account_id, user_id=user_id, plan_type="team", exp=2000, iat=100),
+            "account_id": account_id,
+            "email": email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": account_id,
+                    "email": email,
+                    "tier": "team",
+                    "https://api.openai.com/auth": {
+                        "organizations": [{"id": "org-team"}],
+                        "chatgpt_plan_type": "team",
+                    },
+                }
+            ),
+            "refresh_token": "incoming-refresh",
+            "last_refresh": "2026-04-16T09:00:00+00:00",
+            "type": "codex",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "auths"
+            input_dir.mkdir()
+            (input_dir / "member.json").write_text(json.dumps(incoming_auth), encoding="utf-8")
+            output_path = Path(temp_dir) / "sub2api.json"
+            output_path.write_text(
+                json.dumps(
+                    {
+                        "proxies": [{"proxy_key": "proxy-demo"}],
+                        "accounts": [existing_entry],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                ["python3", str(SCRIPT_PATH), "export-sub2api", str(input_dir), str(output_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            exported = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        account = exported["accounts"][0]
+        self.assertEqual(account["credentials"]["refresh_token"], "existing-refresh")
+        self.assertEqual(account["extra"]["last_refresh"], "2026-04-17T09:00:00+00:00")
 
 
 if __name__ == "__main__":
