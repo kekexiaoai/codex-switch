@@ -494,10 +494,7 @@ def load_sub2api_config(output_path, proxy_key=None):
         if isinstance(first_proxy, dict):
             resolved_proxy_key = first_proxy.get("proxy_key")
 
-    if not resolved_proxy_key:
-        raise ValueError("缺少 proxy_key；请提供 --proxy-key，或在现有 sub2api.json 中配置 proxies[0].proxy_key")
-
-    if not proxies:
+    if not proxies and resolved_proxy_key:
         data["proxies"] = [{"proxy_key": resolved_proxy_key}]
 
     return data, resolved_proxy_key
@@ -641,7 +638,13 @@ def should_replace_sub2api_entry(existing_entry, incoming_entry):
 
 def apply_sub2api_defaults(account_entry, proxy_key, existing_entry=None):
     existing_entry = existing_entry if isinstance(existing_entry, dict) else {}
-    account_entry["proxy_key"] = existing_entry.get("proxy_key", proxy_key)
+    existing_proxy_key = existing_entry.get("proxy_key")
+    if existing_proxy_key is not None:
+        account_entry["proxy_key"] = existing_proxy_key
+    elif proxy_key is not None:
+        account_entry["proxy_key"] = proxy_key
+    else:
+        account_entry.pop("proxy_key", None)
     account_entry["concurrency"] = existing_entry.get("concurrency", 10)
     account_entry["priority"] = existing_entry.get("priority", 1)
     account_entry["rate_multiplier"] = existing_entry.get("rate_multiplier", 1)
@@ -794,7 +797,7 @@ def build_parser():
     sub2api_parser.add_argument("output_path", help="sub2api.json 输出路径")
     sub2api_parser.add_argument(
         "--proxy-key",
-        help="当目标 sub2api.json 不存在或未配置 proxy_key 时使用的代理键",
+        help="可选；当需要为账户写入 proxy_key 或初始化 proxies[0].proxy_key 时使用的代理键",
     )
 
     return parser

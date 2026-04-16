@@ -420,6 +420,53 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertEqual(beta_account["credentials"]["expires_at"], 900)
         self.assertEqual(beta_account["credentials"]["expires_in"], 600)
 
+    def test_export_sub2api_allows_empty_proxies_without_proxy_key(self):
+        account_id = "empty-proxy-account"
+        email = "empty-proxy@example.com"
+        auth_data = {
+            "access_token": self.make_access_token(account_id, user_id="user-empty", plan_type="free", exp=600, iat=100),
+            "account_id": account_id,
+            "email": email,
+            "id_token": self.make_jwt(
+                {
+                    "sub": account_id,
+                    "email": email,
+                    "plan": "free",
+                }
+            ),
+            "refresh_token": "refresh-empty",
+            "type": "codex",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "auths"
+            input_dir.mkdir()
+            (input_dir / "account.json").write_text(json.dumps(auth_data), encoding="utf-8")
+            output_path = Path(temp_dir) / "sub2api.json"
+            output_path.write_text(
+                json.dumps(
+                    {
+                        "exported_at": "2026-04-04T09:45:12Z",
+                        "proxies": [],
+                        "accounts": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                ["python3", str(SCRIPT_PATH), "export-sub2api", str(input_dir), str(output_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            exported = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertEqual(exported["proxies"], [])
+        self.assertEqual(len(exported["accounts"]), 1)
+        self.assertNotIn("proxy_key", exported["accounts"][0])
+
     def test_export_sub2api_preserves_same_email_plus_and_multiple_team_accounts(self):
         shared_email = "shared@example.com"
         plus_account_id = "plus-account"
