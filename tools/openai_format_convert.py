@@ -3,6 +3,7 @@
 import argparse
 import json
 import sys
+from pathlib import Path
 
 
 CHATGPT_REQUIRED_FIELDS = ["tokens.access_token", "tokens.id_token"]
@@ -14,6 +15,7 @@ CHATGPT_OPTIONAL_FIELDS = [
 ]
 CODEX_REQUIRED_FIELDS = ["access_token", "id_token"]
 CODEX_OPTIONAL_FIELDS = ["account_id", "refresh_token", "disabled", "last_refresh"]
+KNOWN_PREFIXES = ("chatgpt-", "codex-")
 
 
 def detect_format(data):
@@ -172,16 +174,126 @@ def detect_file(input_path):
     return analysis
 
 
-def convert_file(input_path, output_path):
+def rename_for_target(input_path, target_format):
+    filename = input_path.name
+    for prefix in KNOWN_PREFIXES:
+        if filename.startswith(prefix):
+            return f"{target_format}-{filename[len(prefix):]}"
+    return f"{target_format}-{filename}"
+
+
+def resolve_single_output_path(input_path, analysis, output_path=None):
+    if output_path is None:
+        return input_path.with_name(rename_for_target(input_path, analysis["target_format"]))
+
+    output_path = Path(output_path)
+    if output_path.exists() and output_path.is_dir():
+        return output_path / rename_for_target(input_path, analysis["target_format"])
+    return output_path
+
+
+def collect_json_files(input_path):
+    if input_path.is_file():
+        return [input_path]
+    return sorted(path for path in input_path.iterdir() if path.is_file() and path.suffix.lower() == ".json")
+
+
+def print_file_header(path):
+    print(f"文件：{path}")
+
+
+def detect_path(input_path):
+    input_path = Path(input_path)
+    if not input_path.exists():
+        raise FileNotFoundError(f"输入路径不存在：{input_path}")
+
+    json_files = collect_json_files(input_path)
+    if not json_files:
+        raise ValueError(f"未找到可处理的 JSON 文件：{input_path}")
+
+    analyses = []
+    for index, file_path in enumerate(json_files):
+        if index > 0:
+            print()
+        print_file_header(file_path)
+        analyses.append((file_path, detect_file(file_path)))
+    return analyses
+
+
+def convert_file(input_path, output_path=None):
+    input_path = Path(input_path)
     data = load_json(input_path)
     analysis = analyze_format(data)
+    print_file_header(input_path)
     print_analysis(analysis)
 
     converted = convert_data(data, analysis)
+    output_path = resolve_single_output_path(input_path, analysis, output_path)
     print(f"正在转换：{analysis['format']} -> {analysis['target_format']}")
     save_json(output_path, converted)
     print(f"转换完成！已保存到：{output_path}")
-    return analysis
+    return analysis, output_path
+
+
+def ensure_output_directory(output_path):
+    output_path.mkdir(parents=True, exist_ok=True)
+
+
+def build_batch_plan(input_dir, output_dir=None):
+    json_files = collect_json_files(input_dir)
+    if not json_files:
+        raise ValueError(f"未找到可处理的 JSON 文件：{input_dir}")
+
+    plan = []
+    for file_path in json_files:
+        analysis = analyze_format(load_json(file_path))
+        if output_dir is None:
+            destination = file_path.with_name(rename_for_target(file_path, analysis["target_format"]))
+        else:
+            destination = output_dir / rename_for_target(file_path, analysis["target_format"])
+        plan.append((file_path, analysis, destination))
+
+    destination_map = {}
+    source_set = {path.resolve() for path in json_files}
+    for source_path, _, destination in plan:
+        destination_key = destination.resolve(strict=False)
+        if destination_key in destination_map and destination_map[destination_key] != source_path:
+            raise ValueError(f"批量转换输出路径冲突：{destination}")
+        if destination_key in source_set and destination_key != source_path.resolve():
+            raise ValueError(f"批量转换会覆盖其他输入文件：{destination}")
+        destination_map[destination_key] = source_path
+    return plan
+
+
+def convert_directory(input_dir, output_dir=None):
+    input_dir = Path(input_dir)
+    if not input_dir.exists():
+        raise FileNotFoundError(f"输入路径不存在：{input_dir}")
+    if not input_dir.is_dir():
+        raise ValueError(f"目录转换需要文件夹输入：{input_dir}")
+
+    output_dir_path = Path(output_dir) if output_dir is not None else None
+    if output_dir_path is not None and output_dir_path.exists() and not output_dir_path.is_dir():
+        raise ValueError(f"目录转换的输出路径必须是文件夹：{output_dir_path}")
+    if output_dir_path is not None:
+        ensure_output_directory(output_dir_path)
+
+    plan = build_batch_plan(input_dir, output_dir_path)
+    results = []
+    for index, (file_path, _, destination) in enumerate(plan):
+        if index > 0:
+            print()
+        results.append(convert_file(file_path, destination))
+    return results
+
+
+def convert_path(input_path, output_path=None):
+    input_path = Path(input_path)
+    if input_path.is_dir():
+        return convert_directory(input_path, output_path)
+    if input_path.is_file():
+        return [convert_file(input_path, output_path)]
+    raise FileNotFoundError(f"输入路径不存在：{input_path}")
 
 
 def build_parser():
@@ -191,18 +303,21 @@ def build_parser():
     subparsers = parser.add_subparsers(dest="command")
 
     detect_parser = subparsers.add_parser("detect", help="只探测输入文件格式，不执行转换")
-    detect_parser.add_argument("input_file", help="输入 JSON 文件路径")
+    detect_parser.add_argument("input_path", help="输入 JSON 文件或文件夹路径")
 
     convert_parser = subparsers.add_parser("convert", help="探测后执行双向转换")
-    convert_parser.add_argument("input_file", help="输入 JSON 文件路径")
-    convert_parser.add_argument("output_file", help="输出 JSON 文件路径")
+    convert_parser.add_argument("input_path", help="输入 JSON 文件或文件夹路径")
+    convert_parser.add_argument("output_path", nargs="?", help="输出 JSON 文件或文件夹路径")
 
     return parser
 
 
 def parse_args(argv):
-    if len(argv) == 2 and argv[0] not in {"detect", "convert", "-h", "--help"}:
-        return argparse.Namespace(command="convert", input_file=argv[0], output_file=argv[1])
+    if argv and argv[0] not in {"detect", "convert", "-h", "--help"}:
+        if len(argv) == 1:
+            return argparse.Namespace(command="convert", input_path=argv[0], output_path=None)
+        if len(argv) == 2:
+            return argparse.Namespace(command="convert", input_path=argv[0], output_path=argv[1])
     return build_parser().parse_args(argv)
 
 
@@ -215,9 +330,9 @@ def main(argv=None):
 
     try:
         if args.command == "detect":
-            detect_file(args.input_file)
+            detect_path(args.input_path)
         else:
-            convert_file(args.input_file, args.output_file)
+            convert_path(args.input_path, args.output_path)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"错误：{error}", file=sys.stderr)
         return 1

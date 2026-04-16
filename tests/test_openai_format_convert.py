@@ -126,6 +126,75 @@ class OpenAIFormatConvertTests(unittest.TestCase):
         self.assertEqual(converted["access_token"], "access-token")
         self.assertEqual(converted["id_token"], "id-token")
 
+    def test_convert_subcommand_uses_default_output_name_for_single_file(self):
+        codex_data = {
+            "access_token": "access-token",
+            "id_token": "id-token",
+            "type": "codex",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = Path(temp_dir) / "codex-demo.json"
+            expected_output_path = Path(temp_dir) / "chatgpt-demo.json"
+            input_path.write_text(json.dumps(codex_data), encoding="utf-8")
+
+            result = subprocess.run(
+                ["python3", str(SCRIPT_PATH), "convert", str(input_path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            if expected_output_path.exists():
+                converted = json.loads(expected_output_path.read_text(encoding="utf-8"))
+            else:
+                converted = None
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn(str(expected_output_path), result.stdout)
+        self.assertIsNotNone(converted)
+        self.assertEqual(converted["auth_mode"], "chatgpt")
+
+    def test_convert_subcommand_converts_directory_into_default_output_names(self):
+        chatgpt_data = {
+            "OPENAI_API_KEY": "",
+            "auth_mode": "chatgpt",
+            "tokens": {
+                "access_token": "access-token",
+                "id_token": "id-token",
+            },
+        }
+        codex_data = {
+            "access_token": "another-access-token",
+            "id_token": "another-id-token",
+            "type": "codex",
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_dir = Path(temp_dir) / "inputs"
+            input_dir.mkdir()
+            (input_dir / "chatgpt-alpha.json").write_text(json.dumps(chatgpt_data), encoding="utf-8")
+            (input_dir / "codex-beta.json").write_text(json.dumps(codex_data), encoding="utf-8")
+
+            result = subprocess.run(
+                ["python3", str(SCRIPT_PATH), "convert", str(input_dir)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            output_one = input_dir / "codex-alpha.json"
+            output_two = input_dir / "chatgpt-beta.json"
+
+            converted_one = json.loads(output_one.read_text(encoding="utf-8")) if output_one.exists() else None
+            converted_two = json.loads(output_two.read_text(encoding="utf-8")) if output_two.exists() else None
+
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIsNotNone(converted_one)
+        self.assertIsNotNone(converted_two)
+        self.assertEqual(converted_one["type"], "codex")
+        self.assertEqual(converted_two["auth_mode"], "chatgpt")
+
 
 if __name__ == "__main__":
     unittest.main()
