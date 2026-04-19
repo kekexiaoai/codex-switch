@@ -112,6 +112,8 @@
 		OBJ_5035 /* QuickSwitchOverlayViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5036 /* QuickSwitchOverlayViewTests.swift */; };
 		OBJ_5037 /* CompactAccountRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5038 /* CompactAccountRowView.swift */; };
 		OBJ_5039 /* QuickSwitchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5040 /* QuickSwitchOverlayView.swift */; };
+		OBJ_5041 /* AppDelegateMainWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5042 /* AppDelegateMainWindowTests.swift */; };
+		OBJ_5043 /* MainWindowActionDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5044 /* MainWindowActionDispatcher.swift */; };
 		OBJ_74 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_10 /* AppDelegate.swift */; };
 		OBJ_75 /* CodexSwitchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_11 /* CodexSwitchApp.swift */; };
 		OBJ_77 /* CodexSwitchKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = mac-client::CodexSwitchKit::Product /* CodexSwitchKit.framework */; };
@@ -222,6 +224,8 @@
 		OBJ_5036 /* QuickSwitchOverlayViewTests.swift */ = {isa = PBXFileReference; path = QuickSwitchOverlayViewTests.swift; sourceTree = "<group>"; };
 		OBJ_5038 /* CompactAccountRowView.swift */ = {isa = PBXFileReference; path = CompactAccountRowView.swift; sourceTree = "<group>"; };
 		OBJ_5040 /* QuickSwitchOverlayView.swift */ = {isa = PBXFileReference; path = QuickSwitchOverlayView.swift; sourceTree = "<group>"; };
+		OBJ_5042 /* AppDelegateMainWindowTests.swift */ = {isa = PBXFileReference; path = AppDelegateMainWindowTests.swift; sourceTree = "<group>"; };
+		OBJ_5044 /* MainWindowActionDispatcher.swift */ = {isa = PBXFileReference; path = MainWindowActionDispatcher.swift; sourceTree = "<group>"; };
 		OBJ_41 /* UsageRefreshService.swift */ = {isa = PBXFileReference; path = UsageRefreshService.swift; sourceTree = "<group>"; };
 		OBJ_45 /* AccountRepositoryTests.swift */ = {isa = PBXFileReference; path = AccountRepositoryTests.swift; sourceTree = "<group>"; };
 		OBJ_46 /* CodexSwitchTests.swift */ = {isa = PBXFileReference; path = CodexSwitchTests.swift; sourceTree = "<group>"; };
@@ -424,6 +428,7 @@
 		OBJ_5001 /* MainWindow */ = {
 			isa = PBXGroup;
 			children = (
+				OBJ_5044 /* MainWindowActionDispatcher.swift */,
 				OBJ_5024 /* MainWindowPresenter.swift */,
 				OBJ_5002 /* MainWindowTab.swift */,
 				OBJ_5003 /* MainWindowRoute.swift */,
@@ -495,6 +500,7 @@
 		OBJ_5022 /* MainWindow */ = {
 			isa = PBXGroup;
 			children = (
+				OBJ_5042 /* AppDelegateMainWindowTests.swift */,
 				OBJ_5019 /* MainWindowPresenterTests.swift */,
 				OBJ_5021 /* MainWindowViewTests.swift */,
 			);
@@ -704,6 +710,7 @@
 				OBJ_1036 /* XcodeProjectSyncTests.swift in Sources */,
 				OBJ_5018 /* MainWindowPresenterTests.swift in Sources */,
 				OBJ_5020 /* MainWindowViewTests.swift in Sources */,
+				OBJ_5041 /* AppDelegateMainWindowTests.swift in Sources */,
 				OBJ_5035 /* QuickSwitchOverlayViewTests.swift in Sources */,
 					OBJ_3007 /* SettingsActionHandlerTests.swift in Sources */,
 					OBJ_3008 /* SettingsViewTests.swift in Sources */,
@@ -731,6 +738,7 @@
 				OBJ_5016 /* AccountManagementView.swift in Sources */,
 				OBJ_5014 /* AccountManagementViewModel.swift in Sources */,
 				OBJ_5023 /* MainWindowPresenter.swift in Sources */,
+				OBJ_5043 /* MainWindowActionDispatcher.swift in Sources */,
 				OBJ_1012 /* BackupAuthPicker.swift in Sources */,
 				OBJ_1013 /* CodexArchiveNaming.swift in Sources */,
 				OBJ_1014 /* CodexArchivedAccountStore.swift in Sources */,

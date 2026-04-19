@@ -2,7 +2,12 @@ import AppKit
 import SwiftUI
 
 @MainActor
-public final class MainWindowPresenter {
+public protocol MainWindowPresenting {
+    func present(route: MainWindowRoute)
+}
+
+@MainActor
+public final class MainWindowPresenter: MainWindowPresenting {
     private let makeViewModel: @MainActor (MainWindowRoute) -> MainWindowViewModel
     private let makeWindowController: @MainActor (MainWindowViewModel) -> NSWindowController
     private let updateWindowController: @MainActor (NSWindowController, MainWindowViewModel) -> Void
