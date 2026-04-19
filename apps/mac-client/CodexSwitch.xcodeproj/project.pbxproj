@@ -109,6 +109,9 @@
 		OBJ_5029 /* SettingsContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5030 /* SettingsContentView.swift */; };
 		OBJ_5031 /* ProviderSyncContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5032 /* ProviderSyncContentView.swift */; };
 		OBJ_5033 /* StatusContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5034 /* StatusContentView.swift */; };
+		OBJ_5035 /* QuickSwitchOverlayViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5036 /* QuickSwitchOverlayViewTests.swift */; };
+		OBJ_5037 /* CompactAccountRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5038 /* CompactAccountRowView.swift */; };
+		OBJ_5039 /* QuickSwitchOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5040 /* QuickSwitchOverlayView.swift */; };
 		OBJ_74 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_10 /* AppDelegate.swift */; };
 		OBJ_75 /* CodexSwitchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_11 /* CodexSwitchApp.swift */; };
 		OBJ_77 /* CodexSwitchKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = mac-client::CodexSwitchKit::Product /* CodexSwitchKit.framework */; };
@@ -216,6 +219,9 @@
 		OBJ_5030 /* SettingsContentView.swift */ = {isa = PBXFileReference; path = SettingsContentView.swift; sourceTree = "<group>"; };
 		OBJ_5032 /* ProviderSyncContentView.swift */ = {isa = PBXFileReference; path = ProviderSyncContentView.swift; sourceTree = "<group>"; };
 		OBJ_5034 /* StatusContentView.swift */ = {isa = PBXFileReference; path = StatusContentView.swift; sourceTree = "<group>"; };
+		OBJ_5036 /* QuickSwitchOverlayViewTests.swift */ = {isa = PBXFileReference; path = QuickSwitchOverlayViewTests.swift; sourceTree = "<group>"; };
+		OBJ_5038 /* CompactAccountRowView.swift */ = {isa = PBXFileReference; path = CompactAccountRowView.swift; sourceTree = "<group>"; };
+		OBJ_5040 /* QuickSwitchOverlayView.swift */ = {isa = PBXFileReference; path = QuickSwitchOverlayView.swift; sourceTree = "<group>"; };
 		OBJ_41 /* UsageRefreshService.swift */ = {isa = PBXFileReference; path = UsageRefreshService.swift; sourceTree = "<group>"; };
 		OBJ_45 /* AccountRepositoryTests.swift */ = {isa = PBXFileReference; path = AccountRepositoryTests.swift; sourceTree = "<group>"; };
 		OBJ_46 /* CodexSwitchTests.swift */ = {isa = PBXFileReference; path = CodexSwitchTests.swift; sourceTree = "<group>"; };
@@ -350,14 +356,16 @@
 			path = Diagnostics;
 			sourceTree = "<group>";
 		};
-			OBJ_25 /* MenuBar */ = {
-				isa = PBXGroup;
-				children = (
-					OBJ_26 /* AccountRowView.swift */,
-					OBJ_27 /* MenuBarActions.swift */,
-					OBJ_28 /* MenuBarModels.swift */,
-					OBJ_29 /* MenuBarPanelView.swift */,
-					OBJ_30 /* MenuBarService.swift */,
+		OBJ_25 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				OBJ_26 /* AccountRowView.swift */,
+				OBJ_5038 /* CompactAccountRowView.swift */,
+				OBJ_27 /* MenuBarActions.swift */,
+				OBJ_28 /* MenuBarModels.swift */,
+				OBJ_29 /* MenuBarPanelView.swift */,
+				OBJ_5040 /* QuickSwitchOverlayView.swift */,
+				OBJ_30 /* MenuBarService.swift */,
 					OBJ_3028 /* MenuBarStrings.swift */,
 					OBJ_31 /* MenuBarShellView.swift */,
 					OBJ_32 /* MenuBarViewModel.swift */,
@@ -474,11 +482,12 @@
 		};
 		OBJ_49 /* MenuBar */ = {
 			isa = PBXGroup;
-				children = (
-					OBJ_50 /* MenuBarActionTests.swift */,
-					OBJ_51 /* MenuBarViewModelTests.swift */,
-					OBJ_3026 /* StatusItemControllerTests.swift */,
-				);
+			children = (
+				OBJ_50 /* MenuBarActionTests.swift */,
+				OBJ_51 /* MenuBarViewModelTests.swift */,
+				OBJ_5036 /* QuickSwitchOverlayViewTests.swift */,
+				OBJ_3026 /* StatusItemControllerTests.swift */,
+			);
 			name = MenuBar;
 			path = MenuBar;
 			sourceTree = "<group>";
@@ -695,6 +704,7 @@
 				OBJ_1036 /* XcodeProjectSyncTests.swift in Sources */,
 				OBJ_5018 /* MainWindowPresenterTests.swift in Sources */,
 				OBJ_5020 /* MainWindowViewTests.swift in Sources */,
+				OBJ_5035 /* QuickSwitchOverlayViewTests.swift in Sources */,
 					OBJ_3007 /* SettingsActionHandlerTests.swift in Sources */,
 					OBJ_3008 /* SettingsViewTests.swift in Sources */,
 					OBJ_3022 /* ConfigTomlParserTests.swift in Sources */,
@@ -745,9 +755,11 @@
 				OBJ_2009 /* StatusSnapshotLoader.swift in Sources */,
 				OBJ_2010 /* StatusWindowPresenter.swift in Sources */,
 				OBJ_93 /* AccountRowView.swift in Sources */,
+				OBJ_5037 /* CompactAccountRowView.swift in Sources */,
 					OBJ_94 /* MenuBarActions.swift in Sources */,
 					OBJ_95 /* MenuBarModels.swift in Sources */,
 					OBJ_96 /* MenuBarPanelView.swift in Sources */,
+				OBJ_5039 /* QuickSwitchOverlayView.swift in Sources */,
 					OBJ_97 /* MenuBarService.swift in Sources */,
 				OBJ_3027 /* MenuBarStrings.swift in Sources */,
 				OBJ_98 /* MenuBarShellView.swift in Sources */,

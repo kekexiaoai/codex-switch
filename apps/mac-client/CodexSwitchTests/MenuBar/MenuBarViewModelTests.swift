@@ -15,8 +15,35 @@ final class MenuBarViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.headerEmail, "a••••@gmail.com")
         XCTAssertEqual(viewModel.accountRows.count, 5)
+        XCTAssertEqual(viewModel.quickSwitchRows.count, 5)
         XCTAssertEqual(viewModel.usageSourceText, "API")
         XCTAssertEqual(viewModel.recentEvents.count, 2)
+    }
+
+    func testQuickSwitchRowsPreserveSnapshotOrderAndActiveState() async {
+        let viewModel = MenuBarViewModel(
+            service: SnapshotMenuBarService(
+                snapshot: MenuBarSnapshot(
+                    headerEmail: "active@example.com",
+                    headerTier: "TEAM",
+                    updatedText: "Updated just now",
+                    summaries: [],
+                    accounts: [
+                        AccountRowModel(id: "acct-3", emailMask: "c@example.com", tierLabel: "Team", fiveHourPercent: 42, weeklyPercent: 18, isActive: true),
+                        AccountRowModel(id: "acct-1", emailMask: "a@example.com", tierLabel: "Plus", fiveHourPercent: 13, weeklyPercent: 62),
+                        AccountRowModel(id: "acct-2", emailMask: "b@example.com", tierLabel: "Pro", fiveHourPercent: 71, weeklyPercent: 36),
+                    ]
+                )
+            )
+        )
+
+        await viewModel.refresh()
+
+        XCTAssertEqual(viewModel.quickSwitchRows.map(\.id), ["acct-3", "acct-1", "acct-2"])
+        XCTAssertEqual(viewModel.quickSwitchRows.first?.tierBadgeText, "TEAM")
+        XCTAssertEqual(viewModel.quickSwitchRows.first?.fiveHourLabel, "5H 42%")
+        XCTAssertEqual(viewModel.quickSwitchRows.first?.weeklyLabel, "7D 18%")
+        XCTAssertEqual(viewModel.quickSwitchRows.first?.isActive, true)
     }
 
     func testMenuBarViewModelAppliesRecentEventsFromSnapshot() async {

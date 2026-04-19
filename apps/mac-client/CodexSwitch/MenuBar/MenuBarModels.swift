@@ -39,6 +39,31 @@ public struct AccountRowModel: Identifiable, Equatable {
     }
 }
 
+public struct QuickSwitchRowModel: Identifiable, Equatable {
+    public let id: String
+    public let emailText: String
+    public let tierBadgeText: String
+    public let fiveHourLabel: String
+    public let weeklyLabel: String
+    public let isActive: Bool
+
+    public init(
+        id: String,
+        emailText: String,
+        tierBadgeText: String,
+        fiveHourLabel: String,
+        weeklyLabel: String,
+        isActive: Bool
+    ) {
+        self.id = id
+        self.emailText = emailText
+        self.tierBadgeText = tierBadgeText
+        self.fiveHourLabel = fiveHourLabel
+        self.weeklyLabel = weeklyLabel
+        self.isActive = isActive
+    }
+}
+
 public struct AccountRemovalConfirmation: Identifiable, Equatable {
     public let accountID: String
     public let title: String

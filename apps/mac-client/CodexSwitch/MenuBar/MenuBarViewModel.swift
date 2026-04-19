@@ -49,6 +49,7 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var recentEvents: [String] = []
     @Published public private(set) var summaries: [UsageSummaryModel] = []
     @Published public private(set) var accountRows: [AccountRowModel] = []
+    @Published public private(set) var quickSwitchRows: [QuickSwitchRowModel] = []
     @Published public private(set) var showEmails = false
     @Published public private(set) var isPerformingAddAccountAction = false
     @Published public private(set) var addAccountProgress: AddAccountProgressState?
@@ -120,6 +121,16 @@ public final class MenuBarViewModel: ObservableObject {
         recentEvents = snapshot.recentEvents
         summaries = snapshot.summaries
         accountRows = snapshot.accounts
+        quickSwitchRows = snapshot.accounts.map { account in
+            QuickSwitchRowModel(
+                id: account.id,
+                emailText: account.emailMask,
+                tierBadgeText: account.tierLabel.uppercased(),
+                fiveHourLabel: "5H \(account.fiveHourPercent)%",
+                weeklyLabel: "7D \(account.weeklyPercent)%",
+                isActive: account.isActive
+            )
+        }
     }
 
     public func switchToAccount(id: String) async throws {
