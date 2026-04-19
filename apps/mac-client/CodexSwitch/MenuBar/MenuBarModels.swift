@@ -55,6 +55,22 @@ public struct AccountRemovalConfirmation: Identifiable, Equatable {
     }
 }
 
+public struct AccountActivationConfirmation: Identifiable, Equatable {
+    public let accountID: String
+    public let title: String
+    public let message: String
+
+    public var id: String {
+        accountID
+    }
+
+    public init(accountID: String, title: String, message: String) {
+        self.accountID = accountID
+        self.title = title
+        self.message = message
+    }
+}
+
 public struct MenuBarSnapshot: Equatable {
     public let headerEmail: String
     public let headerTier: String

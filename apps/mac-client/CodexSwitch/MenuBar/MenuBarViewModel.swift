@@ -55,6 +55,7 @@ public final class MenuBarViewModel: ObservableObject {
     @Published public private(set) var alertMessage: MenuBarAlertMessage?
     @Published public private(set) var removalFeedback: MenuBarInlineMessage?
     @Published public private(set) var pendingAccountRemoval: AccountRemovalConfirmation?
+    @Published public private(set) var pendingAccountActivationConfirmation: AccountActivationConfirmation?
 
     private let service: any MenuBarSnapshotService
     private let accountRepository: AccountRepository?
@@ -65,6 +66,7 @@ public final class MenuBarViewModel: ObservableObject {
     private let backupAuthPicker: (any BackupAuthPicking)?
     private let emailVisibilityStore: (any EmailVisibilityMutating)?
     private let actionHandler: (any MenuBarActionHandling)?
+    private let currentAuthUsesAPIKeyMode: (() -> Bool)?
     private var addAccountTask: Task<Void, Never>?
     private var switchUsageRefreshTask: Task<Void, Never>?
     private var presentationSnapshotTask: Task<Void, Never>?
@@ -83,7 +85,8 @@ public final class MenuBarViewModel: ObservableObject {
         loginCoordinator: CodexLoginCoordinator? = nil,
         backupAuthPicker: (any BackupAuthPicking)? = nil,
         emailVisibilityStore: (any EmailVisibilityMutating)? = nil,
-        actionHandler: (any MenuBarActionHandling)? = nil
+        actionHandler: (any MenuBarActionHandling)? = nil,
+        currentAuthUsesAPIKeyMode: (() -> Bool)? = nil
     ) {
         self.service = service
         self.accountRepository = accountRepository
@@ -94,6 +97,7 @@ public final class MenuBarViewModel: ObservableObject {
         self.backupAuthPicker = backupAuthPicker
         self.emailVisibilityStore = emailVisibilityStore
         self.actionHandler = actionHandler
+        self.currentAuthUsesAPIKeyMode = currentAuthUsesAPIKeyMode
         self.showEmails = emailVisibilityStore?.showEmails() ?? false
     }
 
@@ -125,6 +129,29 @@ public final class MenuBarViewModel: ObservableObject {
         switchUsageRefreshTask = Task { [weak self] in
             await self?.refresh()
         }
+    }
+
+    public func requestSwitchToAccount(id: String) {
+        guard let account = accountRows.first(where: { $0.id == id }) else {
+            return
+        }
+
+        guard !account.isActive else {
+            return
+        }
+
+        guard currentAuthUsesAPIKeyMode?() == true else {
+            Task { [weak self] in
+                await self?.performAccountSwitch(id: id)
+            }
+            return
+        }
+
+        pendingAccountActivationConfirmation = AccountActivationConfirmation(
+            accountID: id,
+            title: "Activate Archived Account?",
+            message: "Current Codex auth appears to be using API key mode. Continuing will overwrite the current auth.json and switch Codex to this archived account session."
+        )
     }
 
     public func refreshForPresentation() async {
@@ -309,6 +336,19 @@ public final class MenuBarViewModel: ObservableObject {
         alertMessage = nil
     }
 
+    public func cancelPendingAccountActivation() {
+        pendingAccountActivationConfirmation = nil
+    }
+
+    public func performPendingAccountActivation() async {
+        guard let confirmation = pendingAccountActivationConfirmation else {
+            return
+        }
+
+        pendingAccountActivationConfirmation = nil
+        await performAccountSwitch(id: confirmation.accountID)
+    }
+
     public func dismissRemovalFeedback() {
         removalFeedback = nil
     }
@@ -406,6 +446,17 @@ public final class MenuBarViewModel: ObservableObject {
         return Set(try await accountRepository.loadAccounts().map(\.id))
     }
 
+    private func performAccountSwitch(id: String) async {
+        do {
+            try await switchToAccount(id: id)
+        } catch {
+            alertMessage = MenuBarAlertMessage(
+                title: "Cannot Activate Account",
+                message: "Activating the archived account failed. Please try again."
+            )
+        }
+    }
+
     private func alert(for action: AddAccountAction, error: Error) -> MenuBarAlertMessage {
         let authError = error as? CodexAuthError
 
@@ -417,7 +468,7 @@ public final class MenuBarViewModel: ObservableObject {
                     title: "Cannot Import Current Account",
                     message: "No current Codex auth.json was found. Log in with Codex first, or import a backup auth.json."
                 )
-            case .idTokenMissing:
+            case .apiKeyModeDetected, .idTokenMissing:
                 return MenuBarAlertMessage(
                     title: "Cannot Import Current Account",
                     message: "Current Codex auth does not contain a browser login session. If this machine is using OPENAI_API_KEY mode, choose Login in Browser or import a backup auth.json."
@@ -445,7 +496,7 @@ public final class MenuBarViewModel: ObservableObject {
                     title: "Cannot Import Backup Auth",
                     message: "The selected auth.json could not be read."
                 )
-            case .idTokenMissing, .authJSONInvalid, .jwtPayloadInvalid:
+            case .apiKeyModeDetected, .idTokenMissing, .authJSONInvalid, .jwtPayloadInvalid:
                 return MenuBarAlertMessage(
                     title: "Cannot Import Backup Auth",
                     message: "The selected auth.json does not contain a valid browser login session."

@@ -250,7 +250,16 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
             loginCoordinator: environment.loginCoordinator,
             backupAuthPicker: OpenPanelBackupAuthPicker(),
             emailVisibilityStore: environment.emailVisibilityProvider as? any EmailVisibilityMutating,
-            actionHandler: actionHandler
+            actionHandler: actionHandler,
+            currentAuthUsesAPIKeyMode: environment.codexPaths.map { paths in
+                let fileStore = CodexAuthFileStore(paths: paths)
+                return {
+                    guard let data = try? fileStore.readCurrentAuthData() else {
+                        return false
+                    }
+                    return CodexAuthImporter.authDataUsesAPIKeyMode(data)
+                }
+            }
         )
         super.init()
     }

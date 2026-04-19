@@ -4,6 +4,7 @@ public enum CodexAuthError: Error, Equatable {
     case currentAuthFileMissing
     case authFileUnreadable
     case authJSONInvalid
+    case apiKeyModeDetected
     case idTokenMissing
     case jwtPayloadInvalid
     case archiveWriteFailed

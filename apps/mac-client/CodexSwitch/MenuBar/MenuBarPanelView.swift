@@ -32,6 +32,33 @@ public struct MenuBarPanelView: View {
                 }
             )
         }
+        .confirmationDialog(
+            viewModel.pendingAccountActivationConfirmation?.title ?? "Confirm Activation",
+            isPresented: Binding(
+                get: { viewModel.pendingAccountActivationConfirmation != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.cancelPendingAccountActivation()
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            if viewModel.pendingAccountActivationConfirmation != nil {
+                Button("Continue Activation") {
+                    Task {
+                        await viewModel.performPendingAccountActivation()
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    viewModel.cancelPendingAccountActivation()
+                }
+            }
+        } message: {
+            if let confirmation = viewModel.pendingAccountActivationConfirmation {
+                Text(confirmation.message)
+            }
+        }
     }
 
     private var panelContent: some View {
@@ -54,9 +81,7 @@ public struct MenuBarPanelView: View {
                     account: account,
                     pendingRemovalMessage: pendingRemovalMessage(for: account.id),
                     onSelect: {
-                        Task {
-                            try? await viewModel.switchToAccount(id: account.id)
-                        }
+                        viewModel.requestSwitchToAccount(id: account.id)
                     },
                     onRemove: {
                         viewModel.requestRemoveAccount(id: account.id)

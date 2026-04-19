@@ -48,6 +48,17 @@ public struct CodexAuthImporter {
         )
     }
 
+    static func authDataUsesAPIKeyMode(_ data: Data) -> Bool {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data),
+            let dictionary = object as? [String: Any]
+        else {
+            return false
+        }
+
+        return isAPIKeyModeAuth(dictionary)
+    }
+
     private func extractIDToken(from data: Data) throws -> String {
         let object: Any
         do {
@@ -57,7 +68,16 @@ public struct CodexAuthImporter {
         }
 
         guard
-            let dictionary = object as? [String: Any],
+            let dictionary = object as? [String: Any]
+        else {
+            throw CodexAuthError.authJSONInvalid
+        }
+
+        if Self.isAPIKeyModeAuth(dictionary) {
+            throw CodexAuthError.apiKeyModeDetected
+        }
+
+        guard
             let tokens = dictionary["tokens"] as? [String: Any],
             let idToken = tokens["id_token"] as? String,
             !idToken.isEmpty
@@ -66,5 +86,17 @@ public struct CodexAuthImporter {
         }
 
         return idToken
+    }
+
+    private static func isAPIKeyModeAuth(_ dictionary: [String: Any]) -> Bool {
+        if let apiKey = dictionary["OPENAI_API_KEY"] as? String, !apiKey.isEmpty {
+            return true
+        }
+
+        if let apiKey = dictionary["api_key"] as? String, !apiKey.isEmpty {
+            return true
+        }
+
+        return false
     }
 }

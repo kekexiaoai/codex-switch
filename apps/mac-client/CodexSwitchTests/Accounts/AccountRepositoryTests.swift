@@ -47,6 +47,46 @@ final class AccountRepositoryTests: XCTestCase {
         XCTAssertEqual(loaded.first?.source, .currentAuth)
     }
 
+    func testRepositoryDeduplicatesArchivedAccountsByStableAccountID() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        try FileManager.default.createDirectory(at: paths.accountsDirectoryURL, withIntermediateDirectories: true)
+
+        let olderFilename = "older-alex.json"
+        let newerFilename = "newer-alex.json"
+        try sampleAuthData(email: "alex@example.com", tier: "team").write(
+            to: paths.accountsDirectoryURL.appendingPathComponent(olderFilename)
+        )
+        try sampleAuthData(email: "alex@example.com", tier: "pro").write(
+            to: paths.accountsDirectoryURL.appendingPathComponent(newerFilename)
+        )
+        let metadata = CodexAccountMetadataCache(entries: [
+            olderFilename: CodexAccountMetadataEntry(
+                source: .backupImport,
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+            ),
+            newerFilename: CodexAccountMetadataEntry(
+                source: .browserLogin,
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_685_800)
+            ),
+        ])
+        try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
+
+        let repository = AccountRepository(catalog: CodexArchivedAccountStore(fileStore: CodexAuthFileStore(paths: paths)))
+
+        let loaded = try await repository.loadAccounts()
+
+        XCTAssertEqual(loaded.count, 1)
+        XCTAssertEqual(loaded.first?.id, "subject-alex@example.com")
+        XCTAssertEqual(loaded.first?.archiveFilename, newerFilename)
+        XCTAssertEqual(loaded.first?.tier, .pro)
+        XCTAssertEqual(loaded.first?.source, .browserLogin)
+    }
+
     private func sampleAuthData(email: String, tier: String) throws -> Data {
         let payload = [
             "sub": "subject-\(email)",

@@ -51,10 +51,10 @@ public struct AccountRepository {
 
     public func loadAccounts() async throws -> [Account] {
         if let catalog {
-            return try await catalog.loadAccounts()
+            return deduplicatedAccounts(try await catalog.loadAccounts())
         }
 
-        return try await metadataStore.loadAccounts().map {
+        return deduplicatedAccounts(try await metadataStore.loadAccounts().map {
             Account(
                 id: $0.id,
                 emailMask: $0.emailMask,
@@ -64,11 +64,30 @@ public struct AccountRepository {
                 source: $0.source,
                 lastImportedAt: $0.lastImportedAt
             )
-        }
+        })
     }
 
     public func loadSecret(for accountID: String) async throws -> String? {
         try await credentialStore.loadSecret(for: accountID)
+    }
+
+    private func deduplicatedAccounts(_ accounts: [Account]) -> [Account] {
+        var orderedIDs: [String] = []
+        var accountsByID: [String: Account] = [:]
+
+        for account in accounts {
+            if let existing = accountsByID[account.id] {
+                if account.lastImportedAt > existing.lastImportedAt {
+                    accountsByID[account.id] = account
+                }
+                continue
+            }
+
+            orderedIDs.append(account.id)
+            accountsByID[account.id] = account
+        }
+
+        return orderedIDs.compactMap { accountsByID[$0] }
     }
 }
 

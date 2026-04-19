@@ -52,6 +52,19 @@ final class CodexAuthImporterTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: paths.accountsDirectoryURL.path))
     }
 
+    func testImportCurrentAccountRejectsAPIKeyModeAuthWithoutWritingArchive() throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        try FileManager.default.createDirectory(at: paths.baseDirectory, withIntermediateDirectories: true)
+        try Data(#"{"OPENAI_API_KEY":"sk-test"}"#.utf8).write(to: paths.authFileURL)
+
+        let importer = CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths))
+
+        XCTAssertThrowsError(try importer.importCurrentAccount()) { error in
+            XCTAssertEqual(error as? CodexAuthError, .apiKeyModeDetected)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: paths.accountsDirectoryURL.path))
+    }
+
     private func sampleAuthData(email: String, tier: String) throws -> Data {
         let payload = [
             "sub": "subject-\(email)",

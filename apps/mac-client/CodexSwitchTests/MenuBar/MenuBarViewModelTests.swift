@@ -476,6 +476,74 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.headerEmail, "b@example.com")
     }
 
+    func testRequestSwitchToAccountRequiresConfirmationWhenCurrentAuthUsesAPIKeyMode() async {
+        let switcher = RecordingSwitchCommandRunner()
+        let controller = ActiveAccountController(
+            activeAccountID: "acct-1",
+            switcher: switcher,
+            usageService: StubUsageRefreshService()
+        )
+        let viewModel = MenuBarViewModel(
+            service: SnapshotMenuBarService(
+                snapshot: MenuBarSnapshot(
+                    headerEmail: "a@example.com",
+                    headerTier: "TEAM",
+                    updatedText: "Updated just now",
+                    summaries: [],
+                    accounts: [
+                        AccountRowModel(id: "acct-1", emailMask: "a@example.com", tierLabel: "Team", fiveHourPercent: 0, weeklyPercent: 0, isActive: true),
+                        AccountRowModel(id: "acct-2", emailMask: "b@example.com", tierLabel: "Plus", fiveHourPercent: 0, weeklyPercent: 0, isActive: false),
+                    ]
+                )
+            ),
+            activeAccountController: controller,
+            currentAuthUsesAPIKeyMode: { true }
+        )
+
+        await viewModel.refresh()
+        viewModel.requestSwitchToAccount(id: "acct-2")
+        await Task.yield()
+
+        XCTAssertEqual(viewModel.pendingAccountActivationConfirmation?.accountID, "acct-2")
+        XCTAssertEqual(controller.currentActiveAccountID(), "acct-1")
+        let activatedIDs = await switcher.activatedIDs()
+        XCTAssertEqual(activatedIDs, [])
+    }
+
+    func testConfirmPendingAccountActivationSwitchesArchivedAccountAfterConfirmation() async {
+        let switcher = RecordingSwitchCommandRunner()
+        let controller = ActiveAccountController(
+            activeAccountID: "acct-1",
+            switcher: switcher,
+            usageService: StubUsageRefreshService()
+        )
+        let viewModel = MenuBarViewModel(
+            service: SnapshotMenuBarService(
+                snapshot: MenuBarSnapshot(
+                    headerEmail: "a@example.com",
+                    headerTier: "TEAM",
+                    updatedText: "Updated just now",
+                    summaries: [],
+                    accounts: [
+                        AccountRowModel(id: "acct-1", emailMask: "a@example.com", tierLabel: "Team", fiveHourPercent: 0, weeklyPercent: 0, isActive: true),
+                        AccountRowModel(id: "acct-2", emailMask: "b@example.com", tierLabel: "Plus", fiveHourPercent: 0, weeklyPercent: 0, isActive: false),
+                    ]
+                )
+            ),
+            activeAccountController: controller,
+            currentAuthUsesAPIKeyMode: { true }
+        )
+
+        await viewModel.refresh()
+        viewModel.requestSwitchToAccount(id: "acct-2")
+        await viewModel.performPendingAccountActivation()
+
+        XCTAssertNil(viewModel.pendingAccountActivationConfirmation)
+        XCTAssertEqual(controller.currentActiveAccountID(), "acct-2")
+        let activatedIDs = await switcher.activatedIDs()
+        XCTAssertEqual(activatedIDs, ["acct-2"])
+    }
+
     func testImportCurrentAccountArchivesAccountAndActivatesIt() async throws {
         let tempDirectoryURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -531,6 +599,30 @@ final class MenuBarViewModelTests: XCTestCase {
         {"api_key":"sk-test","provider":"openai"}
         """
         try Data(apiKeyOnlyAuth.utf8).write(to: paths.authFileURL)
+
+        let viewModel = MenuBarViewModel(
+            service: MockMenuBarService(),
+            accountImporter: CodexAuthImporter(fileStore: fileStore)
+        )
+
+        await viewModel.performAddAccountAction(.importCurrentAccount)
+
+        XCTAssertEqual(viewModel.alertMessage?.title, "Cannot Import Current Account")
+        XCTAssertEqual(
+            viewModel.alertMessage?.message,
+            "Current Codex auth does not contain a browser login session. If this machine is using OPENAI_API_KEY mode, choose Login in Browser or import a backup auth.json."
+        )
+    }
+
+    func testImportCurrentAccountShowsFriendlyErrorForOpenAIAPIKeyModeAuth() async throws {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDirectoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDirectoryURL) }
+
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        try Data(#"{"OPENAI_API_KEY":"sk-test"}"#.utf8).write(to: paths.authFileURL)
 
         let viewModel = MenuBarViewModel(
             service: MockMenuBarService(),
@@ -1163,5 +1255,17 @@ private struct FailingAccountRemover: AccountRemoving {
     func removeArchivedAccount(id: String, activeAccountID: String?) async throws -> AccountRemovalResult {
         struct StubError: LocalizedError {}
         throw StubError()
+    }
+}
+
+private actor RecordingSwitchCommandRunner: SwitchCommandRunning {
+    private var ids: [String] = []
+
+    func activateAccount(id: String) async throws {
+        ids.append(id)
+    }
+
+    func activatedIDs() -> [String] {
+        ids
     }
 }
