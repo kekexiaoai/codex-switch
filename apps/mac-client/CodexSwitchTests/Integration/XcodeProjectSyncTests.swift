@@ -10,6 +10,7 @@ final class XcodeProjectSyncTests: XCTestCase {
             "CodexAuthFileStore.swift",
             "CodexAuthImporter.swift",
             "CodexAuthModels.swift",
+            "ConfigTomlParser.swift",
             "CodexDiagnosticsLogger.swift",
             "CodexJWTDecoder.swift",
             "CodexLoginCoordinator.swift",
@@ -31,6 +32,21 @@ final class XcodeProjectSyncTests: XCTestCase {
             missingFilenames,
             [],
             "Xcode project is missing source file references: \(missingFilenames.joined(separator: ", "))"
+        )
+    }
+
+    func testXcodeProjectIncludesProviderManagementTests() throws {
+        let projectContents = try String(contentsOf: xcodeProjectFileURL(), encoding: .utf8)
+        let requiredFilenames = [
+            "ConfigTomlParserTests.swift",
+        ]
+
+        let missingFilenames = requiredFilenames.filter { !projectContents.contains($0) }
+
+        XCTAssertEqual(
+            missingFilenames,
+            [],
+            "Xcode project is missing test file references: \(missingFilenames.joined(separator: ", "))"
         )
     }
 

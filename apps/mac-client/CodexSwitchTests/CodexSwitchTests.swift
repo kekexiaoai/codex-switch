@@ -59,6 +59,10 @@ private final class RecordingSettingsEnvironmentActionHandler: SettingsActionHan
     func performUtilityAction(_ action: SettingsUtilityAction) throws -> SettingsActionMessage {
         SettingsActionMessage(title: "Done", message: "Done")
     }
+
+    func performProviderAction(_ action: SettingsProviderAction, providerId: String) throws -> SettingsActionMessage {
+        SettingsActionMessage(title: "Done", message: "Done")
+    }
 }
 
 private final class RecordingEnvironmentLaunchAtLoginController: LaunchAtLoginControlling {

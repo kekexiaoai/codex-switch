@@ -3,7 +3,7 @@ import SwiftUI
 
 @MainActor
 public final class StatusWindowPresenter {
-    private let loadSnapshot: @Sendable () async -> StatusSnapshot
+    private let loadSnapshot: () async -> StatusSnapshot
     private let makeWindowController: @MainActor (StatusSnapshot) -> NSWindowController
     private let updateWindowController: @MainActor (NSWindowController, StatusSnapshot) -> Void
     private let presentWindowController: @MainActor (NSWindowController) -> Void
@@ -11,7 +11,7 @@ public final class StatusWindowPresenter {
     private var windowController: NSWindowController?
 
     public init(
-        loadSnapshot: @escaping @Sendable () async -> StatusSnapshot,
+        loadSnapshot: @escaping () async -> StatusSnapshot,
         makeWindowController: (@MainActor (StatusSnapshot) -> NSWindowController)? = nil,
         updateWindowController: (@MainActor (NSWindowController, StatusSnapshot) -> Void)? = nil,
         presentWindowController: (@MainActor (NSWindowController) -> Void)? = nil

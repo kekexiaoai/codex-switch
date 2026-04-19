@@ -142,6 +142,55 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(actionHandler.utilityActions, [.openCodexDirectory, .openDiagnosticsLog])
         XCTAssertEqual(viewModel.lastActionMessage?.title, "Diagnostics Folder Opened")
     }
+
+    func testSettingsViewModelCreatesDefaultConfigWhenAddingProvider() throws {
+        let baseDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.ProviderAdd")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.ProviderAdd")
+
+        defer {
+            try? FileManager.default.removeItem(at: baseDirectory)
+        }
+
+        let viewModel = SettingsViewModel(
+            defaults: defaults,
+            codexPaths: CodexPaths(baseDirectory: baseDirectory)
+        )
+
+        try viewModel.addProvider(id: "anthropic")
+
+        let configText = try String(contentsOf: baseDirectory.appendingPathComponent("config.toml"), encoding: .utf8)
+        XCTAssertTrue(configText.contains("model_provider = \"openai\""))
+        XCTAssertTrue(configText.contains("[model_providers.openai]"))
+        XCTAssertTrue(configText.contains("[model_providers.anthropic]"))
+        XCTAssertEqual(viewModel.currentProvider, "openai")
+        XCTAssertEqual(viewModel.availableProviders, ["anthropic", "openai"])
+    }
+
+    func testSettingsViewModelCreatesDefaultConfigWhenSwitchingProvider() throws {
+        let baseDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.ProviderSwitch")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.ProviderSwitch")
+
+        defer {
+            try? FileManager.default.removeItem(at: baseDirectory)
+        }
+
+        let viewModel = SettingsViewModel(
+            defaults: defaults,
+            codexPaths: CodexPaths(baseDirectory: baseDirectory)
+        )
+
+        viewModel.setCurrentProvider("openai")
+
+        let configText = try String(contentsOf: baseDirectory.appendingPathComponent("config.toml"), encoding: .utf8)
+        XCTAssertTrue(configText.contains("model_provider = \"openai\""))
+        XCTAssertTrue(configText.contains("[model_providers.openai]"))
+        XCTAssertEqual(viewModel.currentProvider, "openai")
+        XCTAssertNil(viewModel.lastActionMessage)
+    }
 }
 
 private final class RecordingSettingsActionHandler: SettingsActionHandling {
@@ -170,6 +219,10 @@ private final class RecordingSettingsActionHandler: SettingsActionHandling {
         case .exportDiagnosticsSummary:
             return SettingsActionMessage(title: "Diagnostics Exported", message: "Exported a sanitized diagnostics summary.")
         }
+    }
+
+    func performProviderAction(_ action: SettingsProviderAction, providerId: String) throws -> SettingsActionMessage {
+        SettingsActionMessage(title: "Provider Removed", message: "Removed provider '\(providerId)'.")
     }
 }
 

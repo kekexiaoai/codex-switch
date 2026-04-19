@@ -1,10 +1,11 @@
 import SwiftUI
 
+@MainActor
 public struct MenuBarShellView: View {
     @StateObject private var viewModel: MenuBarViewModel
 
-    public init(viewModel: MenuBarViewModel = .preview) {
-        _viewModel = StateObject(wrappedValue: viewModel)
+    public init(viewModel: MenuBarViewModel? = nil) {
+        _viewModel = StateObject(wrappedValue: viewModel ?? .preview)
     }
 
     public init(environment: AppEnvironment) {

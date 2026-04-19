@@ -108,12 +108,12 @@ extension UserDefaultsMenuBarIconStyleStore: MenuBarIconStyleMutating {
 
 @MainActor
 public final class SettingsViewModel: ObservableObject {
-    public static let showEmailsKey = "showEmails"
-    public static let usageRefreshEnabledKey = "usageRefreshEnabled"
-    public static let usageSourceModeKey = "usageSourceMode"
-    public static let launchAtLoginKey = "launchAtLogin"
-    public static let menuBarIconStyleKey = "menuBarIconStyle"
-    public static let menuBarIconStyleDidChangeNotification = Notification.Name("SettingsViewModel.menuBarIconStyleDidChange")
+    public nonisolated static let showEmailsKey = "showEmails"
+    public nonisolated static let usageRefreshEnabledKey = "usageRefreshEnabled"
+    public nonisolated static let usageSourceModeKey = "usageSourceMode"
+    public nonisolated static let launchAtLoginKey = "launchAtLogin"
+    public nonisolated static let menuBarIconStyleKey = "menuBarIconStyle"
+    public nonisolated static let menuBarIconStyleDidChangeNotification = Notification.Name("SettingsViewModel.menuBarIconStyleDidChange")
 
     @Published public private(set) var showEmails: Bool
     @Published public private(set) var usageRefreshEnabled: Bool
@@ -162,7 +162,9 @@ public final class SettingsViewModel: ObservableObject {
         self.lastActionMessage = nil
 
         // Load provider state
-        let providerResult = (try? configParser.readCurrentProvider(from: codexPaths.configFileURL)) ?? ("openai", true)
+        let providerResult: (provider: String, implicit: Bool) =
+            (try? configParser.readCurrentProvider(from: codexPaths.configFileURL))
+            ?? (provider: "openai", implicit: true)
         self.currentProvider = providerResult.provider
         self.availableProviders = (try? configParser.listConfiguredProviderIds(from: String(contentsOf: codexPaths.configFileURL, encoding: .utf8))) ?? ["openai"]
 
@@ -254,6 +256,7 @@ public final class SettingsViewModel: ObservableObject {
 
     public func setCurrentProvider(_ provider: String) {
         do {
+            try ensureConfigFileExists()
             try configParser.setRootProvider(in: codexPaths.configFileURL, provider: provider)
             currentProvider = provider
             lastActionMessage = nil
@@ -274,6 +277,7 @@ public final class SettingsViewModel: ObservableObject {
             throw ProviderManagementError.duplicateProviderId(id)
         }
 
+        try ensureConfigFileExists()
         try configParser.addProvider(in: codexPaths.configFileURL, providerId: id)
         loadProviders()
         lastActionMessage = SettingsActionMessage(
@@ -322,6 +326,20 @@ public final class SettingsViewModel: ObservableObject {
         }
 
         return true
+    }
+
+    private func ensureConfigFileExists() throws {
+        guard !FileManager.default.fileExists(atPath: codexPaths.configFileURL.path) else {
+            return
+        }
+
+        try FileManager.default.createDirectory(at: codexPaths.baseDirectory, withIntermediateDirectories: true)
+        let defaultConfig = """
+        model_provider = "openai"
+
+        [model_providers.openai]
+        """
+        try defaultConfig.write(to: codexPaths.configFileURL, atomically: true, encoding: .utf8)
     }
 }
 
