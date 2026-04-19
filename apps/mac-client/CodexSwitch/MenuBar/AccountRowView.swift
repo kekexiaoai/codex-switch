@@ -39,20 +39,20 @@ public struct AccountRowView: View {
 
             HStack(alignment: .center, spacing: 8) {
                 HStack(spacing: 10) {
-                    metric(label: "5h", percent: account.fiveHourPercent)
-                    metric(label: "wk", percent: account.weeklyPercent)
+                    metric(label: MenuBarStrings.text(.fiveHourShort), percent: account.fiveHourPercent)
+                    metric(label: MenuBarStrings.text(.weeklyShort), percent: account.weeklyPercent)
                 }
                 Spacer()
                 iconButton(
                     systemName: account.isActive ? "checkmark.circle.fill" : "arrow.left.arrow.right.circle.fill",
-                    help: account.isActive ? "Current Account" : "Switch Account",
+                    help: account.isActive ? MenuBarStrings.text(.currentAccount) : MenuBarStrings.text(.switchAccount),
                     tint: account.isActive ? Color(nsColor: .systemGreen) : .secondary,
                     action: { onSelect?() }
                 )
                 if let onRemove {
                     iconButton(
                         systemName: "trash.circle",
-                        help: "Remove Account",
+                        help: MenuBarStrings.text(.removeAccount),
                         tint: .secondary,
                         role: .destructive,
                         action: onRemove
@@ -69,12 +69,12 @@ public struct AccountRowView: View {
 
                     HStack(spacing: 8) {
                         if let onConfirmRemove {
-                            Button("Remove", role: .destructive, action: onConfirmRemove)
+                            Button(MenuBarStrings.text(.remove), role: .destructive, action: onConfirmRemove)
                                 .buttonStyle(.borderedProminent)
                                 .controlSize(.small)
                         }
                         if let onCancelRemove {
-                            Button("Cancel", action: onCancelRemove)
+                            Button(MenuBarStrings.text(.cancel), action: onCancelRemove)
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
                         }

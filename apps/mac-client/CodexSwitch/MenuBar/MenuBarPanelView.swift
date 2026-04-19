@@ -27,13 +27,13 @@ public struct MenuBarPanelView: View {
             Alert(
                 title: Text(alert.title),
                 message: Text(alert.message),
-                dismissButton: .default(Text("OK")) {
+                dismissButton: .default(Text(MenuBarStrings.text(.ok))) {
                     viewModel.dismissAlert()
                 }
             )
         }
         .confirmationDialog(
-            viewModel.pendingAccountActivationConfirmation?.title ?? "Confirm Activation",
+            viewModel.pendingAccountActivationConfirmation?.title ?? MenuBarStrings.text(.confirmActivation),
             isPresented: Binding(
                 get: { viewModel.pendingAccountActivationConfirmation != nil },
                 set: { isPresented in
@@ -45,12 +45,12 @@ public struct MenuBarPanelView: View {
             titleVisibility: .visible
         ) {
             if viewModel.pendingAccountActivationConfirmation != nil {
-                Button("Continue Activation") {
+                Button(MenuBarStrings.text(.continueActivation)) {
                     Task {
                         await viewModel.performPendingAccountActivation()
                     }
                 }
-                Button("Cancel", role: .cancel) {
+                Button(MenuBarStrings.text(.cancel), role: .cancel) {
                     viewModel.cancelPendingAccountActivation()
                 }
             }
@@ -73,7 +73,7 @@ public struct MenuBarPanelView: View {
 
             Divider()
 
-            Text("Switch Account")
+            Text(MenuBarStrings.text(.switchAccount))
                 .font(.headline)
 
             ForEach(viewModel.accountRows) { account in
@@ -101,24 +101,24 @@ public struct MenuBarPanelView: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 addAccountMenu
-                actionRow(title: "Status Page", systemImage: "waveform.path.ecg") {
+                actionRow(title: MenuBarStrings.text(.statusPage), systemImage: "waveform.path.ecg") {
                     viewModel.openStatusPage()
                 }
                 actionRow(
-                    title: viewModel.showEmails ? "Hide Emails" : "Show Emails",
+                    title: viewModel.showEmails ? MenuBarStrings.text(.hideEmails) : MenuBarStrings.text(.showEmails),
                     systemImage: viewModel.showEmails ? "eye" : "eye.slash"
                 ) {
                     Task {
                         await viewModel.toggleShowEmails()
                     }
                 }
-                actionRow(title: "Provider Sync", systemImage: "arrow.triangle.2.circlepath") {
+                actionRow(title: MenuBarStrings.text(.providerSync), systemImage: "arrow.triangle.2.circlepath") {
                     viewModel.openProviderSync()
                 }
-                actionRow(title: "Settings", systemImage: "gearshape") {
+                actionRow(title: MenuBarStrings.text(.settings), systemImage: "gearshape") {
                     viewModel.openSettings()
                 }
-                actionRow(title: "Quit", systemImage: "power") {
+                actionRow(title: MenuBarStrings.text(.quit), systemImage: "power") {
                     viewModel.quit()
                 }
             }
@@ -130,7 +130,7 @@ public struct MenuBarPanelView: View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("Codex")
+                    Text(MenuBarStrings.text(.codex))
                         .font(.title2.weight(.semibold))
                     Text(viewModel.headerEmail)
                         .font(.subheadline.weight(.medium))
@@ -139,7 +139,7 @@ public struct MenuBarPanelView: View {
                         .minimumScaleFactor(0.85)
                 }
                 HStack(spacing: 6) {
-                    Label("Updated \(viewModel.updatedText)", systemImage: "clock")
+                    Label(MenuBarStrings.updatedLabel(viewModel.updatedText), systemImage: "clock")
                         .font(.caption.weight(.medium))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -168,7 +168,7 @@ public struct MenuBarPanelView: View {
                             .frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)
-                    .help("Refresh Usage")
+                    .help(MenuBarStrings.text(.refreshUsage))
                 }
             }
 
@@ -251,7 +251,7 @@ public struct MenuBarPanelView: View {
         ZStack(alignment: .topLeading) {
             VStack(alignment: .leading, spacing: 8) {
                 actionRow(
-                    title: "Add Account",
+                    title: MenuBarStrings.text(.addAccount),
                     systemImage: "person.crop.circle.badge.plus",
                     trailingSystemImage: isShowingAddAccountOptions ? "chevron.down" : "chevron.right"
                 ) {
@@ -297,7 +297,7 @@ public struct MenuBarPanelView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if progress.showsCancelButton {
-                Button("Cancel Login") {
+                Button(MenuBarStrings.text(.cancelLogin)) {
                     viewModel.cancelAddAccountAction()
                 }
                 .buttonStyle(.borderedProminent)

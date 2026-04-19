@@ -941,6 +941,16 @@ final class MenuBarViewModelTests: XCTestCase {
         )
     }
 
+    func testMenuBarStringsUsesEnglishByDefault() {
+        XCTAssertEqual(MenuBarStrings.text(.switchAccount, preferredLanguages: ["en"]), "Switch Account")
+        XCTAssertEqual(MenuBarStrings.text(.continueActivation, preferredLanguages: ["en"]), "Continue Activation")
+    }
+
+    func testMenuBarStringsUsesChineseForChinesePreferredLanguage() {
+        XCTAssertEqual(MenuBarStrings.text(.switchAccount, preferredLanguages: ["zh-Hans"]), "切换账号")
+        XCTAssertEqual(MenuBarStrings.text(.continueActivation, preferredLanguages: ["zh-Hans"]), "继续激活")
+    }
+
     func testEmailVisibilityToggleUsesCurrentStateIcon() {
         XCTAssertEqual(emailVisibilityToggleSystemImage(showEmails: true), "eye")
         XCTAssertEqual(emailVisibilityToggleSystemImage(showEmails: false), "eye.slash")

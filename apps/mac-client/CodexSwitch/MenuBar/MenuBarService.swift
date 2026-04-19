@@ -62,14 +62,16 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         } else if let firstRepositoryAccount = repositoryAccounts?.first {
             headerEmail = firstRepositoryAccount.displayEmail(showFullEmail: showFullEmails)
         } else {
-            headerEmail = accounts.first ?? "No account"
+            headerEmail = accounts.first ?? MenuBarStrings.text(.noAccount)
         }
 
         let usageSourceText: String
         if usageText == "Usage refresh disabled" {
-            usageSourceText = "Refresh Disabled"
+            usageSourceText = MenuBarStrings.text(.refreshDisabledSource)
         } else {
-            usageSourceText = activeSnapshot?.sourceLabel ?? "Unavailable"
+            usageSourceText = activeSnapshot.flatMap { snapshot in
+                snapshot.sourceLabel.map { MenuBarStrings.usageSourceLabel($0) }
+            } ?? MenuBarStrings.text(.unavailable)
         }
         let recentEvents = environment.codexPaths.map {
             CodexDiagnosticsLogReader(paths: $0).recentSafeEvents(limit: 3)
@@ -101,7 +103,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
                 AccountRowModel(
                     id: "env-\(index)",
                     emailMask: account,
-                    tierLabel: environment.runtimeMode == .live ? "Live" : "Preview",
+                    tierLabel: environment.runtimeMode == .live ? MenuBarStrings.text(.live) : MenuBarStrings.text(.preview),
                     fiveHourPercent: environment.runtimeMode == .live ? 42 : 56,
                     weeklyPercent: environment.runtimeMode == .live ? 24 : 13,
                     isActive: index == 0
@@ -111,7 +113,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
 
         return MenuBarSnapshot(
             headerEmail: headerEmail,
-            headerTier: activeAccount?.tier.rawValue.uppercased() ?? (environment.runtimeMode == .live ? "LIVE" : "PREVIEW"),
+            headerTier: activeAccount?.tier.rawValue.uppercased() ?? (environment.runtimeMode == .live ? MenuBarStrings.text(.live) : MenuBarStrings.text(.preview)),
             updatedText: usageText,
             headerStatusText: headerStatusText(for: cachedUsage.latestSnapshot, settings: usageSettings),
             usageSourceText: usageSourceText,
@@ -120,23 +122,23 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
                 [
                     UsageSummaryModel(
                         id: "5h",
-                        title: "5 Hours",
+                        title: MenuBarStrings.text(.fiveHoursTitle),
                         percentUsed: snapshot.fiveHour.percentUsed,
-                        resetText: "Resets \(timeFormatter.displayTimestamp(from: snapshot.fiveHour.resetsAt))"
+                        resetText: MenuBarStrings.resetsLabel(timeFormatter.displayTimestamp(from: snapshot.fiveHour.resetsAt))
                     ),
                     UsageSummaryModel(
                         id: "weekly",
-                        title: "Weekly",
+                        title: MenuBarStrings.text(.weeklyTitle),
                         percentUsed: snapshot.weekly.percentUsed,
-                        resetText: "Resets \(timeFormatter.displayTimestamp(from: snapshot.weekly.resetsAt))"
+                        resetText: MenuBarStrings.resetsLabel(timeFormatter.displayTimestamp(from: snapshot.weekly.resetsAt))
                     ),
                 ]
             } ?? [
                 UsageSummaryModel(
                     id: "5h",
-                    title: "5 Hours",
+                    title: MenuBarStrings.text(.fiveHoursTitle),
                     percentUsed: environment.runtimeMode == .live ? 0 : 56,
-                    resetText: "Usage source: \(usageText)"
+                    resetText: MenuBarStrings.usageSourceSummary(usageText)
                 ),
             ],
             accounts: accountRows
@@ -148,14 +150,14 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         settings: (enabled: Bool, mode: CodexUsageSourceMode)
     ) -> String {
         guard settings.enabled else {
-            return "Refresh off"
+            return MenuBarStrings.text(.refreshOff)
         }
 
         guard let snapshot else {
-            return "No usage"
+            return MenuBarStrings.text(.noUsage)
         }
 
-        let suffix = settings.mode == .localOnly ? "Local" : "Auto"
+        let suffix = settings.mode == .localOnly ? MenuBarStrings.text(.local) : MenuBarStrings.text(.auto)
         return "\(timeFormatter.compactClockTimestamp(from: snapshot.updatedAt)) \(suffix)"
     }
 

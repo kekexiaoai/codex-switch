@@ -22,11 +22,11 @@ public final class MenuBarViewModel: ObservableObject {
         public var title: String {
             switch self {
             case .importCurrentAccount:
-                return "Import Current Account"
+                return MenuBarStrings.text(.importCurrentAccount)
             case .importBackupAuth:
-                return "Import Backup Auth"
+                return MenuBarStrings.text(.importBackupAuth)
             case .loginInBrowser:
-                return "Login in Browser"
+                return MenuBarStrings.text(.loginInBrowser)
             }
         }
 
@@ -149,8 +149,8 @@ public final class MenuBarViewModel: ObservableObject {
 
         pendingAccountActivationConfirmation = AccountActivationConfirmation(
             accountID: id,
-            title: "Activate Archived Account?",
-            message: "Current Codex auth appears to be using API key mode. Continuing will overwrite the current auth.json and switch Codex to this archived account session."
+            title: MenuBarStrings.text(.confirmActivation),
+            message: MenuBarStrings.activationConfirmationMessage()
         )
     }
 
@@ -275,8 +275,8 @@ public final class MenuBarViewModel: ObservableObject {
             guard !isPerformingAddAccountAction else {
                 if action == .loginInBrowser {
                     alertMessage = MenuBarAlertMessage(
-                        title: "Browser Login In Progress",
-                        message: "A browser login is already in progress. Finish that sign-in flow, or wait for it to time out before trying again."
+                        title: MenuBarStrings.text(.browserLoginInProgressTitle),
+                        message: MenuBarStrings.text(.browserLoginInProgressMessage)
                     )
                 }
                 return
@@ -318,8 +318,8 @@ public final class MenuBarViewModel: ObservableObject {
 
             if let importedAccount, existingAccountIDs.contains(importedAccount.id) {
                 alertMessage = MenuBarAlertMessage(
-                    title: "Account Refreshed",
-                    message: "Account already exists, auth refreshed."
+                    title: MenuBarStrings.text(.accountRefreshedTitle),
+                    message: MenuBarStrings.text(.accountRefreshedMessage)
                 )
             }
         } catch is CancellationError {
@@ -362,10 +362,11 @@ public final class MenuBarViewModel: ObservableObject {
         let isActive = account.isActive
         pendingAccountRemoval = AccountRemovalConfirmation(
             accountID: id,
-            title: "Remove Account?",
-            message: isActive
-                ? "Remove \(account.emailMask) from archived accounts? Because it is currently active, Codex Switch will switch to another archived account when available, or clear the current Codex session."
-                : "Remove \(account.emailMask) from archived accounts? This only deletes the archived copy stored on this Mac."
+            title: MenuBarStrings.text(.removeAccountConfirmationTitle),
+            message: MenuBarStrings.accountRemovalMessage(
+                emailMask: account.emailMask,
+                isCurrent: isActive
+            )
         )
     }
 
@@ -379,8 +380,8 @@ public final class MenuBarViewModel: ObservableObject {
             try await confirmPendingAccountRemoval()
         } catch {
             removalFeedback = MenuBarInlineMessage(
-                title: "Remove Failed",
-                message: "Removing the archived account failed. Please try again.",
+                title: MenuBarStrings.text(.removeFailedTitle),
+                message: MenuBarStrings.text(.removeFailedMessage),
                 tone: .error
             )
         }
@@ -403,10 +404,10 @@ public final class MenuBarViewModel: ObservableObject {
         await refresh()
         self.pendingAccountRemoval = nil
         removalFeedback = MenuBarInlineMessage(
-            title: "Account Removed",
+            title: MenuBarStrings.text(.accountRemovedTitle),
             message: result.nextActiveAccountID == nil
-                ? "The archived account was removed and there is no remaining active account."
-                : "The archived account was removed.",
+                ? MenuBarStrings.text(.accountRemovedNoActiveMessage)
+                : MenuBarStrings.text(.accountRemovedMessage),
             tone: .success
         )
     }
@@ -423,14 +424,14 @@ public final class MenuBarViewModel: ObservableObject {
         switch action {
         case .loginInBrowser:
             return AddAccountProgressState(
-                title: "Browser Login In Progress",
-                message: "Complete the sign-in flow in your browser. You can cancel here and try again at any time.",
+                title: MenuBarStrings.text(.browserLoginInProgressTitle),
+                message: MenuBarStrings.text(.browserLoginInProgressMessage),
                 showsCancelButton: true
             )
         case .importCurrentAccount:
             return AddAccountProgressState(
-                title: "Importing Current Account",
-                message: "Reading your current Codex auth and adding it to Codex Switch.",
+                title: MenuBarStrings.text(.importingCurrentAccountTitle),
+                message: MenuBarStrings.text(.importingCurrentAccountMessage),
                 showsCancelButton: false
             )
         case .importBackupAuth:
@@ -451,8 +452,8 @@ public final class MenuBarViewModel: ObservableObject {
             try await switchToAccount(id: id)
         } catch {
             alertMessage = MenuBarAlertMessage(
-                title: "Cannot Activate Account",
-                message: "Activating the archived account failed. Please try again."
+                title: MenuBarStrings.text(.cannotActivateAccountTitle),
+                message: MenuBarStrings.text(.cannotActivateAccountMessage)
             )
         }
     }
@@ -465,84 +466,84 @@ public final class MenuBarViewModel: ObservableObject {
             switch authError {
             case .currentAuthFileMissing, .authFileUnreadable:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Current Account",
-                    message: "No current Codex auth.json was found. Log in with Codex first, or import a backup auth.json."
+                    title: MenuBarStrings.text(.cannotImportCurrentAccountTitle),
+                    message: MenuBarStrings.text(.cannotImportCurrentAccountNoAuth)
                 )
             case .apiKeyModeDetected, .idTokenMissing:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Current Account",
-                    message: "Current Codex auth does not contain a browser login session. If this machine is using OPENAI_API_KEY mode, choose Login in Browser or import a backup auth.json."
+                    title: MenuBarStrings.text(.cannotImportCurrentAccountTitle),
+                    message: MenuBarStrings.text(.cannotImportCurrentAccountNoSession)
                 )
             case .authJSONInvalid, .jwtPayloadInvalid:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Current Account",
-                    message: "The current Codex auth.json is not a valid browser auth file."
+                    title: MenuBarStrings.text(.cannotImportCurrentAccountTitle),
+                    message: MenuBarStrings.text(.cannotImportCurrentAccountInvalid)
                 )
             case .archiveWriteFailed:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Current Account",
-                    message: "Codex Switch could not archive the current auth file into ~/.codex/accounts/."
+                    title: MenuBarStrings.text(.cannotImportCurrentAccountTitle),
+                    message: MenuBarStrings.text(.cannotImportCurrentAccountArchive)
                 )
             default:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Current Account",
-                    message: "Current account import failed. Please try again."
+                    title: MenuBarStrings.text(.cannotImportCurrentAccountTitle),
+                    message: MenuBarStrings.text(.cannotImportCurrentAccountGeneric)
                 )
             }
         case .importBackupAuth:
             switch authError {
             case .authFileUnreadable:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Backup Auth",
-                    message: "The selected auth.json could not be read."
+                    title: MenuBarStrings.text(.cannotImportBackupAuthTitle),
+                    message: MenuBarStrings.text(.cannotImportBackupAuthUnreadable)
                 )
             case .apiKeyModeDetected, .idTokenMissing, .authJSONInvalid, .jwtPayloadInvalid:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Backup Auth",
-                    message: "The selected auth.json does not contain a valid browser login session."
+                    title: MenuBarStrings.text(.cannotImportBackupAuthTitle),
+                    message: MenuBarStrings.text(.cannotImportBackupAuthInvalid)
                 )
             case .archiveWriteFailed:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Backup Auth",
-                    message: "Codex Switch could not archive the selected auth.json into ~/.codex/accounts/."
+                    title: MenuBarStrings.text(.cannotImportBackupAuthTitle),
+                    message: MenuBarStrings.text(.cannotImportBackupAuthArchive)
                 )
             default:
                 return MenuBarAlertMessage(
-                    title: "Cannot Import Backup Auth",
-                    message: "Backup auth import failed. Please try again."
+                    title: MenuBarStrings.text(.cannotImportBackupAuthTitle),
+                    message: MenuBarStrings.text(.cannotImportBackupAuthGeneric)
                 )
             }
         case .loginInBrowser:
             switch authError {
             case .browserLaunchFailed:
                 return MenuBarAlertMessage(
-                    title: "Browser Could Not Open",
-                    message: "Codex Switch could not open your default browser. Check your browser settings, then review ~/.codex/codex-switch/browser-login.log and try again."
+                    title: MenuBarStrings.text(.browserCouldNotOpenTitle),
+                    message: MenuBarStrings.text(.browserCouldNotOpenMessage)
                 )
             case .loginCancelled:
                 return MenuBarAlertMessage(
-                    title: "Browser Login Cancelled",
-                    message: "Codex browser login was cancelled before a valid auth session was created."
+                    title: MenuBarStrings.text(.browserLoginCancelledTitle),
+                    message: MenuBarStrings.text(.browserLoginCancelledMessage)
                 )
             case .loginTimedOut:
                 return MenuBarAlertMessage(
-                    title: "Browser Login Timed Out",
-                    message: "The browser sign-in did not finish before timing out. Try Login in Browser again."
+                    title: MenuBarStrings.text(.browserLoginTimedOutTitle),
+                    message: MenuBarStrings.text(.browserLoginTimedOutMessage)
                 )
             case .currentAuthFileMissing, .idTokenMissing, .authJSONInvalid, .jwtPayloadInvalid:
                 return MenuBarAlertMessage(
-                    title: "Browser Login Failed",
-                    message: "Codex login finished, but no valid browser auth session was created. Complete the browser flow and try again."
+                    title: MenuBarStrings.text(.browserLoginFailedTitle),
+                    message: MenuBarStrings.text(.browserLoginNoSessionMessage)
                 )
             case .loginFailed:
                 return MenuBarAlertMessage(
-                    title: "Browser Login Failed",
-                    message: "Codex browser login did not complete. Complete the browser sign-in and try again."
+                    title: MenuBarStrings.text(.browserLoginFailedTitle),
+                    message: MenuBarStrings.text(.browserLoginFailedMessage)
                 )
             default:
                 return MenuBarAlertMessage(
-                    title: "Browser Login Failed",
-                    message: "Browser login failed. Please try again."
+                    title: MenuBarStrings.text(.browserLoginFailedTitle),
+                    message: MenuBarStrings.text(.browserLoginGenericMessage)
                 )
             }
         }
