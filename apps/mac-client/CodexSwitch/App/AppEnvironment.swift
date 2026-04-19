@@ -176,6 +176,8 @@ public final class AppEnvironment {
     public let accountStore: any AccountStore
     public let usageService: any UsageService
     public let accountRepository: AccountRepository?
+    public let accountOrderStore: (any AccountOrderPersisting)?
+    public let accountRemover: (any AccountRemoving)?
     public let activeAccountController: ActiveAccountController?
     public let accountImporter: CodexAuthImporter?
     public let loginCoordinator: CodexLoginCoordinator?
@@ -191,6 +193,8 @@ public final class AppEnvironment {
         accountStore: any AccountStore,
         usageService: any UsageService,
         accountRepository: AccountRepository? = nil,
+        accountOrderStore: (any AccountOrderPersisting)? = nil,
+        accountRemover: (any AccountRemoving)? = nil,
         activeAccountController: ActiveAccountController? = nil,
         accountImporter: CodexAuthImporter? = nil,
         loginCoordinator: CodexLoginCoordinator? = nil,
@@ -205,6 +209,8 @@ public final class AppEnvironment {
         self.accountStore = accountStore
         self.usageService = usageService
         self.accountRepository = accountRepository
+        self.accountOrderStore = accountOrderStore
+        self.accountRemover = accountRemover
         self.activeAccountController = activeAccountController
         self.accountImporter = accountImporter
         self.loginCoordinator = loginCoordinator
@@ -221,6 +227,8 @@ public final class AppEnvironment {
         accountStore: MockAccountStore(),
         usageService: MockUsageService(),
         accountRepository: nil,
+        accountOrderStore: nil,
+        accountRemover: nil,
         activeAccountController: nil,
         accountImporter: nil,
         loginCoordinator: nil,
@@ -273,6 +281,8 @@ public final class AppEnvironment {
                 )
             ),
             accountRepository: repository,
+            accountOrderStore: archivedAccountStore,
+            accountRemover: archivedAccountStore,
             activeAccountController: controller,
             accountImporter: importer,
             loginCoordinator: CodexLoginCoordinator(
@@ -306,6 +316,19 @@ public final class AppEnvironment {
     public func makeProviderSyncViewModel() -> ProviderSyncViewModel {
         ProviderSyncViewModel(
             service: providerSyncService ?? MockProviderSyncService()
+        )
+    }
+
+    @MainActor
+    public func makeAccountManagementViewModel() -> AccountManagementViewModel {
+        AccountManagementViewModel(
+            service: AccountManagementService(
+                accountRepository: accountRepository,
+                orderStore: accountOrderStore,
+                accountRemover: accountRemover,
+                activeAccountController: activeAccountController,
+                usageService: usageService
+            )
         )
     }
 

@@ -96,6 +96,11 @@
 		OBJ_5004 /* MainWindowTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5002 /* MainWindowTab.swift */; };
 		OBJ_5005 /* MainWindowRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5003 /* MainWindowRoute.swift */; };
 		OBJ_5006 /* CodexArchivedAccountStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5007 /* CodexArchivedAccountStoreTests.swift */; };
+		OBJ_5008 /* AccountManagementViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5009 /* AccountManagementViewModelTests.swift */; };
+		OBJ_5010 /* AccountManagementViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5011 /* AccountManagementViewTests.swift */; };
+		OBJ_5012 /* AccountManagementService.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5013 /* AccountManagementService.swift */; };
+		OBJ_5014 /* AccountManagementViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5015 /* AccountManagementViewModel.swift */; };
+		OBJ_5016 /* AccountManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5017 /* AccountManagementView.swift */; };
 		OBJ_74 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_10 /* AppDelegate.swift */; };
 		OBJ_75 /* CodexSwitchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_11 /* CodexSwitchApp.swift */; };
 		OBJ_77 /* CodexSwitchKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = mac-client::CodexSwitchKit::Product /* CodexSwitchKit.framework */; };
@@ -190,6 +195,11 @@
 		OBJ_5002 /* MainWindowTab.swift */ = {isa = PBXFileReference; path = MainWindowTab.swift; sourceTree = "<group>"; };
 		OBJ_5003 /* MainWindowRoute.swift */ = {isa = PBXFileReference; path = MainWindowRoute.swift; sourceTree = "<group>"; };
 		OBJ_5007 /* CodexArchivedAccountStoreTests.swift */ = {isa = PBXFileReference; path = CodexArchivedAccountStoreTests.swift; sourceTree = "<group>"; };
+		OBJ_5009 /* AccountManagementViewModelTests.swift */ = {isa = PBXFileReference; path = AccountManagementViewModelTests.swift; sourceTree = "<group>"; };
+		OBJ_5011 /* AccountManagementViewTests.swift */ = {isa = PBXFileReference; path = AccountManagementViewTests.swift; sourceTree = "<group>"; };
+		OBJ_5013 /* AccountManagementService.swift */ = {isa = PBXFileReference; path = AccountManagementService.swift; sourceTree = "<group>"; };
+		OBJ_5015 /* AccountManagementViewModel.swift */ = {isa = PBXFileReference; path = AccountManagementViewModel.swift; sourceTree = "<group>"; };
+		OBJ_5017 /* AccountManagementView.swift */ = {isa = PBXFileReference; path = AccountManagementView.swift; sourceTree = "<group>"; };
 		OBJ_41 /* UsageRefreshService.swift */ = {isa = PBXFileReference; path = UsageRefreshService.swift; sourceTree = "<group>"; };
 		OBJ_45 /* AccountRepositoryTests.swift */ = {isa = PBXFileReference; path = AccountRepositoryTests.swift; sourceTree = "<group>"; };
 		OBJ_46 /* CodexSwitchTests.swift */ = {isa = PBXFileReference; path = CodexSwitchTests.swift; sourceTree = "<group>"; };
@@ -288,6 +298,9 @@
 			isa = PBXGroup;
 			children = (
 				OBJ_14 /* Account.swift */,
+				OBJ_5013 /* AccountManagementService.swift */,
+				OBJ_5017 /* AccountManagementView.swift */,
+				OBJ_5015 /* AccountManagementViewModel.swift */,
 				OBJ_15 /* AccountRepository.swift */,
 				OBJ_16 /* ApplicationSupportAccountStore.swift */,
 				OBJ_17 /* KeychainCredentialStore.swift */,
@@ -418,6 +431,8 @@
 		OBJ_44 /* Accounts */ = {
 			isa = PBXGroup;
 			children = (
+				OBJ_5009 /* AccountManagementViewModelTests.swift */,
+				OBJ_5011 /* AccountManagementViewTests.swift */,
 				OBJ_45 /* AccountRepositoryTests.swift */,
 			);
 			name = Accounts;
@@ -629,6 +644,8 @@
 		OBJ_123 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			files = (
+				OBJ_5008 /* AccountManagementViewModelTests.swift in Sources */,
+				OBJ_5010 /* AccountManagementViewTests.swift in Sources */,
 				OBJ_124 /* AccountRepositoryTests.swift in Sources */,
 				OBJ_125 /* CodexSwitchTests.swift in Sources */,
 				OBJ_126 /* RealIntegrationSmokeTests.swift in Sources */,
@@ -665,6 +682,9 @@
 				OBJ_85 /* AccountRepository.swift in Sources */,
 				OBJ_86 /* ApplicationSupportAccountStore.swift in Sources */,
 				OBJ_87 /* KeychainCredentialStore.swift in Sources */,
+				OBJ_5012 /* AccountManagementService.swift in Sources */,
+				OBJ_5016 /* AccountManagementView.swift in Sources */,
+				OBJ_5014 /* AccountManagementViewModel.swift in Sources */,
 				OBJ_1012 /* BackupAuthPicker.swift in Sources */,
 				OBJ_1013 /* CodexArchiveNaming.swift in Sources */,
 				OBJ_1014 /* CodexArchivedAccountStore.swift in Sources */,
