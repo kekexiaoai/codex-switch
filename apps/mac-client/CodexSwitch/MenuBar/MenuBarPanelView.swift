@@ -3,6 +3,8 @@ import SwiftUI
 public struct MenuBarPanelView: View {
     @ObservedObject private var viewModel: MenuBarViewModel
     @State private var isShowingAddAccountOptions = false
+    @State private var isShowingQuickSwitchOverlay = false
+    @State private var quickSwitchDismissWorkItem: DispatchWorkItem?
 
     public init(viewModel: MenuBarViewModel) {
         self.viewModel = viewModel
@@ -62,68 +64,64 @@ public struct MenuBarPanelView: View {
     }
 
     private var panelContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            headerSection
+        ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 12) {
+                headerSection
 
-            Divider()
+                Divider()
 
-            ForEach(viewModel.summaries) { summary in
-                UsageSummaryCard(summary: summary)
-            }
+                ForEach(viewModel.summaries) { summary in
+                    UsageSummaryCard(summary: summary)
+                }
 
-            Divider()
+                Divider()
 
-            Text(MenuBarStrings.text(.switchAccount))
-                .font(.headline)
-
-            ForEach(viewModel.accountRows) { account in
-                AccountRowView(
-                    account: account,
-                    pendingRemovalMessage: pendingRemovalMessage(for: account.id),
-                    onSelect: {
-                        viewModel.requestSwitchToAccount(id: account.id)
-                    },
-                    onRemove: {
-                        viewModel.requestRemoveAccount(id: account.id)
-                    },
-                    onConfirmRemove: {
+                VStack(alignment: .leading, spacing: 8) {
+                    quickSwitchAnchor
+                    actionRow(title: MenuBarStrings.text(.openMainWindow), systemImage: "rectangle.on.rectangle") {
+                        viewModel.openMainWindow()
+                    }
+                    addAccountMenu
+                    actionRow(title: MenuBarStrings.text(.statusPage), systemImage: "waveform.path.ecg") {
+                        viewModel.openStatusPage()
+                    }
+                    actionRow(
+                        title: viewModel.showEmails ? MenuBarStrings.text(.hideEmails) : MenuBarStrings.text(.showEmails),
+                        systemImage: viewModel.showEmails ? "eye" : "eye.slash"
+                    ) {
                         Task {
-                            await viewModel.performPendingAccountRemoval()
+                            await viewModel.toggleShowEmails()
                         }
+                    }
+                    actionRow(title: MenuBarStrings.text(.providerSync), systemImage: "arrow.triangle.2.circlepath") {
+                        viewModel.openProviderSync()
+                    }
+                    actionRow(title: MenuBarStrings.text(.settings), systemImage: "gearshape") {
+                        viewModel.openSettings()
+                    }
+                    actionRow(title: MenuBarStrings.text(.quit), systemImage: "power") {
+                        viewModel.quit()
+                    }
+                }
+            }
+            .padding(16)
+
+            if isShowingQuickSwitchOverlay {
+                QuickSwitchOverlayView(
+                    rows: viewModel.quickSwitchRows,
+                    onSelect: { accountID in
+                        updateQuickSwitchVisibility(isVisible: false, withDelay: false)
+                        viewModel.requestSwitchToAccount(id: accountID)
                     },
-                    onCancelRemove: {
-                        viewModel.cancelPendingAccountRemoval()
+                    onHoverChanged: { isHovering in
+                        updateQuickSwitchVisibility(isVisible: isHovering, withDelay: !isHovering)
                     }
                 )
-            }
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 8) {
-                addAccountMenu
-                actionRow(title: MenuBarStrings.text(.statusPage), systemImage: "waveform.path.ecg") {
-                    viewModel.openStatusPage()
-                }
-                actionRow(
-                    title: viewModel.showEmails ? MenuBarStrings.text(.hideEmails) : MenuBarStrings.text(.showEmails),
-                    systemImage: viewModel.showEmails ? "eye" : "eye.slash"
-                ) {
-                    Task {
-                        await viewModel.toggleShowEmails()
-                    }
-                }
-                actionRow(title: MenuBarStrings.text(.providerSync), systemImage: "arrow.triangle.2.circlepath") {
-                    viewModel.openProviderSync()
-                }
-                actionRow(title: MenuBarStrings.text(.settings), systemImage: "gearshape") {
-                    viewModel.openSettings()
-                }
-                actionRow(title: MenuBarStrings.text(.quit), systemImage: "power") {
-                    viewModel.quit()
-                }
+                .offset(x: 24, y: 184)
+                .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .topLeading)))
+                .zIndex(2)
             }
         }
-        .padding(16)
     }
 
     private var headerSection: some View {
@@ -185,6 +183,7 @@ public struct MenuBarPanelView: View {
         systemImage: String,
         trailingSystemImage: String? = nil,
         isIndented: Bool = false,
+        onHoverChanged: ((Bool) -> Void)? = nil,
         action: @escaping () -> Void = {}
     ) -> some View {
         Button(action: action) {
@@ -204,6 +203,9 @@ public struct MenuBarPanelView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(MenuBarActionRowButtonStyle())
+        .onHover { isHovering in
+            onHoverChanged?(isHovering)
+        }
     }
 
     private func feedbackBanner(_ feedback: MenuBarInlineMessage) -> some View {
@@ -314,6 +316,36 @@ public struct MenuBarPanelView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
         )
+    }
+
+    private var quickSwitchAnchor: some View {
+        actionRow(
+            title: MenuBarStrings.text(.quickSwitch),
+            systemImage: "arrow.left.arrow.right",
+            trailingSystemImage: "chevron.right",
+            onHoverChanged: { isHovering in
+                updateQuickSwitchVisibility(isVisible: isHovering, withDelay: !isHovering)
+            }
+        ) {}
+    }
+
+    private func updateQuickSwitchVisibility(isVisible: Bool, withDelay: Bool) {
+        quickSwitchDismissWorkItem?.cancel()
+
+        guard withDelay else {
+            withAnimation(.easeInOut(duration: 0.12)) {
+                isShowingQuickSwitchOverlay = isVisible
+            }
+            return
+        }
+
+        let workItem = DispatchWorkItem {
+            withAnimation(.easeInOut(duration: 0.12)) {
+                isShowingQuickSwitchOverlay = isVisible
+            }
+        }
+        quickSwitchDismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: workItem)
     }
 }
 

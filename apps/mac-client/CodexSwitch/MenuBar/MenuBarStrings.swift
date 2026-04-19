@@ -13,6 +13,8 @@ public enum MenuBarStrings {
         case updated
         case refreshUsage
         case switchAccount
+        case quickSwitch
+        case openMainWindow
         case currentAccount
         case removeAccount
         case removeAccountConfirmationTitle
@@ -224,6 +226,8 @@ public enum MenuBarStrings {
         case .updated: return "Updated"
         case .refreshUsage: return "Refresh Usage"
         case .switchAccount: return "Switch Account"
+        case .quickSwitch: return "Quick Switch"
+        case .openMainWindow: return "Open Main Window"
         case .currentAccount: return "Current Account"
         case .removeAccount: return "Remove Account"
         case .removeAccountConfirmationTitle: return "Remove Account?"
@@ -302,6 +306,8 @@ public enum MenuBarStrings {
         case .updated: return "更新于"
         case .refreshUsage: return "刷新用量"
         case .switchAccount: return "切换账号"
+        case .quickSwitch: return "快速切换"
+        case .openMainWindow: return "打开主窗口"
         case .currentAccount: return "当前账号"
         case .removeAccount: return "移除账号"
         case .removeAccountConfirmationTitle: return "移除账号？"
