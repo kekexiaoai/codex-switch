@@ -42,14 +42,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
 
     func handle(_ action: MenuBarAction) {
         switch action {
-        case .openSettings:
-            settingsWindowPresenter?.present()
-        case .openStatusPage:
-            openStatusWindow()
-        case .openProviderSync:
-            providerSyncWindowPresenter?.present()
+        case .openMainWindow(let tab):
+            openMainWindow(tab)
         case .quit:
             NSApp.terminate(nil)
+        }
+    }
+
+    private func openMainWindow(_ tab: MainWindowTab) {
+        switch tab {
+        case .accounts:
+            NSApp.activate(ignoringOtherApps: true)
+        case .providerSync:
+            providerSyncWindowPresenter?.present()
+        case .settings:
+            settingsWindowPresenter?.present()
+        case .status:
+            openStatusWindow()
         }
     }
 

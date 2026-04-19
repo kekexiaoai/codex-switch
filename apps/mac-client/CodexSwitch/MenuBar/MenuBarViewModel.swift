@@ -186,16 +186,20 @@ public final class MenuBarViewModel: ObservableObject {
         await refresh()
     }
 
+    public func openMainWindow() {
+        actionHandler?.handle(.openMainWindow(.accounts))
+    }
+
     public func openStatusPage() {
-        actionHandler?.handle(.openStatusPage)
+        actionHandler?.handle(.openMainWindow(.status))
     }
 
     public func openSettings() {
-        actionHandler?.handle(.openSettings)
+        actionHandler?.handle(.openMainWindow(.settings))
     }
 
     public func openProviderSync() {
-        actionHandler?.handle(.openProviderSync)
+        actionHandler?.handle(.openMainWindow(.providerSync))
     }
 
     public func quit() {

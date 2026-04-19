@@ -3,6 +3,18 @@ import XCTest
 
 @MainActor
 final class MenuBarActionTests: XCTestCase {
+    func testOpenMainWindowDelegatesToAccountsTabRoute() {
+        let handler = RecordingMenuBarActionHandler()
+        let viewModel = MenuBarViewModel(
+            service: MockMenuBarService(),
+            actionHandler: handler
+        )
+
+        viewModel.openMainWindow()
+
+        XCTAssertEqual(handler.recordedActions, [.openMainWindow(.accounts)])
+    }
+
     func testOpenSettingsDelegatesToActionHandler() {
         let handler = RecordingMenuBarActionHandler()
         let viewModel = MenuBarViewModel(
@@ -12,7 +24,7 @@ final class MenuBarActionTests: XCTestCase {
 
         viewModel.openSettings()
 
-        XCTAssertEqual(handler.recordedActions, [.openSettings])
+        XCTAssertEqual(handler.recordedActions, [.openMainWindow(.settings)])
     }
 
     func testQuitDelegatesToActionHandler() {
@@ -36,6 +48,6 @@ final class MenuBarActionTests: XCTestCase {
 
         viewModel.openStatusPage()
 
-        XCTAssertEqual(handler.recordedActions, [.openStatusPage])
+        XCTAssertEqual(handler.recordedActions, [.openMainWindow(.status)])
     }
 }

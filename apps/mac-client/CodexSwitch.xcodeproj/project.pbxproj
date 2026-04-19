@@ -93,6 +93,8 @@
 		OBJ_4017 /* ProviderSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_4008 /* ProviderSyncView.swift */; };
 		OBJ_4018 /* ProviderSyncViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_4009 /* ProviderSyncViewModel.swift */; };
 		OBJ_4019 /* ProviderSyncWindowPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_4010 /* ProviderSyncWindowPresenter.swift */; };
+		OBJ_5004 /* MainWindowTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5002 /* MainWindowTab.swift */; };
+		OBJ_5005 /* MainWindowRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_5003 /* MainWindowRoute.swift */; };
 		OBJ_74 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_10 /* AppDelegate.swift */; };
 		OBJ_75 /* CodexSwitchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_11 /* CodexSwitchApp.swift */; };
 		OBJ_77 /* CodexSwitchKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = mac-client::CodexSwitchKit::Product /* CodexSwitchKit.framework */; };
@@ -184,6 +186,8 @@
 		OBJ_4008 /* ProviderSyncView.swift */ = {isa = PBXFileReference; path = ProviderSyncView.swift; sourceTree = "<group>"; };
 		OBJ_4009 /* ProviderSyncViewModel.swift */ = {isa = PBXFileReference; path = ProviderSyncViewModel.swift; sourceTree = "<group>"; };
 		OBJ_4010 /* ProviderSyncWindowPresenter.swift */ = {isa = PBXFileReference; path = ProviderSyncWindowPresenter.swift; sourceTree = "<group>"; };
+		OBJ_5002 /* MainWindowTab.swift */ = {isa = PBXFileReference; path = MainWindowTab.swift; sourceTree = "<group>"; };
+		OBJ_5003 /* MainWindowRoute.swift */ = {isa = PBXFileReference; path = MainWindowRoute.swift; sourceTree = "<group>"; };
 		OBJ_41 /* UsageRefreshService.swift */ = {isa = PBXFileReference; path = UsageRefreshService.swift; sourceTree = "<group>"; };
 		OBJ_45 /* AccountRepositoryTests.swift */ = {isa = PBXFileReference; path = AccountRepositoryTests.swift; sourceTree = "<group>"; };
 		OBJ_46 /* CodexSwitchTests.swift */ = {isa = PBXFileReference; path = CodexSwitchTests.swift; sourceTree = "<group>"; };
@@ -267,6 +271,7 @@
 				OBJ_18 /* App */,
 				OBJ_22 /* Diagnostics */,
 				OBJ_1000 /* CodexAuth */,
+				OBJ_5001 /* MainWindow */,
 				OBJ_25 /* MenuBar */,
 				OBJ_4001 /* ProviderSync */,
 				OBJ_35 /* Settings */,
@@ -371,6 +376,16 @@
 			);
 			name = ProviderSync;
 			path = ProviderSync;
+			sourceTree = "<group>";
+		};
+		OBJ_5001 /* MainWindow */ = {
+			isa = PBXGroup;
+			children = (
+				OBJ_5002 /* MainWindowTab.swift */,
+				OBJ_5003 /* MainWindowRoute.swift */,
+			);
+			name = MainWindow;
+			path = MainWindow;
 			sourceTree = "<group>";
 		};
 		OBJ_42 /* Tests */ = {
@@ -698,6 +713,8 @@
 				OBJ_4017 /* ProviderSyncView.swift in Sources */,
 				OBJ_4018 /* ProviderSyncViewModel.swift in Sources */,
 				OBJ_4019 /* ProviderSyncWindowPresenter.swift in Sources */,
+				OBJ_5004 /* MainWindowTab.swift in Sources */,
+				OBJ_5005 /* MainWindowRoute.swift in Sources */,
 			);
 		};
 /* End PBXSourcesBuildPhase section */
