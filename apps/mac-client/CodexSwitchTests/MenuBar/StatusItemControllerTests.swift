@@ -164,6 +164,33 @@ final class StatusItemControllerTests: XCTestCase {
         XCTAssertEqual(dismissCount, 2)
     }
 
+    func testOutsideClickMonitorKeepsPopoverOpenForChildDialogWindows() {
+        var localHandler: ((NSEvent) -> NSEvent?)?
+        let insideWindow = NSWindow()
+        let confirmationWindow = NSWindow()
+        insideWindow.addChildWindow(confirmationWindow, ordered: .above)
+        var dismissCount = 0
+
+        let monitor = PopoverOutsideClickMonitor(
+            watchedWindows: { [insideWindow] },
+            addLocalMonitor: { _, handler in
+                localHandler = handler
+                return "local-monitor"
+            },
+            addGlobalMonitor: { _, _ in "global-monitor" },
+            removeMonitor: { _ in },
+            eventWindow: { _ in confirmationWindow },
+            onOutsideClick: {
+                dismissCount += 1
+            }
+        )
+
+        monitor.start()
+        _ = localHandler?(mouseDownEvent())
+
+        XCTAssertEqual(dismissCount, 0)
+    }
+
     func testOutsideClickMonitorRemovesInstalledMonitorsWhenStopped() {
         var removedMonitors: [String] = []
 

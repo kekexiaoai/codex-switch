@@ -152,8 +152,23 @@ final class PopoverOutsideClickMonitor {
             guard let window else {
                 return false
             }
-            return window === sourceWindow
+            return containsWindow(sourceWindow, in: window)
         }
+    }
+
+    private func containsWindow(_ sourceWindow: NSWindow, in watchedWindow: NSWindow) -> Bool {
+        if watchedWindow === sourceWindow {
+            return true
+        }
+
+        if let attachedSheet = watchedWindow.attachedSheet,
+           containsWindow(sourceWindow, in: attachedSheet) {
+            return true
+        }
+
+        return watchedWindow.childWindows?.contains(where: { childWindow in
+            containsWindow(sourceWindow, in: childWindow)
+        }) ?? false
     }
 }
 
