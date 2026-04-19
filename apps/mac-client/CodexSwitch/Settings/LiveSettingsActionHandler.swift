@@ -23,6 +23,7 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
     private let openResource: ResourceOpener
     private let now: () -> Date
     private let timeFormatter: CodexUserFacingTimeFormatter
+    private let configParser: ConfigTomlParser
 
     public init(
         paths: CodexPaths,
@@ -31,13 +32,15 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
             NSWorkspace.shared.open(url)
         },
         now: @escaping () -> Date = Date.init,
-        timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter()
+        timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter(),
+        configParser: ConfigTomlParser = ConfigTomlParser()
     ) {
         self.paths = paths
         self.fileManager = fileManager
         self.openResource = openResource
         self.now = now
         self.timeFormatter = timeFormatter
+        self.configParser = configParser
     }
 
     public func performDestructiveAction(_ action: SettingsDestructiveAction) throws -> SettingsActionMessage {
@@ -69,6 +72,17 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
             let exportURL = try exportDiagnosticsSummary()
             try open(exportURL)
             return SettingsActionMessage(title: "Diagnostics Exported", message: "Exported a sanitized diagnostics summary.")
+        }
+    }
+
+    public func performProviderAction(_ action: SettingsProviderAction, providerId: String) throws -> SettingsActionMessage {
+        switch action {
+        case .removeProvider:
+            try configParser.removeProvider(in: paths.configFileURL, providerId: providerId)
+            return SettingsActionMessage(
+                title: "Provider Removed",
+                message: "Removed provider '\(providerId)' from configuration."
+            )
         }
     }
 

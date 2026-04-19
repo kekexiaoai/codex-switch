@@ -121,20 +121,29 @@ public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var launchAtLogin: Bool
     @Published public private(set) var menuBarIconStyle: MenuBarIconStyle
     @Published public private(set) var pendingConfirmation: SettingsConfirmationRequest?
+    @Published public private(set) var pendingProviderConfirmation: SettingsProviderConfirmationRequest?
     @Published public private(set) var lastActionMessage: SettingsActionMessage?
+    @Published public private(set) var currentProvider: String
+    @Published public private(set) var availableProviders: [String]
 
     private let defaults: UserDefaults
     private let actionHandler: any SettingsActionHandling
     private let launchAtLoginController: (any LaunchAtLoginControlling)?
+    private let configParser: ConfigTomlParser
+    private let codexPaths: CodexPaths
 
     public init(
         defaults: UserDefaults = .standard,
         actionHandler: any SettingsActionHandling = NoopSettingsActionHandler(),
-        launchAtLoginController: (any LaunchAtLoginControlling)? = nil
+        launchAtLoginController: (any LaunchAtLoginControlling)? = nil,
+        configParser: ConfigTomlParser = ConfigTomlParser(),
+        codexPaths: CodexPaths = CodexPaths()
     ) {
         self.defaults = defaults
         self.actionHandler = actionHandler
         self.launchAtLoginController = launchAtLoginController
+        self.configParser = configParser
+        self.codexPaths = codexPaths
         self.showEmails = defaults.bool(forKey: Self.showEmailsKey)
         if defaults.object(forKey: Self.usageRefreshEnabledKey) == nil {
             self.usageRefreshEnabled = true
@@ -149,7 +158,13 @@ public final class SettingsViewModel: ObservableObject {
         self.launchAtLogin = resolvedLaunchAtLogin
         self.menuBarIconStyle = MenuBarIconStyle.resolved(from: defaults.string(forKey: Self.menuBarIconStyleKey))
         self.pendingConfirmation = nil
+        self.pendingProviderConfirmation = nil
         self.lastActionMessage = nil
+
+        // Load provider state
+        let providerResult = (try? configParser.readCurrentProvider(from: codexPaths.configFileURL)) ?? ("openai", true)
+        self.currentProvider = providerResult.provider
+        self.availableProviders = (try? configParser.listConfiguredProviderIds(from: String(contentsOf: codexPaths.configFileURL, encoding: .utf8))) ?? ["openai"]
 
         if storedLaunchAtLogin != resolvedLaunchAtLogin {
             defaults.set(resolvedLaunchAtLogin, forKey: Self.launchAtLoginKey)
@@ -221,5 +236,105 @@ public final class SettingsViewModel: ObservableObject {
 
     public func performUtilityAction(_ action: SettingsUtilityAction) throws {
         lastActionMessage = try actionHandler.performUtilityAction(action)
+    }
+
+    // MARK: - Provider Management
+
+    public func loadProviders() {
+        do {
+            let configText = try String(contentsOf: codexPaths.configFileURL, encoding: .utf8)
+            let providerResult = configParser.readCurrentProvider(from: configText)
+            currentProvider = providerResult.provider
+            availableProviders = configParser.listConfiguredProviderIds(from: configText)
+        } catch {
+            currentProvider = "openai"
+            availableProviders = ["openai"]
+        }
+    }
+
+    public func setCurrentProvider(_ provider: String) {
+        do {
+            try configParser.setRootProvider(in: codexPaths.configFileURL, provider: provider)
+            currentProvider = provider
+            lastActionMessage = nil
+        } catch {
+            lastActionMessage = SettingsActionMessage(
+                title: "Provider Switch Failed",
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    public func addProvider(id: String) throws {
+        guard validateProviderId(id) else {
+            throw ProviderManagementError.invalidProviderId
+        }
+
+        guard !availableProviders.contains(id) else {
+            throw ProviderManagementError.duplicateProviderId(id)
+        }
+
+        try configParser.addProvider(in: codexPaths.configFileURL, providerId: id)
+        loadProviders()
+        lastActionMessage = SettingsActionMessage(
+            title: "Provider Added",
+            message: "Added provider '\(id)' to configuration."
+        )
+    }
+
+    public func requestRemoveProvider(_ providerId: String) {
+        pendingProviderConfirmation = SettingsProviderConfirmationRequest(
+            action: .removeProvider,
+            providerId: providerId
+        )
+    }
+
+    public func confirmPendingProviderAction() throws {
+        guard let confirmation = pendingProviderConfirmation else {
+            return
+        }
+
+        lastActionMessage = try actionHandler.performProviderAction(
+            confirmation.action,
+            providerId: confirmation.providerId
+        )
+        pendingProviderConfirmation = nil
+        loadProviders()
+    }
+
+    public func cancelPendingProviderAction() {
+        pendingProviderConfirmation = nil
+    }
+
+    public func validateProviderId(_ id: String) -> Bool {
+        configParser.validateProviderId(id)
+    }
+
+    public func canRemoveProvider(_ id: String) -> Bool {
+        // Cannot remove "openai" (default provider)
+        guard id != "openai" else {
+            return false
+        }
+
+        // Cannot remove currently active provider
+        guard id != currentProvider else {
+            return false
+        }
+
+        return true
+    }
+}
+
+public enum ProviderManagementError: LocalizedError {
+    case invalidProviderId
+    case duplicateProviderId(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidProviderId:
+            return "Provider ID must contain only letters, numbers, dots, hyphens, and underscores"
+        case .duplicateProviderId(let id):
+            return "Provider '\(id)' already exists"
+        }
     }
 }

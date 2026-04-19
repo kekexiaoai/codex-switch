@@ -134,4 +134,109 @@ public struct ConfigTomlParser {
         }
         return joined
     }
+
+    // MARK: - Provider Management
+
+    /// Validates a provider ID against the allowed character set
+    /// - Parameter id: The provider ID to validate
+    /// - Returns: true if the ID matches the pattern [A-Za-z0-9_.-]+
+    public func validateProviderId(_ id: String) -> Bool {
+        guard !id.isEmpty else { return false }
+        let pattern = "^[A-Za-z0-9_.-]+$"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
+        let range = NSRange(id.startIndex..., in: id)
+        return regex.firstMatch(in: id, range: range) != nil
+    }
+
+    /// Adds a new provider section to config text
+    /// - Parameters:
+    ///   - configText: Original TOML content
+    ///   - providerId: Provider ID to add
+    /// - Returns: Modified TOML content with new provider section
+    public func addProvider(in configText: String, providerId: String) -> String {
+        guard validateProviderId(providerId) else {
+            return configText
+        }
+
+        // Check if provider already exists
+        if configDeclaresProvider(configText, providerId) {
+            return configText
+        }
+
+        let newSection = "\n[model_providers.\(escapeTomlString(providerId))]\n"
+        let endsWithNewline = configText.hasSuffix("\n")
+
+        if endsWithNewline {
+            return configText + newSection
+        } else {
+            return configText + "\n" + newSection
+        }
+    }
+
+    /// Adds a new provider section to config file
+    /// - Parameters:
+    ///   - url: Config file URL
+    ///   - providerId: Provider ID to add
+    public func addProvider(in url: URL, providerId: String) throws {
+        let text = try String(contentsOf: url, encoding: .utf8)
+        let updated = addProvider(in: text, providerId: providerId)
+        try updated.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    /// Removes a provider section from config text
+    /// - Parameters:
+    ///   - configText: Original TOML content
+    ///   - providerId: Provider ID to remove
+    /// - Returns: Modified TOML content without the provider section
+    public func removeProvider(in configText: String, providerId: String) -> String {
+        let lines = configText.split(separator: "\n", omittingEmptySubsequences: false)
+        var result: [Substring] = []
+        var inTargetSection = false
+        let sectionPattern = "^\\[model_providers\\.([A-Za-z0-9_.-]+)\\]\\s*$"
+
+        guard let sectionRegex = try? NSRegularExpression(pattern: sectionPattern) else {
+            return configText
+        }
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            // Check if this is a section header
+            if trimmed.hasPrefix("[") {
+                let range = NSRange(trimmed.startIndex..., in: trimmed)
+                if let match = sectionRegex.firstMatch(in: trimmed, range: range),
+                   let providerRange = Range(match.range(at: 1), in: trimmed) {
+                    let sectionProvider = String(trimmed[providerRange])
+
+                    if sectionProvider == providerId {
+                        // Start skipping lines in target section
+                        inTargetSection = true
+                        continue
+                    } else {
+                        // Different section, stop skipping
+                        inTargetSection = false
+                    }
+                }
+            }
+
+            // Skip lines in target section
+            if inTargetSection {
+                continue
+            }
+
+            result.append(line)
+        }
+
+        return reconstructText(from: result, originalEndsWithNewline: configText.hasSuffix("\n"))
+    }
+
+    /// Removes a provider section from config file
+    /// - Parameters:
+    ///   - url: Config file URL
+    ///   - providerId: Provider ID to remove
+    public func removeProvider(in url: URL, providerId: String) throws {
+        let text = try String(contentsOf: url, encoding: .utf8)
+        let updated = removeProvider(in: text, providerId: providerId)
+        try updated.write(to: url, atomically: true, encoding: .utf8)
+    }
 }

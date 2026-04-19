@@ -5,6 +5,9 @@ import AppKit
 public struct SettingsView: View {
     @StateObject private var viewModel: SettingsViewModel
     @State private var presentedMessage: SettingsActionMessage?
+    @State private var showAddProviderForm: Bool = false
+    @State private var newProviderId: String = ""
+    @State private var providerIdError: String = ""
 
     public init() {
         _viewModel = StateObject(wrappedValue: SettingsViewModel())
@@ -14,8 +17,16 @@ public struct SettingsView: View {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
 
+    private var isProviderIdValid: Bool {
+        viewModel.validateProviderId(newProviderId) && !viewModel.availableProviders.contains(newProviderId)
+    }
+
+    private var removableProviders: [String] {
+        viewModel.availableProviders.filter { viewModel.canRemoveProvider($0) }
+    }
+
     public var sectionTitles: [String] {
-        ["General", "Privacy", "Usage", "Advanced"]
+        ["General", "Privacy", "Usage", "Provider Management", "Advanced"]
     }
 
     public var generalControlLabels: [String] {
@@ -142,6 +153,55 @@ public struct SettingsView: View {
                     .pickerStyle(.radioGroup)
                 }
 
+                settingsSection("Provider Management") {
+                    Picker(
+                        "Current Provider",
+                        selection: Binding(
+                            get: { viewModel.currentProvider },
+                            set: { viewModel.setCurrentProvider($0) }
+                        )
+                    ) {
+                        ForEach(viewModel.availableProviders, id: \.self) { provider in
+                            Text(provider).tag(provider)
+                        }
+                    }
+                    .pickerStyle(.radioGroup)
+
+                    Divider()
+
+                    Toggle("Add Custom Provider", isOn: $showAddProviderForm)
+
+                    if showAddProviderForm {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("Provider ID (e.g., anthropic, custom-llm)", text: $newProviderId)
+                                .textFieldStyle(.roundedBorder)
+
+                            if !providerIdError.isEmpty {
+                                Text(providerIdError)
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+
+                            Button("Add Provider") {
+                                addProviderAction()
+                            }
+                            .disabled(!isProviderIdValid)
+                        }
+                        .padding(.leading, 20)
+                    }
+
+                    if !removableProviders.isEmpty {
+                        Divider()
+
+                        ForEach(removableProviders, id: \.self) { provider in
+                            Button("Remove \(provider)", role: .destructive) {
+                                viewModel.requestRemoveProvider(provider)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+
                 settingsSection("Advanced") {
                     utilityButton(for: .openCodexDirectory)
                     utilityButton(for: .openDiagnosticsLog)
@@ -200,6 +260,27 @@ public struct SettingsView: View {
         .onChange(of: viewModel.lastActionMessage?.id) { _ in
             presentedMessage = viewModel.lastActionMessage
         }
+        .confirmationDialog(
+            "Remove Provider?",
+            isPresented: Binding(
+                get: { viewModel.pendingProviderConfirmation != nil },
+                set: { if !$0 { viewModel.cancelPendingProviderAction() } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let confirmation = viewModel.pendingProviderConfirmation {
+                Button("Remove \(confirmation.providerId)", role: .destructive) {
+                    runAction { try viewModel.confirmPendingProviderAction() }
+                }
+                Button("Cancel", role: .cancel) {
+                    viewModel.cancelPendingProviderAction()
+                }
+            }
+        } message: {
+            if let confirmation = viewModel.pendingProviderConfirmation {
+                Text("This will remove '\(confirmation.providerId)' from your configuration. Session history will not be deleted.")
+            }
+        }
     }
 
     @ViewBuilder
@@ -241,6 +322,18 @@ public struct SettingsView: View {
                 title: "Action Failed",
                 message: error.localizedDescription
             )
+        }
+    }
+
+    private func addProviderAction() {
+        do {
+            try viewModel.addProvider(id: newProviderId)
+            newProviderId = ""
+            showAddProviderForm = false
+            providerIdError = ""
+            presentedMessage = viewModel.lastActionMessage
+        } catch {
+            providerIdError = error.localizedDescription
         }
     }
 

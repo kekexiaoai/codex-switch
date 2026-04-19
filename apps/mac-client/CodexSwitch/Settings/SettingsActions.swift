@@ -16,6 +16,12 @@ public enum SettingsUtilityAction: String, Equatable, CaseIterable, Identifiable
     public var id: String { rawValue }
 }
 
+public enum SettingsProviderAction: String, Equatable, CaseIterable, Identifiable {
+    case removeProvider
+
+    public var id: String { rawValue }
+}
+
 public struct SettingsActionMessage: Equatable, Identifiable {
     public let id: UUID
     public let title: String
@@ -38,9 +44,22 @@ public struct SettingsConfirmationRequest: Equatable, Identifiable {
     }
 }
 
+public struct SettingsProviderConfirmationRequest: Equatable, Identifiable {
+    public let id: UUID
+    public let action: SettingsProviderAction
+    public let providerId: String
+
+    public init(id: UUID = UUID(), action: SettingsProviderAction, providerId: String) {
+        self.id = id
+        self.action = action
+        self.providerId = providerId
+    }
+}
+
 public protocol SettingsActionHandling {
     func performDestructiveAction(_ action: SettingsDestructiveAction) throws -> SettingsActionMessage
     func performUtilityAction(_ action: SettingsUtilityAction) throws -> SettingsActionMessage
+    func performProviderAction(_ action: SettingsProviderAction, providerId: String) throws -> SettingsActionMessage
 }
 
 public struct NoopSettingsActionHandler: SettingsActionHandling {
@@ -65,6 +84,13 @@ public struct NoopSettingsActionHandler: SettingsActionHandling {
             return SettingsActionMessage(title: "Diagnostics Folder Opened", message: "Opened the local diagnostics folder.")
         case .exportDiagnosticsSummary:
             return SettingsActionMessage(title: "Diagnostics Exported", message: "Exported a sanitized diagnostics summary.")
+        }
+    }
+
+    public func performProviderAction(_ action: SettingsProviderAction, providerId: String) throws -> SettingsActionMessage {
+        switch action {
+        case .removeProvider:
+            return SettingsActionMessage(title: "Provider Removed", message: "Removed provider '\(providerId)'.")
         }
     }
 }

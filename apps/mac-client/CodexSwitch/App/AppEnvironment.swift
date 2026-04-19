@@ -293,7 +293,9 @@ public final class AppEnvironment {
         SettingsViewModel(
             defaults: settingsDefaults,
             actionHandler: settingsActionHandler,
-            launchAtLoginController: launchAtLoginController
+            launchAtLoginController: launchAtLoginController,
+            configParser: ConfigTomlParser(),
+            codexPaths: codexPaths ?? CodexPaths()
         )
     }
 
