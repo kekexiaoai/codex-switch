@@ -40,7 +40,7 @@ final class StatusItemControllerTests: XCTestCase {
         )
     }
 
-    func testHostingControllerReportsSmallerHeightWhenAccountCountDrops() async {
+    func testHostingControllerKeepsStableHeightWhenQuickSwitchAccountCountDrops() async {
         let service = SnapshotSequenceMenuBarService(
             snapshots: [
                 makeSnapshot(accountCount: 8),
@@ -75,7 +75,7 @@ final class StatusItemControllerTests: XCTestCase {
         let shrunkenHeight = reportedHeights.last ?? 0
 
         XCTAssertGreaterThan(expandedHeight, 0)
-        XCTAssertLessThan(shrunkenHeight, expandedHeight)
+        XCTAssertEqual(shrunkenHeight, expandedHeight, accuracy: 1)
     }
 
     func testPopoverPresenterActivatesAppBeforeShowingPopover() {
