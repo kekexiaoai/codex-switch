@@ -8,12 +8,13 @@ final class AccountRepositoryTests: XCTestCase {
             credentialStore: InMemoryCredentialStore()
         )
 
-        let account = Account(id: "acct-1", emailMask: "a••••@gmail.com", tier: .team)
+        let account = Account(id: "acct-1", emailMask: "a••••@gmail.com", tier: .team, manualOrder: 0)
         try await repository.save(account: account, secret: "token-123")
 
         let loaded = try await repository.loadAccounts()
 
         XCTAssertEqual(loaded.first?.emailMask, account.emailMask)
+        XCTAssertEqual(loaded.first?.manualOrder, 0)
         XCTAssertNil(loaded.first?.embeddedSecret)
     }
 
@@ -32,7 +33,8 @@ final class AccountRepositoryTests: XCTestCase {
         let metadata = CodexAccountMetadataCache(entries: [
             archiveFilename: CodexAccountMetadataEntry(
                 source: .currentAuth,
-                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800),
+                manualOrder: 0
             ),
         ])
         try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
@@ -45,6 +47,7 @@ final class AccountRepositoryTests: XCTestCase {
         XCTAssertEqual(loaded.first?.id, "subject-alex@example.com")
         XCTAssertEqual(loaded.first?.archiveFilename, archiveFilename)
         XCTAssertEqual(loaded.first?.source, .currentAuth)
+        XCTAssertEqual(loaded.first?.manualOrder, 0)
     }
 
     func testRepositoryDeduplicatesArchivedAccountsByStableAccountID() async throws {
@@ -67,11 +70,13 @@ final class AccountRepositoryTests: XCTestCase {
         let metadata = CodexAccountMetadataCache(entries: [
             olderFilename: CodexAccountMetadataEntry(
                 source: .backupImport,
-                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800),
+                manualOrder: 2
             ),
             newerFilename: CodexAccountMetadataEntry(
                 source: .browserLogin,
-                lastImportedAt: Date(timeIntervalSince1970: 1_711_685_800)
+                lastImportedAt: Date(timeIntervalSince1970: 1_711_685_800),
+                manualOrder: 0
             ),
         ])
         try JSONEncoder().encode(metadata).write(to: paths.accountMetadataCacheURL)
@@ -85,6 +90,7 @@ final class AccountRepositoryTests: XCTestCase {
         XCTAssertEqual(loaded.first?.archiveFilename, newerFilename)
         XCTAssertEqual(loaded.first?.tier, .pro)
         XCTAssertEqual(loaded.first?.source, .browserLogin)
+        XCTAssertEqual(loaded.first?.manualOrder, 0)
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {

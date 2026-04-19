@@ -35,8 +35,21 @@ final class CodexAuthImporterTests: XCTestCase {
         XCTAssertEqual(account.id, "subject-alex@example.com")
         XCTAssertEqual(account.source, .currentAuth)
         XCTAssertEqual(account.lastImportedAt, importedAt)
+        XCTAssertEqual(account.manualOrder, 0)
         XCTAssertTrue(FileManager.default.fileExists(atPath: archivedURL.path))
         XCTAssertEqual(metadataCache.entries[account.archiveFilename]?.source, .currentAuth)
+        XCTAssertEqual(metadataCache.entries[account.archiveFilename]?.manualOrder, 0)
+    }
+
+    func testImportAuthDataAppendsNewAccountToEndOfManualOrder() throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let importer = CodexAuthImporter(fileStore: CodexAuthFileStore(paths: paths))
+
+        let first = try importer.importAuthData(try sampleAuthData(email: "alex@example.com", tier: "team"), source: .currentAuth)
+        let second = try importer.importAuthData(try sampleAuthData(email: "beth@example.com", tier: "pro"), source: .backupImport)
+
+        XCTAssertEqual(first.manualOrder, 0)
+        XCTAssertEqual(second.manualOrder, 1)
     }
 
     func testImportBackupAuthRejectsMissingIDTokenWithoutWritingArchive() throws {

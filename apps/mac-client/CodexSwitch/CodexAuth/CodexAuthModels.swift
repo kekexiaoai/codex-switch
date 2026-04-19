@@ -33,10 +33,25 @@ public struct CodexJWTClaims: Equatable {
 public struct CodexAccountMetadataEntry: Codable, Equatable {
     public let source: AccountSource
     public let lastImportedAt: Date
+    public let manualOrder: Int
 
-    public init(source: AccountSource, lastImportedAt: Date) {
+    public init(source: AccountSource, lastImportedAt: Date, manualOrder: Int = 0) {
         self.source = source
         self.lastImportedAt = lastImportedAt
+        self.manualOrder = manualOrder
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case source
+        case lastImportedAt
+        case manualOrder
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        source = try container.decode(AccountSource.self, forKey: .source)
+        lastImportedAt = try container.decode(Date.self, forKey: .lastImportedAt)
+        manualOrder = try container.decodeIfPresent(Int.self, forKey: .manualOrder) ?? 0
     }
 }
 

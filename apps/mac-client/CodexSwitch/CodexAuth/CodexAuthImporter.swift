@@ -31,9 +31,11 @@ public struct CodexAuthImporter {
 
         try fileStore.writeArchive(data: data, filename: archiveFilename)
         var metadataCache = try fileStore.loadMetadataCache()
+        let nextManualOrder = (metadataCache.entries.values.map(\.manualOrder).max() ?? -1) + 1
         metadataCache.entries[archiveFilename] = CodexAccountMetadataEntry(
             source: source,
-            lastImportedAt: importedAt
+            lastImportedAt: importedAt,
+            manualOrder: nextManualOrder
         )
         try fileStore.saveMetadataCache(metadataCache)
 
@@ -42,6 +44,7 @@ public struct CodexAuthImporter {
             emailMask: claims.emailMask,
             email: claims.email,
             tier: claims.tier,
+            manualOrder: nextManualOrder,
             archiveFilename: archiveFilename,
             source: source,
             lastImportedAt: importedAt

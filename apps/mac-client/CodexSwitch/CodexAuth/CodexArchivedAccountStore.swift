@@ -8,6 +8,10 @@ public protocol AccountRemoving {
     func removeArchivedAccount(id: String, activeAccountID: String?) async throws -> AccountRemovalResult
 }
 
+public protocol AccountOrderPersisting {
+    func saveManualOrder(idsInOrder: [String]) async throws
+}
+
 public struct AccountRemovalResult: Equatable {
     public let removedAccountID: String
     public let nextActiveAccountID: String?
@@ -18,7 +22,7 @@ public struct AccountRemovalResult: Equatable {
     }
 }
 
-public struct CodexArchivedAccountStore: AccountCatalog, AccountRemoving {
+public struct CodexArchivedAccountStore: AccountCatalog, AccountRemoving, AccountOrderPersisting {
     private let fileStore: CodexAuthFileStore
     private let jwtDecoder: CodexJWTDecoder
 
@@ -32,7 +36,8 @@ public struct CodexArchivedAccountStore: AccountCatalog, AccountRemoving {
 
     public func loadAccounts() async throws -> [Account] {
         let metadata = try fileStore.loadMetadataCache()
-        return try fileStore.listArchivedAuthFileURLs().compactMap { url in
+        let archivedURLs = try fileStore.listArchivedAuthFileURLs()
+        let accounts: [Account] = try archivedURLs.compactMap { url in
             let data = try fileStore.readAuthData(at: url)
             guard let idToken = try extractIDToken(from: data) else {
                 return nil
@@ -46,11 +51,49 @@ public struct CodexArchivedAccountStore: AccountCatalog, AccountRemoving {
                 emailMask: claims.emailMask,
                 email: claims.email,
                 tier: claims.tier,
+                manualOrder: entry?.manualOrder ?? 0,
                 archiveFilename: url.lastPathComponent,
                 source: entry?.source ?? .fixture,
                 lastImportedAt: entry?.lastImportedAt ?? .distantPast
             )
         }
+
+        return accounts.sorted { lhs, rhs in
+            if lhs.manualOrder != rhs.manualOrder {
+                return lhs.manualOrder < rhs.manualOrder
+            }
+            if lhs.lastImportedAt != rhs.lastImportedAt {
+                return lhs.lastImportedAt < rhs.lastImportedAt
+            }
+            return lhs.archiveFilename < rhs.archiveFilename
+        }
+    }
+
+    public func saveManualOrder(idsInOrder: [String]) async throws {
+        let loadedAccounts = try await loadAccounts()
+        let loadedAccountsByID = Dictionary(uniqueKeysWithValues: loadedAccounts.map { ($0.id, $0) })
+        let remainingIDs = loadedAccounts
+            .map(\.id)
+            .filter { !idsInOrder.contains($0) }
+        let finalIDs = idsInOrder + remainingIDs
+
+        var metadata = try fileStore.loadMetadataCache()
+        for (index, id) in finalIDs.enumerated() {
+            guard
+                let account = loadedAccountsByID[id],
+                let existingEntry = metadata.entries[account.archiveFilename]
+            else {
+                continue
+            }
+
+            metadata.entries[account.archiveFilename] = CodexAccountMetadataEntry(
+                source: existingEntry.source,
+                lastImportedAt: existingEntry.lastImportedAt,
+                manualOrder: index
+            )
+        }
+
+        try fileStore.saveMetadataCache(metadata)
     }
 
     public func loadArchivedAuthData(for accountID: String) throws -> Data {

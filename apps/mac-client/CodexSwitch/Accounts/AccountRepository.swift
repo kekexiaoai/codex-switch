@@ -36,7 +36,8 @@ public struct AccountRepository {
             id: account.id,
             emailMask: account.emailMask,
             email: account.email,
-            tier: account.tier
+            tier: account.tier,
+            manualOrder: account.manualOrder
         )
 
         if let index = accounts.firstIndex(where: { $0.id == account.id }) {
@@ -60,6 +61,7 @@ public struct AccountRepository {
                 emailMask: $0.emailMask,
                 email: $0.email,
                 tier: $0.tier,
+                manualOrder: $0.manualOrder,
                 archiveFilename: $0.archiveFilename,
                 source: $0.source,
                 lastImportedAt: $0.lastImportedAt
@@ -78,7 +80,17 @@ public struct AccountRepository {
         for account in accounts {
             if let existing = accountsByID[account.id] {
                 if account.lastImportedAt > existing.lastImportedAt {
-                    accountsByID[account.id] = account
+                    accountsByID[account.id] = Account(
+                        id: account.id,
+                        emailMask: account.emailMask,
+                        email: account.email,
+                        tier: account.tier,
+                        manualOrder: existing.manualOrder,
+                        archiveFilename: account.archiveFilename,
+                        source: account.source,
+                        lastImportedAt: account.lastImportedAt,
+                        embeddedSecret: account.embeddedSecret
+                    )
                 }
                 continue
             }

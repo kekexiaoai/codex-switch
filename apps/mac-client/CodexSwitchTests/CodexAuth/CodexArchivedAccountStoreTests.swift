@@ -18,8 +18,8 @@ final class CodexArchivedAccountStoreTests: XCTestCase {
         try fileStore.writeArchive(data: try sampleAuthData(email: "beth@example.com", tier: "pro"), filename: bethFilename)
         try fileStore.saveMetadataCache(
             CodexAccountMetadataCache(entries: [
-                alexFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)),
-                bethFilename: CodexAccountMetadataEntry(source: .backupImport, lastImportedAt: Date(timeIntervalSince1970: 1_711_585_800)),
+                alexFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800), manualOrder: 0),
+                bethFilename: CodexAccountMetadataEntry(source: .backupImport, lastImportedAt: Date(timeIntervalSince1970: 1_711_585_800), manualOrder: 1),
             ])
         )
 
@@ -55,8 +55,8 @@ final class CodexArchivedAccountStoreTests: XCTestCase {
         try fileStore.writeArchive(data: bethData, filename: bethFilename)
         try fileStore.saveMetadataCache(
             CodexAccountMetadataCache(entries: [
-                alexFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)),
-                bethFilename: CodexAccountMetadataEntry(source: .backupImport, lastImportedAt: Date(timeIntervalSince1970: 1_711_585_800)),
+                alexFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800), manualOrder: 0),
+                bethFilename: CodexAccountMetadataEntry(source: .backupImport, lastImportedAt: Date(timeIntervalSince1970: 1_711_585_800), manualOrder: 1),
             ])
         )
         try fileStore.replaceActiveAuth(with: alexData)
@@ -88,7 +88,7 @@ final class CodexArchivedAccountStoreTests: XCTestCase {
         try fileStore.writeArchive(data: alexData, filename: alexFilename)
         try fileStore.saveMetadataCache(
             CodexAccountMetadataCache(entries: [
-                alexFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)),
+                alexFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800), manualOrder: 0),
             ])
         )
         try fileStore.replaceActiveAuth(with: alexData)
@@ -102,6 +102,40 @@ final class CodexArchivedAccountStoreTests: XCTestCase {
         XCTAssertNil(result.nextActiveAccountID)
         XCTAssertFalse(FileManager.default.fileExists(atPath: paths.authFileURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: paths.accountsDirectoryURL.appendingPathComponent(alexFilename).path))
+    }
+
+    func testLoadAccountsReturnsAccountsSortedByManualOrder() async throws {
+        let baseDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: baseDirectory) }
+
+        let paths = CodexPaths(baseDirectory: baseDirectory)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        let store = CodexArchivedAccountStore(fileStore: fileStore)
+
+        let alexFilename = CodexArchiveNaming.archiveFilename(for: "alex@example.com")
+        let bethFilename = CodexArchiveNaming.archiveFilename(for: "beth@example.com")
+        let chrisFilename = CodexArchiveNaming.archiveFilename(for: "chris@example.com")
+        try fileStore.writeArchive(data: try sampleAuthData(email: "alex@example.com", tier: "team"), filename: alexFilename)
+        try fileStore.writeArchive(data: try sampleAuthData(email: "beth@example.com", tier: "pro"), filename: bethFilename)
+        try fileStore.writeArchive(data: try sampleAuthData(email: "chris@example.com", tier: "plus"), filename: chrisFilename)
+        try fileStore.saveMetadataCache(
+            CodexAccountMetadataCache(entries: [
+                alexFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800), manualOrder: 1),
+                bethFilename: CodexAccountMetadataEntry(source: .backupImport, lastImportedAt: Date(timeIntervalSince1970: 1_711_585_800), manualOrder: 2),
+                chrisFilename: CodexAccountMetadataEntry(source: .browserLogin, lastImportedAt: Date(timeIntervalSince1970: 1_711_586_800), manualOrder: 0),
+            ])
+        )
+
+        let accounts = try await store.loadAccounts()
+
+        XCTAssertEqual(accounts.map(\.id), [
+            "subject-chris@example.com",
+            "subject-alex@example.com",
+            "subject-beth@example.com",
+        ])
+        XCTAssertEqual(accounts.map(\.manualOrder), [0, 1, 2])
     }
 
     private func sampleAuthData(email: String, tier: String) throws -> Data {
