@@ -320,7 +320,7 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
                 },
                 refreshContent: { [weak self] in
                     Task { [weak self] in
-                        await self?.viewModel.refresh()
+                        await self?.viewModel.refreshForPresentation()
                     }
                 }
             ).present()

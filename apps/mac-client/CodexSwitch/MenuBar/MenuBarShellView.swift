@@ -25,8 +25,5 @@ public struct MenuBarShellView: View {
 
     public var body: some View {
         MenuBarPanelView(viewModel: viewModel)
-            .task {
-                await viewModel.refresh()
-            }
     }
 }

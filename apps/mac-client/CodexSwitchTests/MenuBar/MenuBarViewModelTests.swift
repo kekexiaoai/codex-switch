@@ -393,6 +393,53 @@ final class MenuBarViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.updatedText, "08:13 Auto")
     }
 
+    func testRefreshForPresentationCompletesBeforeSlowUsageRefreshFinishes() async {
+        let service = BlockingMenuBarSnapshotService(
+            fastSnapshot: MenuBarSnapshot(
+                headerEmail: "cached@example.com",
+                headerTier: "PLUS",
+                updatedText: "Updated 2024-03-28 08:13:20 +08:00",
+                headerStatusText: "08:13 Auto",
+                usageSourceText: "Cache",
+                summaries: [],
+                accounts: [
+                    AccountRowModel(id: "acct-1", emailMask: "cached@example.com", tierLabel: "Plus", fiveHourPercent: 0, weeklyPercent: 0, isActive: true),
+                ]
+            ),
+            slowSnapshot: MenuBarSnapshot(
+                headerEmail: "remote@example.com",
+                headerTier: "PLUS",
+                updatedText: "Updated 2024-03-28 08:18:20 +08:00",
+                headerStatusText: "08:18 Auto",
+                usageSourceText: "API",
+                summaries: [],
+                accounts: [
+                    AccountRowModel(id: "acct-1", emailMask: "remote@example.com", tierLabel: "Plus", fiveHourPercent: 12, weeklyPercent: 18, isActive: true),
+                ]
+            )
+        )
+        let viewModel = MenuBarViewModel(service: service)
+
+        let completedBeforeTimeout = await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                await viewModel.refreshForPresentation()
+                return true
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                return false
+            }
+
+            let first = await group.next() ?? false
+            group.cancelAll()
+            return first
+        }
+
+        XCTAssertTrue(completedBeforeTimeout)
+        XCTAssertEqual(viewModel.headerEmail, "cached@example.com")
+        XCTAssertEqual(viewModel.updatedText, "08:13 Auto")
+    }
+
     func testSwitchingAccountRefreshesHeaderState() async throws {
         let metadataStore = InMemoryAccountMetadataStore(
             accounts: [

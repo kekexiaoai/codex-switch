@@ -67,7 +67,10 @@ public final class MenuBarViewModel: ObservableObject {
     private let actionHandler: (any MenuBarActionHandling)?
     private var addAccountTask: Task<Void, Never>?
     private var switchUsageRefreshTask: Task<Void, Never>?
+    private var presentationSnapshotTask: Task<Void, Never>?
+    private var presentationUsageRefreshTask: Task<Void, Never>?
     private var activeAddAccountOperationID: UUID?
+    private var hasLoadedPresentationSnapshot = false
 
     public static let preview = MenuBarViewModel(service: MockMenuBarService())
 
@@ -101,6 +104,7 @@ public final class MenuBarViewModel: ObservableObject {
     private func refresh(triggerUsageRefresh: Bool) async {
         let snapshot = await service.loadSnapshot(triggerUsageRefresh: triggerUsageRefresh)
         applySnapshot(snapshot)
+        hasLoadedPresentationSnapshot = true
     }
 
     private func applySnapshot(_ snapshot: MenuBarSnapshot) {
@@ -120,6 +124,31 @@ public final class MenuBarViewModel: ObservableObject {
         switchUsageRefreshTask?.cancel()
         switchUsageRefreshTask = Task { [weak self] in
             await self?.refresh()
+        }
+    }
+
+    public func refreshForPresentation() async {
+        if !hasLoadedPresentationSnapshot {
+            if presentationSnapshotTask == nil {
+                presentationSnapshotTask = Task { @MainActor [weak self] in
+                    guard let self else {
+                        return
+                    }
+                    await self.refresh(triggerUsageRefresh: false)
+                    self.presentationSnapshotTask = nil
+                }
+            }
+
+            await presentationSnapshotTask?.value
+        }
+
+        presentationUsageRefreshTask?.cancel()
+        presentationUsageRefreshTask = Task { @MainActor [weak self] in
+            guard let self else {
+                return
+            }
+            await self.refresh()
+            self.presentationUsageRefreshTask = nil
         }
     }
 
