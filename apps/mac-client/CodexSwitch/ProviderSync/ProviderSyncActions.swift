@@ -93,25 +93,6 @@ public enum ProviderSyncError: LocalizedError {
     case lockAcquisitionFailed
 
     public var errorDescription: String? {
-        switch self {
-        case .configFileNotFound:
-            return "config.toml not found at ~/.codex/config.toml"
-        case .configParseError(let detail):
-            return "Failed to parse config.toml: \(detail)"
-        case .sqliteDatabaseNotFound:
-            return "state_5.sqlite not found at ~/.codex/state_5.sqlite"
-        case .sqliteError(let detail):
-            return "SQLite error: \(detail)"
-        case .syncFailed(let detail):
-            return "Sync failed: \(detail)"
-        case .backupFailed(let detail):
-            return "Backup failed: \(detail)"
-        case .restoreFailed(let detail):
-            return "Restore failed: \(detail)"
-        case .providerNotConfigured(let provider, let available):
-            return "Provider '\(provider)' is not configured. Available: \(available.joined(separator: ", "))"
-        case .lockAcquisitionFailed:
-            return "Could not acquire lock. Another sync operation may be in progress."
-        }
+        ProviderSyncStrings.errorDescription(self)
     }
 }

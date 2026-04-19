@@ -21,7 +21,7 @@ public struct MockUsageService: UsageService {
     public init() {}
 
     public func refreshUsage() async -> String {
-        "preview"
+        MenuBarStrings.text(.preview)
     }
 
     public func usageSnapshot(for accountID: String) async -> CodexUsageSnapshot? {
@@ -65,16 +65,19 @@ public struct LiveUsageService: UsageService {
 
     public func refreshUsage() async -> String {
         guard settingsProvider.usageRefreshEnabled() else {
-            return "Usage refresh disabled"
+            return MenuBarStrings.usageRefreshDisabledStatus()
         }
 
-        let statusSuffix = settingsProvider.usageSourceMode() == .localOnly ? " (Local Only)" : ""
+        let localOnly = settingsProvider.usageSourceMode() == .localOnly
         _ = await refreshCurrentUsageIfPossible()
         guard let cache = try? loadUsageCache(), let latest = cache.entries.values.max(by: { $0.updatedAt < $1.updatedAt }) else {
-            return "No usage data\(statusSuffix)"
+            return MenuBarStrings.noUsageDataStatus(localOnly: localOnly)
         }
 
-        return "Updated \(timeFormatter.displayTimestamp(from: latest.updatedAt))\(statusSuffix)"
+        return MenuBarStrings.updatedStatus(
+            timeFormatter.displayTimestamp(from: latest.updatedAt),
+            localOnly: localOnly
+        )
     }
 
     public func usageSnapshot(for accountID: String) async -> CodexUsageSnapshot? {

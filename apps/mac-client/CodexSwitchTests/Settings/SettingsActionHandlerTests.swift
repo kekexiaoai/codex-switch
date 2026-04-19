@@ -89,4 +89,32 @@ final class SettingsActionHandlerTests: XCTestCase {
         XCTAssertTrue(contents.contains("usage_refresh_started"))
         XCTAssertFalse(contents.contains("access_token"))
     }
+
+    func testLiveSettingsActionHandlerUsesChineseMessagesWhenPreferredLanguageIsChinese() throws {
+        let baseDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let paths = CodexPaths(baseDirectory: baseDirectory)
+        var openedURLs: [URL] = []
+
+        try FileManager.default.createDirectory(at: paths.diagnosticsDirectoryURL, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: baseDirectory)
+        }
+
+        let handler = LiveSettingsActionHandler(
+            paths: paths,
+            openResource: { url in
+                openedURLs.append(url)
+                return true
+            },
+            preferredLanguages: ["zh-Hans"]
+        )
+
+        let message = try handler.performUtilityAction(.openDiagnosticsLog)
+
+        XCTAssertEqual(message.title, "诊断目录已打开")
+        XCTAssertEqual(message.message, "已打开本地诊断目录。")
+        XCTAssertEqual(openedURLs, [paths.diagnosticsDirectoryURL])
+    }
 }

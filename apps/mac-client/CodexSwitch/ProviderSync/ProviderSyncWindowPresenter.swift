@@ -39,7 +39,7 @@ public final class ProviderSyncWindowPresenter {
     private static func defaultWindowController(viewModel: ProviderSyncViewModel) -> NSWindowController {
         let hostingController = NSHostingController(rootView: ProviderSyncView(viewModel: viewModel))
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Provider Sync"
+        window.title = ProviderSyncStrings.text(.windowTitle)
         window.setContentSize(NSSize(width: 520, height: 640))
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         return NSWindowController(window: window)
@@ -52,7 +52,7 @@ public final class ProviderSyncWindowPresenter {
             windowController.window?.contentViewController = NSHostingController(rootView: ProviderSyncView(viewModel: viewModel))
         }
 
-        windowController.window?.title = "Provider Sync"
+        windowController.window?.title = ProviderSyncStrings.text(.windowTitle)
         windowController.window?.setContentSize(NSSize(width: 520, height: 640))
         windowController.window?.styleMask = [.titled, .closable, .miniaturizable, .resizable]
     }

@@ -39,7 +39,7 @@ public final class StatusWindowPresenter {
     private static func defaultWindowController(snapshot: StatusSnapshot) -> NSWindowController {
         let hostingController = NSHostingController(rootView: StatusWindowView(snapshot: snapshot))
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Codex Switch Status"
+        window.title = StatusStrings.text(.statusWindowTitle)
         window.setContentSize(NSSize(width: 640, height: 640))
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         return NSWindowController(window: window)
@@ -52,7 +52,7 @@ public final class StatusWindowPresenter {
             windowController.window?.contentViewController = NSHostingController(rootView: StatusWindowView(snapshot: snapshot))
         }
 
-        windowController.window?.title = "Codex Switch Status"
+        windowController.window?.title = StatusStrings.text(.statusWindowTitle)
         windowController.window?.setContentSize(NSSize(width: 640, height: 640))
         windowController.window?.styleMask = [.titled, .closable, .miniaturizable, .resizable]
     }

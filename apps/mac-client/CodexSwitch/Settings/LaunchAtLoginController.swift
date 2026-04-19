@@ -15,7 +15,7 @@ public enum LaunchAtLoginControllerError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .unsupportedOS:
-            return "Launch at Login requires macOS 13 or newer."
+            return SettingsStrings.text(.unsupportedLaunchAtLogin)
         case .systemRegistrationFailed(let message):
             return message
         }

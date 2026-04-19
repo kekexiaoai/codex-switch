@@ -36,4 +36,32 @@ final class SettingsViewTests: XCTestCase {
             "Export Diagnostics Summary",
         ])
     }
+
+    func testSettingsViewUsesChineseLabelsWhenPreferredLanguageIsChinese() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.View.Chinese")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.View.Chinese")
+
+        let view = SettingsView(
+            viewModel: SettingsViewModel(defaults: defaults),
+            preferredLanguages: ["zh-Hans"]
+        )
+
+        XCTAssertEqual(view.sectionTitles, ["通用", "隐私", "用量", "Provider 管理", "高级"])
+        XCTAssertEqual(
+            view.generalControlLabels,
+            ["开机启动", "菜单栏图标", "高对比度", "高对比度粗体"]
+        )
+        XCTAssertEqual(view.privacyControlLabels, [
+            "显示完整账号邮箱",
+            "清理诊断日志",
+            "清理用量缓存",
+            "移除归档账号",
+        ])
+        XCTAssertEqual(view.usageControlLabels, ["启用用量刷新", "用量来源模式", "自动", "仅本地"])
+        XCTAssertEqual(view.usageRiskTitle, "用量风险提示")
+        XCTAssertEqual(
+            view.advancedControlLabels,
+            ["打开 ~/.codex", "打开诊断目录", "导出诊断摘要"]
+        )
+    }
 }

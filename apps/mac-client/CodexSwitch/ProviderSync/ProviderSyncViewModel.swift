@@ -16,9 +16,11 @@ public final class ProviderSyncViewModel: ObservableObject {
     @Published public private(set) var selectedBackupID: String?
 
     private let service: any ProviderSyncServiceProtocol
+    private let preferredLanguages: [String]?
 
-    public init(service: any ProviderSyncServiceProtocol) {
+    public init(service: any ProviderSyncServiceProtocol, preferredLanguages: [String]? = nil) {
         self.service = service
+        self.preferredLanguages = preferredLanguages
     }
 
     // MARK: - Load
@@ -45,7 +47,7 @@ public final class ProviderSyncViewModel: ObservableObject {
             backups = service.listBackups()
         } catch {
             lastMessage = ProviderSyncMessage(
-                title: "Load Failed",
+                title: ProviderSyncStrings.text(.loadFailedTitle, preferredLanguages: preferredLanguages),
                 message: error.localizedDescription,
                 isError: true
             )
@@ -61,13 +63,18 @@ public final class ProviderSyncViewModel: ObservableObject {
         do {
             let result = try await service.sync(targetProvider: selectedSyncTarget)
             lastMessage = ProviderSyncMessage(
-                title: "Sync Complete",
-                message: "Synced to '\(result.targetProvider)': \(result.filesChanged) files, \(result.rowsChanged) database rows updated."
+                title: ProviderSyncStrings.text(.syncCompleteTitle, preferredLanguages: preferredLanguages),
+                message: ProviderSyncStrings.syncCompleteMessage(
+                    targetProvider: result.targetProvider,
+                    filesChanged: result.filesChanged,
+                    rowsChanged: result.rowsChanged,
+                    preferredLanguages: preferredLanguages
+                )
             )
             await loadStatus()
         } catch {
             lastMessage = ProviderSyncMessage(
-                title: "Sync Failed",
+                title: ProviderSyncStrings.text(.syncFailedTitle, preferredLanguages: preferredLanguages),
                 message: error.localizedDescription,
                 isError: true
             )
@@ -83,13 +90,18 @@ public final class ProviderSyncViewModel: ObservableObject {
         do {
             let result = try await service.switchProvider(selectedSwitchTarget)
             lastMessage = ProviderSyncMessage(
-                title: "Switch Complete",
-                message: "Switched to '\(result.targetProvider)': \(result.filesChanged) files, \(result.rowsChanged) database rows updated."
+                title: ProviderSyncStrings.text(.switchCompleteTitle, preferredLanguages: preferredLanguages),
+                message: ProviderSyncStrings.switchCompleteMessage(
+                    targetProvider: result.targetProvider,
+                    filesChanged: result.filesChanged,
+                    rowsChanged: result.rowsChanged,
+                    preferredLanguages: preferredLanguages
+                )
             )
             await loadStatus()
         } catch {
             lastMessage = ProviderSyncMessage(
-                title: "Switch Failed",
+                title: ProviderSyncStrings.text(.switchFailedTitle, preferredLanguages: preferredLanguages),
                 message: error.localizedDescription,
                 isError: true
             )
@@ -114,14 +126,14 @@ public final class ProviderSyncViewModel: ObservableObject {
         do {
             try await service.restore(from: backup)
             lastMessage = ProviderSyncMessage(
-                title: "Restore Complete",
-                message: "Restored from backup '\(backup.id)'."
+                title: ProviderSyncStrings.text(.restoreCompleteTitle, preferredLanguages: preferredLanguages),
+                message: ProviderSyncStrings.restoreCompleteMessage(backup.id, preferredLanguages: preferredLanguages)
             )
             self.selectedBackupID = nil
             await loadStatus()
         } catch {
             lastMessage = ProviderSyncMessage(
-                title: "Restore Failed",
+                title: ProviderSyncStrings.text(.restoreFailedTitle, preferredLanguages: preferredLanguages),
                 message: error.localizedDescription,
                 isError: true
             )
@@ -132,13 +144,13 @@ public final class ProviderSyncViewModel: ObservableObject {
         do {
             try service.pruneBackups()
             lastMessage = ProviderSyncMessage(
-                title: "Prune Complete",
-                message: "Old backups removed."
+                title: ProviderSyncStrings.text(.pruneCompleteTitle, preferredLanguages: preferredLanguages),
+                message: ProviderSyncStrings.pruneCompleteMessage(preferredLanguages: preferredLanguages)
             )
             backups = service.listBackups()
         } catch {
             lastMessage = ProviderSyncMessage(
-                title: "Prune Failed",
+                title: ProviderSyncStrings.text(.pruneFailedTitle, preferredLanguages: preferredLanguages),
                 message: error.localizedDescription,
                 isError: true
             )

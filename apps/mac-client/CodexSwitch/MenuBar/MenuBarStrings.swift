@@ -146,6 +146,39 @@ public enum MenuBarStrings {
         }
     }
 
+    public static func usageRefreshDisabledStatus(preferredLanguages: [String]? = nil) -> String {
+        switch language(preferredLanguages: preferredLanguages) {
+        case .english:
+            return "Usage refresh disabled"
+        case .simplifiedChinese:
+            return "用量刷新已关闭"
+        }
+    }
+
+    public static func noUsageDataStatus(localOnly: Bool, preferredLanguages: [String]? = nil) -> String {
+        let suffix = localOnly ? localOnlySuffix(preferredLanguages: preferredLanguages) : ""
+        switch language(preferredLanguages: preferredLanguages) {
+        case .english:
+            return "No usage data\(suffix)"
+        case .simplifiedChinese:
+            return "暂无用量数据\(suffix)"
+        }
+    }
+
+    public static func updatedStatus(_ value: String, localOnly: Bool, preferredLanguages: [String]? = nil) -> String {
+        let suffix = localOnly ? localOnlySuffix(preferredLanguages: preferredLanguages) : ""
+        return updatedLabel(value, preferredLanguages: preferredLanguages) + suffix
+    }
+
+    public static func localOnlySuffix(preferredLanguages: [String]? = nil) -> String {
+        switch language(preferredLanguages: preferredLanguages) {
+        case .english:
+            return " (Local Only)"
+        case .simplifiedChinese:
+            return "（仅本地）"
+        }
+    }
+
     public static func usageSourceLabel(_ value: String, preferredLanguages: [String]? = nil) -> String {
         switch value {
         case "API":

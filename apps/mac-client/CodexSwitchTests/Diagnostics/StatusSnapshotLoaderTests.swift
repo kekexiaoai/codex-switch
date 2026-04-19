@@ -123,6 +123,50 @@ final class StatusSnapshotLoaderTests: XCTestCase {
         XCTAssertEqual(snapshot.diagnostics.statusText, "No diagnostics yet")
         XCTAssertTrue(snapshot.diagnostics.recentEvents.isEmpty)
     }
+
+    func testLoaderUsesChineseLabelsWhenPreferredLanguageIsChinese() async {
+        let tempDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let account = Account(
+            id: "acct-active",
+            emailMask: "a••••@example.com",
+            email: "active@example.com",
+            tier: .team,
+            archiveFilename: "active.json",
+            source: .browserLogin,
+            lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800)
+        )
+        let loader = StatusSnapshotLoader(
+            snapshotService: StubMenuBarSnapshotService(
+                snapshot: MenuBarSnapshot(
+                    headerEmail: account.emailMask,
+                    headerTier: "TEAM",
+                    updatedText: "Updated just now",
+                    usageSourceText: "Local Logs",
+                    summaries: [],
+                    accounts: []
+                )
+            ),
+            accountRepository: AccountRepository(catalog: StubAccountCatalog(accounts: [account])),
+            activeAccountIDProvider: { account.id },
+            runtimeMode: .preview,
+            paths: CodexPaths(baseDirectory: tempDirectoryURL),
+            currentHostProvider: { .statusItemPopover },
+            preferredHostProvider: { .menuBarExtra },
+            showFullEmailProvider: { false },
+            diagnosticsReader: { [] },
+            preferredLanguages: ["zh-Hans"]
+        )
+
+        let snapshot = await loader.loadSnapshot()
+
+        XCTAssertEqual(snapshot.activeAccountStatusText, "a••••@example.com")
+        XCTAssertEqual(snapshot.activeAccount?.sourceLabel, "浏览器登录")
+        XCTAssertEqual(snapshot.accountInventoryStatusText, "1 个归档账号")
+        XCTAssertEqual(snapshot.usageStatusText, "本地日志")
+        XCTAssertEqual(snapshot.runtimeModeLabel, "预览")
+        XCTAssertEqual(snapshot.diagnostics.statusText, "暂无诊断信息")
+    }
 }
 
 private struct StubMenuBarSnapshotService: MenuBarSnapshotService {

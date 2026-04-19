@@ -57,4 +57,12 @@ final class StatusWindowViewTests: XCTestCase {
         ])
         XCTAssertEqual(view.pathLines, ["/tmp/auth.json", "/tmp/accounts", "/tmp/codex-switch", "/tmp/codex-switch/browser-login.log", "/tmp/codex-switch/usage-refresh.log"])
     }
+
+    func testWindowViewUsesChineseSectionTitlesWhenPreferredLanguageIsChinese() {
+        let snapshot = StatusSnapshot.preview
+        let view = StatusWindowView(snapshot: snapshot, preferredLanguages: ["zh-Hans"])
+
+        XCTAssertEqual(view.sectionTitles, ["运行状态", "用量", "账号", "诊断", "路径"])
+        XCTAssertEqual(view.pageTitle, "状态页")
+    }
 }

@@ -66,7 +66,7 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         }
 
         let usageSourceText: String
-        if usageText == "Usage refresh disabled" {
+        if !usageSettings.enabled {
             usageSourceText = MenuBarStrings.text(.refreshDisabledSource)
         } else {
             usageSourceText = activeSnapshot.flatMap { snapshot in
@@ -166,16 +166,17 @@ public struct EnvironmentMenuBarService: MenuBarSnapshotService {
         settings: (enabled: Bool, mode: CodexUsageSourceMode)
     ) -> String {
         guard settings.enabled else {
-            return "Usage refresh disabled"
+            return MenuBarStrings.usageRefreshDisabledStatus()
         }
 
         guard let snapshot else {
-            let suffix = settings.mode == .localOnly ? " (Local Only)" : ""
-            return "No usage data\(suffix)"
+            return MenuBarStrings.noUsageDataStatus(localOnly: settings.mode == .localOnly)
         }
 
-        let suffix = settings.mode == .localOnly ? " (Local Only)" : ""
-        return "Updated \(timeFormatter.displayTimestamp(from: snapshot.updatedAt))\(suffix)"
+        return MenuBarStrings.updatedStatus(
+            timeFormatter.displayTimestamp(from: snapshot.updatedAt),
+            localOnly: settings.mode == .localOnly
+        )
     }
 
     private func loadCachedUsage() -> (entries: [String: CodexUsageSnapshot], latestSnapshot: CodexUsageSnapshot?) {
@@ -198,7 +199,7 @@ public struct MockMenuBarService: MenuBarSnapshotService {
         MenuBarSnapshot(
             headerEmail: "a••••@gmail.com",
             headerTier: "TEAM",
-            updatedText: "Updated 10 seconds ago",
+            updatedText: MenuBarStrings.updatedLabel("10 seconds ago"),
             headerStatusText: "10:15 Auto",
             usageSourceText: "API",
             recentEvents: [

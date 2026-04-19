@@ -109,24 +109,24 @@ public extension StatusSnapshot {
             id: "preview-account",
             displayEmail: "a••••@gmail.com",
             tierLabel: "Team",
-            sourceLabel: "Browser Login",
+            sourceLabel: StatusStrings.text(.browserLogin),
             archiveFilename: "preview.json",
             lastImportedAt: .distantPast
         ),
         activeAccountStatusText: "a••••@gmail.com",
         archivedAccountCount: 2,
-        accountInventoryStatusText: "2 archived accounts",
-        updatedText: "Updated 10 seconds ago",
-        usageStatusText: "Updated 10 seconds ago",
+        accountInventoryStatusText: StatusStrings.accountInventoryStatusText(2),
+        updatedText: MenuBarStrings.updatedLabel("10 seconds ago"),
+        usageStatusText: MenuBarStrings.updatedLabel("10 seconds ago"),
         summaries: [
-            UsageSummaryModel(id: "5h", title: "5 Hours", percentUsed: 56, resetText: "Resets in 3h 16m"),
-            UsageSummaryModel(id: "weekly", title: "Weekly", percentUsed: 13, resetText: "Resets in 5d"),
+            UsageSummaryModel(id: "5h", title: MenuBarStrings.text(.fiveHoursTitle), percentUsed: 56, resetText: MenuBarStrings.resetsLabel("3h 16m")),
+            UsageSummaryModel(id: "weekly", title: MenuBarStrings.text(.weeklyTitle), percentUsed: 13, resetText: MenuBarStrings.resetsLabel("5d")),
         ],
         accountRows: [
             AccountRowModel(id: "acct-1", emailMask: "a••••@gmail.com", tierLabel: "Team", fiveHourPercent: 56, weeklyPercent: 13),
             AccountRowModel(id: "acct-2", emailMask: "b••••@gmail.com", tierLabel: "Pro", fiveHourPercent: 22, weeklyPercent: 31),
         ],
-        runtimeModeLabel: "Preview",
+        runtimeModeLabel: MenuBarStrings.text(.preview),
         currentHostLabel: "NSStatusItem + NSPopover",
         preferredHostLabel: "MenuBarExtra",
         paths: PathsSummary(
@@ -137,7 +137,7 @@ public extension StatusSnapshot {
             usageRefreshLogPath: "~/.codex/codex-switch/usage-refresh.log"
         ),
         diagnostics: DiagnosticsSummary(
-            statusText: "Recent diagnostics activity",
+            statusText: StatusStrings.diagnosticsStatus(hasEvents: true),
             recentEvents: [
                 "2026-03-28T11:41:22Z browser_login_started",
                 "2026-03-29T13:45:09Z usage_refresh_local_succeeded mode=automatic account=preview-account source=rollout_logs",

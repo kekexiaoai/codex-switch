@@ -39,7 +39,7 @@ public final class SettingsWindowPresenter {
     private static func defaultWindowController(viewModel: SettingsViewModel) -> NSWindowController {
         let hostingController = NSHostingController(rootView: SettingsView(viewModel: viewModel))
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Codex Switch Settings"
+        window.title = SettingsStrings.text(.settingsWindowTitle)
         window.setContentSize(NSSize(width: 440, height: 560))
         window.styleMask = [.titled, .closable, .miniaturizable]
         return NSWindowController(window: window)
@@ -52,7 +52,7 @@ public final class SettingsWindowPresenter {
             windowController.window?.contentViewController = NSHostingController(rootView: SettingsView(viewModel: viewModel))
         }
 
-        windowController.window?.title = "Codex Switch Settings"
+        windowController.window?.title = SettingsStrings.text(.settingsWindowTitle)
         windowController.window?.setContentSize(NSSize(width: 440, height: 560))
         windowController.window?.styleMask = [.titled, .closable, .miniaturizable]
     }

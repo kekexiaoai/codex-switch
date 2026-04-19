@@ -131,19 +131,22 @@ public final class SettingsViewModel: ObservableObject {
     private let launchAtLoginController: (any LaunchAtLoginControlling)?
     private let configParser: ConfigTomlParser
     private let codexPaths: CodexPaths
+    private let preferredLanguages: [String]?
 
     public init(
         defaults: UserDefaults = .standard,
         actionHandler: any SettingsActionHandling = NoopSettingsActionHandler(),
         launchAtLoginController: (any LaunchAtLoginControlling)? = nil,
         configParser: ConfigTomlParser = ConfigTomlParser(),
-        codexPaths: CodexPaths = CodexPaths()
+        codexPaths: CodexPaths = CodexPaths(),
+        preferredLanguages: [String]? = nil
     ) {
         self.defaults = defaults
         self.actionHandler = actionHandler
         self.launchAtLoginController = launchAtLoginController
         self.configParser = configParser
         self.codexPaths = codexPaths
+        self.preferredLanguages = preferredLanguages
         self.showEmails = defaults.bool(forKey: Self.showEmailsKey)
         if defaults.object(forKey: Self.usageRefreshEnabledKey) == nil {
             self.usageRefreshEnabled = true
@@ -198,7 +201,7 @@ public final class SettingsViewModel: ObservableObject {
                 defaults.set(previousValue, forKey: Self.launchAtLoginKey)
                 launchAtLogin = previousValue
                 lastActionMessage = SettingsActionMessage(
-                    title: "Launch at Login Unchanged",
+                    title: SettingsStrings.text(.launchAtLoginUnchangedTitle, preferredLanguages: preferredLanguages),
                     message: error.localizedDescription
                 )
                 return
@@ -262,7 +265,7 @@ public final class SettingsViewModel: ObservableObject {
             lastActionMessage = nil
         } catch {
             lastActionMessage = SettingsActionMessage(
-                title: "Provider Switch Failed",
+                title: SettingsStrings.text(.providerSwitchFailedTitle, preferredLanguages: preferredLanguages),
                 message: error.localizedDescription
             )
         }
@@ -281,8 +284,8 @@ public final class SettingsViewModel: ObservableObject {
         try configParser.addProvider(in: codexPaths.configFileURL, providerId: id)
         loadProviders()
         lastActionMessage = SettingsActionMessage(
-            title: "Provider Added",
-            message: "Added provider '\(id)' to configuration."
+            title: SettingsStrings.text(.providerAddedTitle, preferredLanguages: preferredLanguages),
+            message: SettingsStrings.providerAddedMessage(id, preferredLanguages: preferredLanguages)
         )
     }
 
@@ -350,9 +353,9 @@ public enum ProviderManagementError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidProviderId:
-            return "Provider ID must contain only letters, numbers, dots, hyphens, and underscores"
+            return SettingsStrings.text(.invalidProviderID)
         case .duplicateProviderId(let id):
-            return "Provider '\(id)' already exists"
+            return SettingsStrings.duplicateProviderMessage(id)
         }
     }
 }

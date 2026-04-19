@@ -46,6 +46,30 @@ final class CodexSwitchTests: XCTestCase {
         XCTAssertEqual(handler.destructiveActions, [.clearDiagnosticsLog])
         XCTAssertEqual(launchController.values, [true])
     }
+
+    @MainActor
+    func testProviderSyncUsesChineseLabelsWhenPreferredLanguageIsChinese() async {
+        let viewModel = ProviderSyncViewModel(
+            service: MockProviderSyncService(),
+            preferredLanguages: ["zh-Hans"]
+        )
+
+        await viewModel.loadStatus()
+        await viewModel.syncNow()
+
+        let view = ProviderSyncView(
+            viewModel: viewModel,
+            preferredLanguages: ["zh-Hans"]
+        )
+
+        XCTAssertEqual(view.titleText, "Provider 同步")
+        XCTAssertEqual(view.sectionTitles, ["当前状态", "会话分布", "同步", "备份"])
+        XCTAssertEqual(view.lastAlertTitle, "同步完成")
+        XCTAssertEqual(
+            view.lastAlertMessage,
+            "已同步到 'openai'：更新了 5 个文件、3 条数据库记录。"
+        )
+    }
 }
 
 private final class RecordingSettingsEnvironmentActionHandler: SettingsActionHandling {

@@ -2,17 +2,30 @@ import SwiftUI
 
 public struct StatusWindowView: View {
     let snapshot: StatusSnapshot
+    let preferredLanguages: [String]?
 
     public init() {
         self.snapshot = .preview
+        self.preferredLanguages = nil
     }
 
-    public init(snapshot: StatusSnapshot) {
+    public init(snapshot: StatusSnapshot, preferredLanguages: [String]? = nil) {
         self.snapshot = snapshot
+        self.preferredLanguages = preferredLanguages
     }
 
     var sectionTitles: [String] {
-        ["Operations", "Usage", "Accounts", "Diagnostics", "Paths"]
+        [
+            StatusStrings.text(.operations, preferredLanguages: preferredLanguages),
+            StatusStrings.text(.usage, preferredLanguages: preferredLanguages),
+            StatusStrings.text(.accounts, preferredLanguages: preferredLanguages),
+            StatusStrings.text(.diagnostics, preferredLanguages: preferredLanguages),
+            StatusStrings.text(.paths, preferredLanguages: preferredLanguages),
+        ]
+    }
+
+    var pageTitle: String {
+        StatusStrings.text(.statusPageTitle, preferredLanguages: preferredLanguages)
     }
 
     var activeAccountTitle: String {
@@ -58,12 +71,12 @@ public struct StatusWindowView: View {
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
-                Text("Status Page")
+                Text(pageTitle)
                     .font(.title2.weight(.semibold))
                 Text(snapshot.updatedText.isEmpty ? snapshot.usageStatusText : snapshot.updatedText)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                StatusView(snapshot: snapshot)
+                StatusView(snapshot: snapshot, preferredLanguages: preferredLanguages)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)

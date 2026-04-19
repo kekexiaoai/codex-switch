@@ -8,9 +8,9 @@ public enum SettingsActionError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .resourceOpenFailed:
-            return "The requested resource could not be opened."
+            return SettingsStrings.text(.resourceOpenFailed)
         case .exportFailed:
-            return "The diagnostics summary could not be exported."
+            return SettingsStrings.text(.exportFailed)
         }
     }
 }
@@ -24,6 +24,7 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
     private let now: () -> Date
     private let timeFormatter: CodexUserFacingTimeFormatter
     private let configParser: ConfigTomlParser
+    private let preferredLanguages: [String]?
 
     public init(
         paths: CodexPaths,
@@ -33,7 +34,8 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         },
         now: @escaping () -> Date = Date.init,
         timeFormatter: CodexUserFacingTimeFormatter = CodexUserFacingTimeFormatter(),
-        configParser: ConfigTomlParser = ConfigTomlParser()
+        configParser: ConfigTomlParser = ConfigTomlParser(),
+        preferredLanguages: [String]? = nil
     ) {
         self.paths = paths
         self.fileManager = fileManager
@@ -41,6 +43,7 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         self.now = now
         self.timeFormatter = timeFormatter
         self.configParser = configParser
+        self.preferredLanguages = preferredLanguages
     }
 
     public func performDestructiveAction(_ action: SettingsDestructiveAction) throws -> SettingsActionMessage {
@@ -48,13 +51,22 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         case .clearDiagnosticsLog:
             try removeItemIfPresent(at: paths.browserLoginDiagnosticsLogURL)
             try removeItemIfPresent(at: paths.usageRefreshDiagnosticsLogURL)
-            return SettingsActionMessage(title: "Diagnostics Cleared", message: "Removed local diagnostics logs.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.diagnosticsClearedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.diagnosticsClearedMessage, preferredLanguages: preferredLanguages)
+            )
         case .clearUsageCache:
             try removeItemIfPresent(at: paths.usageCacheURL)
-            return SettingsActionMessage(title: "Usage Cache Cleared", message: "Removed cached usage data.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.usageCacheClearedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.usageCacheClearedMessage, preferredLanguages: preferredLanguages)
+            )
         case .removeArchivedAccounts:
             try removeArchivedAccounts()
-            return SettingsActionMessage(title: "Accounts Removed", message: "Removed archived accounts.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.accountsRemovedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.accountsRemovedMessage, preferredLanguages: preferredLanguages)
+            )
         }
     }
 
@@ -63,15 +75,24 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         case .openCodexDirectory:
             try fileManager.createDirectory(at: paths.baseDirectory, withIntermediateDirectories: true)
             try open(paths.baseDirectory)
-            return SettingsActionMessage(title: "Codex Directory Opened", message: "Opened ~/.codex.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.codexDirectoryOpenedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.codexDirectoryOpenedMessage, preferredLanguages: preferredLanguages)
+            )
         case .openDiagnosticsLog:
             try ensureDiagnosticsDirectoryExists()
             try open(paths.diagnosticsDirectoryURL)
-            return SettingsActionMessage(title: "Diagnostics Folder Opened", message: "Opened the local diagnostics folder.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.diagnosticsFolderOpenedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.diagnosticsFolderOpenedMessage, preferredLanguages: preferredLanguages)
+            )
         case .exportDiagnosticsSummary:
             let exportURL = try exportDiagnosticsSummary()
             try open(exportURL)
-            return SettingsActionMessage(title: "Diagnostics Exported", message: "Exported a sanitized diagnostics summary.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.diagnosticsExportedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.diagnosticsExportedMessage, preferredLanguages: preferredLanguages)
+            )
         }
     }
 
@@ -80,8 +101,8 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         case .removeProvider:
             try configParser.removeProvider(in: paths.configFileURL, providerId: providerId)
             return SettingsActionMessage(
-                title: "Provider Removed",
-                message: "Removed provider '\(providerId)' from configuration."
+                title: SettingsStrings.text(.providerRemovedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.providerRemovedMessage(providerId, preferredLanguages: preferredLanguages)
             )
         }
     }
@@ -120,15 +141,13 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         let currentTime = now()
         let exportURL = exportDirectory.appendingPathComponent("diagnostics-summary-\(timeFormatter.filenameTimestamp(from: currentTime)).txt")
 
-        let body = """
-        Codex Switch Diagnostics Summary
-        Generated: \(timeFormatter.displayTimestamp(from: currentTime))
-        Codex Directory: \(paths.baseDirectory.path)
-        Diagnostics Directory: \(paths.diagnosticsDirectoryURL.path)
-
-        Recent Safe Events:
-        \(events.isEmpty ? "- No diagnostics events captured." : events.map { "- \($0)" }.joined(separator: "\n"))
-        """
+        let body = SettingsStrings.diagnosticsSummaryBody(
+            currentTime: timeFormatter.displayTimestamp(from: currentTime),
+            codexDirectory: paths.baseDirectory.path,
+            diagnosticsDirectory: paths.diagnosticsDirectoryURL.path,
+            events: events,
+            preferredLanguages: preferredLanguages
+        )
 
         do {
             try fileManager.createDirectory(at: exportDirectory, withIntermediateDirectories: true)

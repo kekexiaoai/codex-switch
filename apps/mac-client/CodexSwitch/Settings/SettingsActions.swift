@@ -63,34 +63,59 @@ public protocol SettingsActionHandling {
 }
 
 public struct NoopSettingsActionHandler: SettingsActionHandling {
-    public init() {}
+    private let preferredLanguages: [String]?
+
+    public init(preferredLanguages: [String]? = nil) {
+        self.preferredLanguages = preferredLanguages
+    }
 
     public func performDestructiveAction(_ action: SettingsDestructiveAction) throws -> SettingsActionMessage {
         switch action {
         case .clearDiagnosticsLog:
-            return SettingsActionMessage(title: "Diagnostics Cleared", message: "Removed local diagnostics logs.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.diagnosticsClearedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.diagnosticsClearedMessage, preferredLanguages: preferredLanguages)
+            )
         case .clearUsageCache:
-            return SettingsActionMessage(title: "Usage Cache Cleared", message: "Removed cached usage data.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.usageCacheClearedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.usageCacheClearedMessage, preferredLanguages: preferredLanguages)
+            )
         case .removeArchivedAccounts:
-            return SettingsActionMessage(title: "Accounts Removed", message: "Removed archived accounts.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.accountsRemovedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.accountsRemovedMessage, preferredLanguages: preferredLanguages)
+            )
         }
     }
 
     public func performUtilityAction(_ action: SettingsUtilityAction) throws -> SettingsActionMessage {
         switch action {
         case .openCodexDirectory:
-            return SettingsActionMessage(title: "Codex Directory Opened", message: "Opened ~/.codex.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.codexDirectoryOpenedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.codexDirectoryOpenedMessage, preferredLanguages: preferredLanguages)
+            )
         case .openDiagnosticsLog:
-            return SettingsActionMessage(title: "Diagnostics Folder Opened", message: "Opened the local diagnostics folder.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.diagnosticsFolderOpenedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.diagnosticsFolderOpenedMessage, preferredLanguages: preferredLanguages)
+            )
         case .exportDiagnosticsSummary:
-            return SettingsActionMessage(title: "Diagnostics Exported", message: "Exported a sanitized diagnostics summary.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.diagnosticsExportedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.text(.diagnosticsExportedMessage, preferredLanguages: preferredLanguages)
+            )
         }
     }
 
     public func performProviderAction(_ action: SettingsProviderAction, providerId: String) throws -> SettingsActionMessage {
         switch action {
         case .removeProvider:
-            return SettingsActionMessage(title: "Provider Removed", message: "Removed provider '\(providerId)'.")
+            return SettingsActionMessage(
+                title: SettingsStrings.text(.providerRemovedTitle, preferredLanguages: preferredLanguages),
+                message: SettingsStrings.providerRemovedNoConfigMessage(providerId, preferredLanguages: preferredLanguages)
+            )
         }
     }
 }

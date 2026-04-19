@@ -10,6 +10,7 @@ public struct StatusSnapshotLoader {
     private let preferredHostProvider: () -> MenuBarHostKind
     private let showFullEmailProvider: () -> Bool
     private let diagnosticsReader: () -> [String]
+    private let preferredLanguages: [String]?
 
     public init(
         snapshotService: any MenuBarSnapshotService,
@@ -20,7 +21,8 @@ public struct StatusSnapshotLoader {
         currentHostProvider: @escaping () -> MenuBarHostKind = { MenuBarHostKind.current },
         preferredHostProvider: @escaping () -> MenuBarHostKind = { MenuBarHostKind.preferred },
         showFullEmailProvider: @escaping () -> Bool = { false },
-        diagnosticsReader: @escaping () -> [String]
+        diagnosticsReader: @escaping () -> [String],
+        preferredLanguages: [String]? = nil
     ) {
         self.snapshotService = snapshotService
         self.accountRepository = accountRepository
@@ -31,6 +33,7 @@ public struct StatusSnapshotLoader {
         self.preferredHostProvider = preferredHostProvider
         self.showFullEmailProvider = showFullEmailProvider
         self.diagnosticsReader = diagnosticsReader
+        self.preferredLanguages = preferredLanguages
     }
 
     public func loadSnapshot() async -> StatusSnapshot {
@@ -42,7 +45,9 @@ public struct StatusSnapshotLoader {
 
         let diagnosticsEvents = diagnosticsReader()
         let archivedAccountCount = repositoryAccounts.isEmpty ? menuBarSnapshot.accounts.count : repositoryAccounts.count
-        let usageStatusText = menuBarSnapshot.usageSourceText.isEmpty ? "Unavailable" : menuBarSnapshot.usageSourceText
+        let usageStatusText = menuBarSnapshot.usageSourceText.isEmpty
+            ? MenuBarStrings.text(.unavailable, preferredLanguages: preferredLanguages)
+            : MenuBarStrings.usageSourceLabel(menuBarSnapshot.usageSourceText, preferredLanguages: preferredLanguages)
 
         return StatusSnapshot(
             activeAccount: activeAccount.map {
@@ -57,14 +62,16 @@ public struct StatusSnapshotLoader {
             },
             activeAccountStatusText: activeAccount.map {
                 $0.displayEmail(showFullEmail: showFullEmails)
-            } ?? "No active account",
+            } ?? StatusStrings.text(.noActiveAccount, preferredLanguages: preferredLanguages),
             archivedAccountCount: archivedAccountCount,
             accountInventoryStatusText: accountInventoryStatusText(for: archivedAccountCount),
             updatedText: menuBarSnapshot.updatedText,
             usageStatusText: usageStatusText,
             summaries: menuBarSnapshot.summaries,
             accountRows: menuBarSnapshot.accounts,
-            runtimeModeLabel: runtimeMode == .live ? "Live" : "Preview",
+            runtimeModeLabel: runtimeMode == .live
+                ? MenuBarStrings.text(.live, preferredLanguages: preferredLanguages)
+                : MenuBarStrings.text(.preview, preferredLanguages: preferredLanguages),
             currentHostLabel: hostLabel(for: currentHostProvider()),
             preferredHostLabel: hostLabel(for: preferredHostProvider()),
             paths: StatusSnapshot.PathsSummary(
@@ -75,32 +82,21 @@ public struct StatusSnapshotLoader {
                 usageRefreshLogPath: paths.usageRefreshDiagnosticsLogURL.path
             ),
             diagnostics: StatusSnapshot.DiagnosticsSummary(
-                statusText: diagnosticsEvents.isEmpty ? "No diagnostics yet" : "Recent diagnostics activity",
+                statusText: StatusStrings.diagnosticsStatus(
+                    hasEvents: !diagnosticsEvents.isEmpty,
+                    preferredLanguages: preferredLanguages
+                ),
                 recentEvents: diagnosticsEvents
             )
         )
     }
 
     private func accountInventoryStatusText(for count: Int) -> String {
-        guard count > 0 else {
-            return "No archived accounts"
-        }
-
-        let suffix = count == 1 ? "" : "s"
-        return "\(count) archived account\(suffix)"
+        StatusStrings.accountInventoryStatusText(count, preferredLanguages: preferredLanguages)
     }
 
     private func sourceLabel(for source: AccountSource) -> String {
-        switch source {
-        case .fixture:
-            return "Fixture"
-        case .currentAuth:
-            return "Current Auth"
-        case .backupImport:
-            return "Backup Import"
-        case .browserLogin:
-            return "Browser Login"
-        }
+        StatusStrings.sourceLabel(for: source, preferredLanguages: preferredLanguages)
     }
 
     private func hostLabel(for host: MenuBarHostKind) -> String {
