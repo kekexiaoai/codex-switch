@@ -306,7 +306,7 @@ public enum MenuBarStrings {
         case .removeAccount: return "移除账号"
         case .removeAccountConfirmationTitle: return "移除账号？"
         case .remove: return "移除"
-        case .fiveHourShort: return "5小时"
+        case .fiveHourShort: return "5h"
         case .weeklyShort: return "周"
         case .continueActivation: return "继续激活"
         case .confirmActivation: return "确认激活"

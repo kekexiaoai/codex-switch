@@ -106,7 +106,9 @@ public struct AccountRowView: View {
             Text(label)
                 .font(.caption2)
                 .foregroundColor(.secondary)
-                .frame(width: 16, alignment: .leading)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(minWidth: 16, alignment: .leading)
 
             ProgressView(value: Double(percent), total: 100)
                 .tint(Color(nsColor: .systemTeal))
