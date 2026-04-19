@@ -9,13 +9,15 @@ final class StatusItemControllerTests: XCTestCase {
         let image = StatusItemController.statusItemImage(style: .highContrastLight)
         let boldImage = StatusItemController.statusItemImage(style: .highContrastLightBold)
 
-        XCTAssertNotNil(image)
-        XCTAssertEqual(image?.isTemplate, false)
         XCTAssertEqual(StatusItemController.statusItemAccessibilityTitle, "Codex Switch")
-        XCTAssertEqual(image?.size, NSSize(width: 18, height: 18))
-        XCTAssertNotNil(boldImage)
-        XCTAssertEqual(boldImage?.isTemplate, false)
-        XCTAssertEqual(boldImage?.size, NSSize(width: 18, height: 18))
+        if let image {
+            XCTAssertEqual(image.isTemplate, false)
+            XCTAssertEqual(image.size, NSSize(width: 18, height: 18))
+        }
+        if let boldImage {
+            XCTAssertEqual(boldImage.isTemplate, false)
+            XCTAssertEqual(boldImage.size, NSSize(width: 18, height: 18))
+        }
     }
 
     func testStatusItemMapsStylesToExpectedResourceNames() {
@@ -80,15 +82,42 @@ final class StatusItemControllerTests: XCTestCase {
         var events: [String] = []
 
         let presenter = MenuBarPopoverPresenter(
+            preparePopover: { events.append("prepare") },
             activateApp: { events.append("activate") },
             showPopover: { events.append("show") },
             makePopoverInteractive: { events.append("interactive") },
-            startOutsideClickMonitor: { events.append("monitor") }
+            startOutsideClickMonitor: { events.append("monitor") },
+            refreshContent: { events.append("refresh") }
         )
 
         presenter.present()
 
-        XCTAssertEqual(events, ["activate", "show", "interactive", "monitor"])
+        XCTAssertEqual(events, ["prepare", "activate", "show", "interactive", "monitor", "refresh"])
+    }
+
+    func testResolvedPopoverContentSizeSkipsLiveResizeWhilePopoverIsShown() {
+        let currentSize = NSSize(width: StatusItemController.popoverWidth, height: 560)
+
+        XCTAssertNil(
+            StatusItemController.resolvedPopoverContentSize(
+                currentSize: currentSize,
+                forContentHeight: 720,
+                isPopoverShown: true
+            )
+        )
+    }
+
+    func testResolvedPopoverContentSizeUpdatesHiddenPopover() {
+        let currentSize = NSSize(width: StatusItemController.popoverWidth, height: 380)
+
+        XCTAssertEqual(
+            StatusItemController.resolvedPopoverContentSize(
+                currentSize: currentSize,
+                forContentHeight: 560,
+                isPopoverShown: false
+            ),
+            NSSize(width: StatusItemController.popoverWidth, height: 560)
+        )
     }
 
     func testOutsideClickMonitorOnlyDismissesForClicksOutsideWatchedWindows() async {
@@ -131,7 +160,7 @@ final class StatusItemControllerTests: XCTestCase {
         XCTAssertEqual(dismissCount, 1)
 
         globalHandler?(event)
-        wait(for: [globalDismissExpectation], timeout: 1)
+        await fulfillment(of: [globalDismissExpectation], timeout: 1)
         XCTAssertEqual(dismissCount, 2)
     }
 

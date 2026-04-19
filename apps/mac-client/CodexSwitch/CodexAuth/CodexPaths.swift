@@ -63,30 +63,6 @@ public struct CodexPaths: Equatable {
         browserLoginDiagnosticsLogURL
     }
 
-    // MARK: - Provider Sync Paths
-
-    public var configFileURL: URL {
-        baseDirectory.appendingPathComponent("config.toml")
-    }
-
-    public var stateDbURL: URL {
-        baseDirectory.appendingPathComponent("state_5.sqlite")
-    }
-
-    public var archivedSessionsDirectoryURL: URL {
-        baseDirectory.appendingPathComponent("archived_sessions", isDirectory: true)
-    }
-
-    public var providerSyncBackupRootURL: URL {
-        baseDirectory.appendingPathComponent("backups_state", isDirectory: true)
-            .appendingPathComponent("provider-sync", isDirectory: true)
-    }
-
-    public var providerSyncLockDirectoryURL: URL {
-        baseDirectory.appendingPathComponent("tmp", isDirectory: true)
-            .appendingPathComponent("provider-sync.lock", isDirectory: true)
-    }
-
     public init(baseDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent(".codex", isDirectory: true)) {
         self.baseDirectory = baseDirectory

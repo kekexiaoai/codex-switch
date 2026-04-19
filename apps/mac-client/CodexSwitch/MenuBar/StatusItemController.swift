@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import SwiftUI
 
 @MainActor
@@ -30,12 +29,16 @@ final class MenuBarHostingController: NSHostingController<MenuBarShellView> {
         reportMeasuredHeight()
     }
 
+    func refreshHeightNow() {
+        view.invalidateIntrinsicContentSize()
+        view.needsLayout = true
+        view.layoutSubtreeIfNeeded()
+        reportMeasuredHeight()
+    }
+
     func scheduleHeightRefresh() {
         DispatchQueue.main.async { [weak self] in
-            self?.view.invalidateIntrinsicContentSize()
-            self?.view.needsLayout = true
-            self?.view.layoutSubtreeIfNeeded()
-            self?.reportMeasuredHeight()
+            self?.refreshHeightNow()
         }
     }
 
@@ -156,16 +159,20 @@ final class PopoverOutsideClickMonitor {
 
 @MainActor
 struct MenuBarPopoverPresenter {
+    let preparePopover: () -> Void
     let activateApp: () -> Void
     let showPopover: () -> Void
     let makePopoverInteractive: () -> Void
     let startOutsideClickMonitor: () -> Void
+    let refreshContent: (() -> Void)?
 
     func present() {
+        preparePopover()
         activateApp()
         showPopover()
         makePopoverInteractive()
         startOutsideClickMonitor()
+        refreshContent?()
     }
 }
 
@@ -215,8 +222,8 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let viewModel: MenuBarViewModel
     private let settingsDefaults: UserDefaults
-    private var viewModelChangeCancellable: AnyCancellable?
     private var preferredContentHeight: CGFloat = StatusItemController.minPopoverHeight
+    private weak var hostingController: MenuBarHostingController?
     private lazy var outsideClickMonitor = PopoverOutsideClickMonitor(
         watchedWindows: { [weak self] in
             [
@@ -271,16 +278,8 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         if #available(macOS 13.0, *) {
             hostingController.sizingOptions = [.preferredContentSize]
         }
+        self.hostingController = hostingController
         popover.contentViewController = hostingController
-        viewModelChangeCancellable = viewModel.objectWillChange.sink { [weak self, weak hostingController] _ in
-            guard let self, let hostingController else {
-                return
-            }
-            guard self.popover.isShown else {
-                return
-            }
-            hostingController.scheduleHeightRefresh()
-        }
 
         if let button = statusItem.button {
             button.title = ""
@@ -301,31 +300,30 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         if popover.isShown {
             closePopover(sender)
         } else {
-            Task { [weak self] in
-                guard let self else {
-                    return
-                }
-                await self.viewModel.refresh()
-                guard !self.popover.isShown else {
-                    return
-                }
-                MenuBarPopoverPresenter(
-                    activateApp: { NSApp.activate(ignoringOtherApps: true) },
-                    showPopover: { [popover] in
-                        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-                    },
-                    makePopoverInteractive: { [popover] in
-                        guard let window = popover.contentViewController?.view.window else {
-                            return
-                        }
-                        window.makeKeyAndOrderFront(nil)
-                        window.makeFirstResponder(window.contentView)
-                    },
-                    startOutsideClickMonitor: { [outsideClickMonitor] in
-                        outsideClickMonitor.start()
+            MenuBarPopoverPresenter(
+                preparePopover: { [weak self] in
+                    self?.hostingController?.refreshHeightNow()
+                },
+                activateApp: { NSApp.activate(ignoringOtherApps: true) },
+                showPopover: { [popover] in
+                    popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+                },
+                makePopoverInteractive: { [popover] in
+                    guard let window = popover.contentViewController?.view.window else {
+                        return
                     }
-                ).present()
-            }
+                    window.makeKeyAndOrderFront(nil)
+                    window.makeFirstResponder(window.contentView)
+                },
+                startOutsideClickMonitor: { [outsideClickMonitor] in
+                    outsideClickMonitor.start()
+                },
+                refreshContent: { [weak self] in
+                    Task { [weak self] in
+                        await self?.viewModel.refresh()
+                    }
+                }
+            ).present()
         }
     }
 
@@ -340,17 +338,15 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
 
     private func updatePopoverContentSize(forContentHeight height: CGFloat) {
         preferredContentHeight = height
-        let nextSize = Self.preferredPopoverContentSize(forContentHeight: height)
-        guard popover.contentSize != nextSize else {
+        guard let nextSize = Self.resolvedPopoverContentSize(
+            currentSize: popover.contentSize,
+            forContentHeight: height,
+            isPopoverShown: popover.isShown
+        ) else {
             return
         }
         popover.contentViewController?.preferredContentSize = nextSize
         popover.contentSize = nextSize
-
-        if let window = popover.contentViewController?.view.window {
-            window.setContentSize(nextSize)
-            window.layoutIfNeeded()
-        }
     }
 
     private func currentStatusItemImage() -> NSImage? {
@@ -366,5 +362,22 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     static func preferredPopoverContentSize(forContentHeight height: CGFloat) -> NSSize {
         let clampedHeight = min(max(height, minPopoverHeight), maxPopoverHeight)
         return NSSize(width: popoverWidth, height: clampedHeight)
+    }
+
+    static func resolvedPopoverContentSize(
+        currentSize: NSSize,
+        forContentHeight height: CGFloat,
+        isPopoverShown: Bool
+    ) -> NSSize? {
+        guard !isPopoverShown else {
+            return nil
+        }
+
+        let nextSize = preferredPopoverContentSize(forContentHeight: height)
+        guard currentSize != nextSize else {
+            return nil
+        }
+
+        return nextSize
     }
 }

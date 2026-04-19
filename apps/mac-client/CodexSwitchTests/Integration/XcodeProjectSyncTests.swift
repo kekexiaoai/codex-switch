@@ -39,6 +39,7 @@ final class XcodeProjectSyncTests: XCTestCase {
         let projectContents = try String(contentsOf: xcodeProjectFileURL(), encoding: .utf8)
         let requiredFilenames = [
             "ConfigTomlParserTests.swift",
+            "StatusItemControllerTests.swift",
         ]
 
         let missingFilenames = requiredFilenames.filter { !projectContents.contains($0) }

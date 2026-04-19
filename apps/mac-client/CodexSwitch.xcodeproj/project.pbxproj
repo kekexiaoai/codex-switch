@@ -76,6 +76,7 @@
 			OBJ_3008 /* SettingsViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_3006 /* SettingsViewTests.swift */; };
 			OBJ_3021 /* ConfigTomlParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_3023 /* ConfigTomlParser.swift */; };
 			OBJ_3022 /* ConfigTomlParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_3024 /* ConfigTomlParserTests.swift */; };
+			OBJ_3025 /* StatusItemControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_3026 /* StatusItemControllerTests.swift */; };
 			OBJ_3011 /* LaunchAtLoginControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_3010 /* LaunchAtLoginControllerTests.swift */; };
 			OBJ_3012 /* LaunchAtLoginController.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_3009 /* LaunchAtLoginController.swift */; };
 			OBJ_3014 /* SettingsWindowPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OBJ_3015 /* SettingsWindowPresenterTests.swift */; };
@@ -163,6 +164,7 @@
 			OBJ_3018 /* CodexUsageResolver.swift */ = {isa = PBXFileReference; path = CodexUsageResolver.swift; sourceTree = "<group>"; };
 			OBJ_3023 /* ConfigTomlParser.swift */ = {isa = PBXFileReference; path = ConfigTomlParser.swift; sourceTree = "<group>"; };
 			OBJ_3024 /* ConfigTomlParserTests.swift */ = {isa = PBXFileReference; path = ConfigTomlParserTests.swift; sourceTree = "<group>"; };
+			OBJ_3026 /* StatusItemControllerTests.swift */ = {isa = PBXFileReference; path = StatusItemControllerTests.swift; sourceTree = "<group>"; };
 			OBJ_31 /* MenuBarShellView.swift */ = {isa = PBXFileReference; path = MenuBarShellView.swift; sourceTree = "<group>"; };
 			OBJ_32 /* MenuBarViewModel.swift */ = {isa = PBXFileReference; path = MenuBarViewModel.swift; sourceTree = "<group>"; };
 			OBJ_33 /* StatusItemController.swift */ = {isa = PBXFileReference; path = StatusItemController.swift; sourceTree = "<group>"; };
@@ -411,12 +413,13 @@
 			path = Integration;
 			sourceTree = "<group>";
 		};
-		OBJ_49 /* MenuBar */ = {
-			isa = PBXGroup;
-			children = (
-				OBJ_50 /* MenuBarActionTests.swift */,
-				OBJ_51 /* MenuBarViewModelTests.swift */,
-			);
+			OBJ_49 /* MenuBar */ = {
+				isa = PBXGroup;
+				children = (
+					OBJ_50 /* MenuBarActionTests.swift */,
+					OBJ_51 /* MenuBarViewModelTests.swift */,
+					OBJ_3026 /* StatusItemControllerTests.swift */,
+				);
 			name = MenuBar;
 			path = MenuBar;
 			sourceTree = "<group>";
@@ -621,6 +624,7 @@
 					OBJ_3007 /* SettingsActionHandlerTests.swift in Sources */,
 					OBJ_3008 /* SettingsViewTests.swift in Sources */,
 					OBJ_3022 /* ConfigTomlParserTests.swift in Sources */,
+					OBJ_3025 /* StatusItemControllerTests.swift in Sources */,
 					OBJ_3011 /* LaunchAtLoginControllerTests.swift in Sources */,
 					OBJ_3014 /* SettingsWindowPresenterTests.swift in Sources */,
 				);
