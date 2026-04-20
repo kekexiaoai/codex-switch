@@ -258,9 +258,7 @@ public struct MenuBarPanelView: View {
                     systemImage: "person.crop.circle.badge.plus",
                     trailingSystemImage: isShowingAddAccountOptions ? "chevron.down" : "chevron.right"
                 ) {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        isShowingAddAccountOptions.toggle()
-                    }
+                    isShowingAddAccountOptions.toggle()
                 }
 
                 if isShowingAddAccountOptions {

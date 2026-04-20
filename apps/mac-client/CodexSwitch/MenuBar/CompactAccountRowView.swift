@@ -15,6 +15,8 @@ public struct CompactAccountRowView: View {
         } label: {
             HStack(spacing: 8) {
                 Text(row.emailText)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(row.tierBadgeText)
                     .font(.caption2.weight(.semibold))
@@ -31,6 +33,7 @@ public struct CompactAccountRowView: View {
                         .foregroundColor(Color(nsColor: .systemGreen))
                 }
             }
+            .padding(.vertical, 3)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

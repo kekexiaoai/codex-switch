@@ -433,9 +433,15 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         let overlayView = QuickSwitchOverlayView(
             rows: viewModel.quickSwitchRows,
             onSelect: { [weak self] accountID in
-                self?.closeQuickSwitchPopover()
-                self?.closePopover()
-                self?.viewModel.requestSwitchToAccount(id: accountID)
+                guard let self else {
+                    return
+                }
+                let disposition = self.viewModel.requestSwitchToAccount(id: accountID)
+                self.closeQuickSwitchPopover()
+
+                if disposition == .started {
+                    self.closePopover()
+                }
             },
             onHoverChanged: { [weak self] isHovering in
                 self?.handleQuickSwitchPopoverHoverChange(isHovering)
@@ -451,8 +457,8 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         }
 
         quickSwitchPopover.contentSize = NSSize(
-            width: Self.quickSwitchPopoverWidth,
-            height: Self.quickSwitchPopoverHeight
+            width: QuickSwitchOverlayView.preferredWidth(for: viewModel.quickSwitchRows),
+            height: QuickSwitchOverlayView.preferredHeight(for: viewModel.quickSwitchRows.count)
         )
 
         if quickSwitchPopover.isShown {

@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 public struct UsageSummaryModel: Identifiable, Equatable {
     public let id: String
@@ -62,6 +63,12 @@ public struct QuickSwitchRowModel: Identifiable, Equatable {
         self.weeklyLabel = weeklyLabel
         self.isActive = isActive
     }
+}
+
+public enum AccountSwitchRequestDisposition: Equatable {
+    case ignored
+    case started
+    case confirmationRequired
 }
 
 public struct AccountRemovalConfirmation: Identifiable, Equatable {

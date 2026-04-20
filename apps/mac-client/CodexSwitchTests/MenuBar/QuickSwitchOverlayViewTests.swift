@@ -21,4 +21,22 @@ final class QuickSwitchOverlayViewTests: XCTestCase {
         XCTAssertEqual(view.rowIDs, ["acct-1"])
         XCTAssertFalse(view.actionLabels.contains("打开主窗口"))
     }
+
+    func testQuickSwitchOverlayPreferredWidthExpandsForLongEmailButStaysWithinCap() {
+        let rows = [
+            QuickSwitchRowModel(
+                id: "acct-1",
+                emailText: "very-long-account-email-address-for-testing@example.com",
+                tierBadgeText: "TEAM",
+                fiveHourLabel: "5H 49%",
+                weeklyLabel: "7D 38%",
+                isActive: false
+            ),
+        ]
+
+        let width = QuickSwitchOverlayView.preferredWidth(for: rows)
+
+        XCTAssertGreaterThan(width, 320)
+        XCTAssertLessThanOrEqual(width, 520)
+    }
 }

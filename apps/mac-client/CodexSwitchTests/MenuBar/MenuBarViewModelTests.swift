@@ -528,9 +528,10 @@ final class MenuBarViewModelTests: XCTestCase {
         )
 
         await viewModel.refresh()
-        viewModel.requestSwitchToAccount(id: "acct-2")
+        let disposition = viewModel.requestSwitchToAccount(id: "acct-2")
         await Task.yield()
 
+        XCTAssertEqual(disposition, .confirmationRequired)
         XCTAssertEqual(viewModel.pendingAccountActivationConfirmation?.accountID, "acct-2")
         XCTAssertEqual(controller.currentActiveAccountID(), "acct-1")
         let activatedIDs = await switcher.activatedIDs()

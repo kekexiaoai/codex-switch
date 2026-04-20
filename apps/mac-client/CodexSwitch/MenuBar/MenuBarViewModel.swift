@@ -142,20 +142,21 @@ public final class MenuBarViewModel: ObservableObject {
         }
     }
 
-    public func requestSwitchToAccount(id: String) {
+    @discardableResult
+    public func requestSwitchToAccount(id: String) -> AccountSwitchRequestDisposition {
         guard let account = accountRows.first(where: { $0.id == id }) else {
-            return
+            return .ignored
         }
 
         guard !account.isActive else {
-            return
+            return .ignored
         }
 
         guard currentAuthUsesAPIKeyMode?() == true else {
             Task { [weak self] in
                 await self?.performAccountSwitch(id: id)
             }
-            return
+            return .started
         }
 
         pendingAccountActivationConfirmation = AccountActivationConfirmation(
@@ -163,6 +164,7 @@ public final class MenuBarViewModel: ObservableObject {
             title: MenuBarStrings.text(.confirmActivation),
             message: MenuBarStrings.activationConfirmationMessage()
         )
+        return .confirmationRequired
     }
 
     public func refreshForPresentation() async {
