@@ -21,6 +21,10 @@ public struct AccountManagementView: View {
         viewModel.isReordering ? "正在保存最新排序..." : "拖动卡片即可调整顺序。"
     }
 
+    public var topInsertionHintLabel: String {
+        "拖到这里置顶"
+    }
+
     public var summaryLabels: [String] {
         ["当前账号", "归档账号", "排序来源"]
     }
@@ -35,6 +39,7 @@ public struct AccountManagementView: View {
             summaryStrip
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 12) {
+                    topInsertionDropZone
                     ForEach(viewModel.rows) { row in
                         accountCard(row)
                             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -45,10 +50,10 @@ public struct AccountManagementView: View {
                             }
                             .onDrop(
                                 of: [UTType.text],
-                                delegate: AccountManagementRowDropDelegate(
-                                    targetRowID: row.id,
+                                delegate: AccountManagementInsertionDropDelegate(
+                                    targetLabel: row.id,
+                                    destinationIndex: destinationIndex(for: row.id),
                                     draggedRowID: $draggedRowID,
-                                    rowIDsInOrder: viewModel.rows.map(\.id),
                                     logDropEntered: { draggedID, targetID, destinationIndex in
                                         viewModel.logDropEntered(
                                             draggedID: draggedID,
@@ -86,6 +91,61 @@ public struct AccountManagementView: View {
             if viewModel.rows.isEmpty {
                 await viewModel.load()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var topInsertionDropZone: some View {
+        if !viewModel.rows.isEmpty {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.accentColor.opacity(draggedRowID == nil ? 0.18 : 0.5), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.accentColor.opacity(draggedRowID == nil ? 0.04 : 0.10))
+                )
+                .frame(height: draggedRowID == nil ? 18 : 34)
+                .overlay {
+                    if draggedRowID != nil {
+                        Text(topInsertionHintLabel)
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .onDrop(
+                    of: [UTType.text],
+                    delegate: AccountManagementInsertionDropDelegate(
+                        targetLabel: "__top__",
+                        destinationIndex: 0,
+                        draggedRowID: $draggedRowID,
+                        logDropEntered: { draggedID, targetID, destinationIndex in
+                            viewModel.logDropEntered(
+                                draggedID: draggedID,
+                                targetID: targetID,
+                                destinationIndex: destinationIndex
+                            )
+                        },
+                        logDropPerformed: { draggedID, targetID, destinationIndex in
+                            viewModel.logDropPerformed(
+                                draggedID: draggedID,
+                                targetID: targetID,
+                                destinationIndex: destinationIndex
+                            )
+                        },
+                        logDropIgnored: { draggedID, targetID, reason in
+                            viewModel.logDropIgnored(
+                                draggedID: draggedID,
+                                targetID: targetID,
+                                reason: reason
+                            )
+                        },
+                        moveRow: { draggedID, destinationIndex in
+                            Task {
+                                await viewModel.moveRow(id: draggedID, to: destinationIndex)
+                            }
+                        }
+                    )
+                )
         }
     }
 
@@ -221,12 +281,16 @@ public struct AccountManagementView: View {
                 .fill(Color.primary.opacity(0.05))
         )
     }
+
+    private func destinationIndex(for targetRowID: String) -> Int {
+        viewModel.rows.firstIndex(where: { $0.id == targetRowID }) ?? 0
+    }
 }
 
-private struct AccountManagementRowDropDelegate: DropDelegate {
-    let targetRowID: String
+private struct AccountManagementInsertionDropDelegate: DropDelegate {
+    let targetLabel: String
+    let destinationIndex: Int
     @Binding var draggedRowID: String?
-    let rowIDsInOrder: [String]
     let logDropEntered: (String, String, Int) -> Void
     let logDropPerformed: (String, String, Int) -> Void
     let logDropIgnored: (String?, String, String) -> Void
@@ -239,32 +303,27 @@ private struct AccountManagementRowDropDelegate: DropDelegate {
     func dropEntered(info: DropInfo) {
         guard
             let draggedRowID,
-            draggedRowID != targetRowID,
-            let destinationIndex = rowIDsInOrder.firstIndex(of: targetRowID)
+            draggedRowID != targetLabel
         else {
             return
         }
 
-        logDropEntered(draggedRowID, targetRowID, destinationIndex)
+        logDropEntered(draggedRowID, targetLabel, destinationIndex)
     }
 
     func performDrop(info: DropInfo) -> Bool {
         defer { draggedRowID = nil }
 
         guard let draggedRowID else {
-            logDropIgnored(nil, targetRowID, "missing_dragged_row")
+            logDropIgnored(nil, targetLabel, "missing_dragged_row")
             return false
         }
-        guard draggedRowID != targetRowID else {
-            logDropIgnored(draggedRowID, targetRowID, "same_target")
-            return false
-        }
-        guard let destinationIndex = rowIDsInOrder.firstIndex(of: targetRowID) else {
-            logDropIgnored(draggedRowID, targetRowID, "missing_target_index")
+        guard draggedRowID != targetLabel else {
+            logDropIgnored(draggedRowID, targetLabel, "same_target")
             return false
         }
 
-        logDropPerformed(draggedRowID, targetRowID, destinationIndex)
+        logDropPerformed(draggedRowID, targetLabel, destinationIndex)
         moveRow(draggedRowID, destinationIndex)
         return true
     }
