@@ -52,8 +52,8 @@ public final class AccountManagementViewModel: ObservableObject {
                         tierText: account.tier.rawValue.capitalized,
                         fiveHourPercent: fiveHourPercent,
                         weeklyPercent: weeklyPercent,
-                        fiveHourResetText: snapshot.map { "重置 \(timeFormatter.compactClockTimestamp(from: $0.fiveHour.resetsAt))" } ?? "重置 --:--",
-                        weeklyResetText: snapshot.map { "重置 \(timeFormatter.compactClockTimestamp(from: $0.weekly.resetsAt))" } ?? "重置 --:--",
+                        fiveHourResetText: snapshot.map { "重置 \(timeFormatter.monthDayClockTimestamp(from: $0.fiveHour.resetsAt))" } ?? "重置 --:--",
+                        weeklyResetText: snapshot.map { "重置 \(timeFormatter.monthDayClockTimestamp(from: $0.weekly.resetsAt))" } ?? "重置 --:--",
                         fiveHourText: "5H \(fiveHourPercent)%",
                         weeklyText: "7D \(weeklyPercent)%",
                         isActive: account.id == activeAccountID

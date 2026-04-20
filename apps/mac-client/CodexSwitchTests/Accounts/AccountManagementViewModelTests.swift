@@ -95,6 +95,32 @@ final class AccountManagementViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.lastErrorMessage, "failed")
     }
 
+    func testLoadFormatsWeeklyResetWithConcreteDate() async {
+        let originalTimeZone = NSTimeZone.default
+        NSTimeZone.default = TimeZone(secondsFromGMT: 8 * 3600)!
+        defer { NSTimeZone.default = originalTimeZone }
+
+        let resetDate = Date(timeIntervalSince1970: 1_743_157_872)
+        let service = InMemoryAccountManagementService(
+            accounts: [
+                makeAccount(id: "acct-1", order: 0, tier: .team),
+            ],
+            usageSnapshots: [
+                "acct-1": CodexUsageSnapshot(
+                    accountID: "acct-1",
+                    updatedAt: resetDate,
+                    fiveHour: CodexUsageWindow(percentUsed: 42, resetsAt: resetDate),
+                    weekly: CodexUsageWindow(percentUsed: 18, resetsAt: resetDate)
+                ),
+            ]
+        )
+        let viewModel = AccountManagementViewModel(service: service)
+
+        await viewModel.load()
+
+        XCTAssertEqual(viewModel.rows.first?.weeklyResetText, "重置 03-28 18:31")
+    }
+
     private func makeAccount(id: String, order: Int, tier: AccountTier) -> Account {
         Account(
             id: id,

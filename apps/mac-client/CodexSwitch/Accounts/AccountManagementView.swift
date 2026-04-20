@@ -29,6 +29,10 @@ public struct AccountManagementView: View {
         viewModel.showEmails ? "隐藏邮箱" : "显示邮箱"
     }
 
+    public var usageCardTitles: [String] {
+        ["5 小时额度", "7 天额度"]
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             pageHeader
@@ -207,9 +211,18 @@ public struct AccountManagementView: View {
             }
 
             HStack(spacing: 10) {
-                metricCard(title: "5H", percent: row.fiveHourPercent, resetText: row.fiveHourResetText)
-                metricCard(title: "7D", percent: row.weeklyPercent, resetText: row.weeklyResetText)
-                Spacer()
+                metricCard(
+                    title: usageCardTitles[0],
+                    percent: row.fiveHourPercent,
+                    resetText: row.fiveHourResetText,
+                    accentColor: Color(nsColor: .systemTeal)
+                )
+                metricCard(
+                    title: usageCardTitles[1],
+                    percent: row.weeklyPercent,
+                    resetText: row.weeklyResetText,
+                    accentColor: Color(nsColor: .systemOrange)
+                )
                 VStack(spacing: 4) {
                     Image(systemName: "line.3.horizontal")
                         .font(.title3.weight(.semibold))
@@ -239,27 +252,41 @@ public struct AccountManagementView: View {
         )
     }
 
-    private func metricCard(title: String, percent: Int, resetText: String) -> some View {
+    private func metricCard(title: String, percent: Int, resetText: String, accentColor: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(title)
+            Text(title)
+                .font(.headline.weight(.semibold))
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text("\(percent)%")
+                    .font(.system(size: 28, weight: .semibold, design: .rounded))
+                Text("已使用")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.primary.opacity(0.06))
+                    )
+            }
+            Text("使用进度")
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.secondary)
+            ProgressView(value: Double(percent), total: 100)
+                .tint(accentColor)
+                .controlSize(.regular)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("重置时间")
                     .font(.caption.weight(.semibold))
                     .foregroundColor(.secondary)
                 Text(resetText)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                Text("\(percent)%")
-                    .font(.caption.weight(.semibold))
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
             }
-            ProgressView(value: Double(percent), total: 100)
-                .tint(Color(nsColor: .systemTeal))
-                .controlSize(.small)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(width: 120, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.primary.opacity(0.05))
