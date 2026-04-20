@@ -35,7 +35,6 @@ public struct AccountManagementView: View {
                 ForEach(viewModel.rows) { row in
                     accountCard(row)
                         .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                        .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                 }
                 .onMove { source, destination in
@@ -46,7 +45,6 @@ public struct AccountManagementView: View {
                 .moveDisabled(viewModel.isReordering)
             }
             .listStyle(.plain)
-            .environment(\.editMode, .constant(.active))
             .background(Color.clear)
         }
         .padding(20)
