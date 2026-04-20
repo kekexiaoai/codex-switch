@@ -36,15 +36,11 @@ final class StatusItemControllerTests: XCTestCase {
         )
         XCTAssertEqual(
             StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 1200, height: 1200)),
-            NSSize(width: 720, height: 720)
+            NSSize(width: 360, height: 720)
         )
         XCTAssertEqual(
             StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 692, height: 560)),
-            NSSize(width: 692, height: 560)
-        )
-        XCTAssertEqual(
-            StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 900, height: 560)),
-            NSSize(width: 720, height: 560)
+            NSSize(width: 360, height: 560)
         )
         XCTAssertEqual(
             StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 360, height: 1200)),
@@ -128,7 +124,7 @@ final class StatusItemControllerTests: XCTestCase {
                 forContentSize: NSSize(width: 692, height: 560),
                 isPopoverShown: false
             ),
-            NSSize(width: 692, height: 560)
+            NSSize(width: StatusItemController.popoverWidth, height: 560)
         )
     }
 

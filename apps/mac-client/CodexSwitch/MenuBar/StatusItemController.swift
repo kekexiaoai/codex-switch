@@ -194,9 +194,10 @@ struct MenuBarPopoverPresenter {
 @MainActor
 public final class StatusItemController: NSObject, NSPopoverDelegate {
     static let popoverWidth: CGFloat = 360
-    static let maxPopoverWidth: CGFloat = 720
     static let minPopoverHeight: CGFloat = 380
     static let maxPopoverHeight: CGFloat = 720
+    static let quickSwitchPopoverWidth: CGFloat = 320
+    static let quickSwitchPopoverHeight: CGFloat = 280
     static let statusItemAccessibilityTitle = "Codex Switch"
 
     static func resourceName(for style: MenuBarIconStyle) -> String {
@@ -236,15 +237,22 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
+    private let quickSwitchPopover = NSPopover()
     private let viewModel: MenuBarViewModel
     private let settingsDefaults: UserDefaults
     private var preferredContentSize: NSSize = NSSize(width: StatusItemController.popoverWidth, height: StatusItemController.minPopoverHeight)
     private weak var hostingController: MenuBarHostingController?
+    private weak var quickSwitchHostingController: NSHostingController<QuickSwitchOverlayView>?
+    private var quickSwitchAnchorFrame: CGRect = .zero
+    private var quickSwitchDismissWorkItem: DispatchWorkItem?
+    private var isHoveringQuickSwitchAnchor = false
+    private var isHoveringQuickSwitchPopover = false
     private lazy var outsideClickMonitor = PopoverOutsideClickMonitor(
         watchedWindows: { [weak self] in
             [
                 self?.statusItem.button?.window,
                 self?.popover.contentViewController?.view.window,
+                self?.quickSwitchPopover.contentViewController?.view.window,
             ]
         },
         onOutsideClick: { [weak self] in
@@ -294,8 +302,19 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         popover.delegate = self
         popover.behavior = .transient
         popover.contentSize = Self.preferredPopoverContentSize(forContentSize: preferredContentSize)
+        quickSwitchPopover.behavior = .applicationDefined
+        quickSwitchPopover.animates = false
         let hostingController = MenuBarHostingController(
-            rootView: MenuBarShellView(viewModel: viewModel),
+            rootView: MenuBarShellView(
+                viewModel: viewModel,
+                onQuickSwitchAnchorFrameChange: { [weak self] frame in
+                    self?.quickSwitchAnchorFrame = frame
+                    self?.refreshQuickSwitchPopoverPositionIfNeeded()
+                },
+                onQuickSwitchHoverChange: { [weak self] isHovering in
+                    self?.handleQuickSwitchAnchorHoverChange(isHovering)
+                }
+            ),
             onSizeChange: { [weak self] size in
                     self?.updatePopoverContentSize(forContentSize: size)
             }
@@ -353,10 +372,12 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     public func popoverDidClose(_ notification: Notification) {
+        closeQuickSwitchPopover()
         outsideClickMonitor.stop()
     }
 
     private func closePopover(_ sender: AnyObject? = nil) {
+        closeQuickSwitchPopover()
         popover.performClose(sender)
         outsideClickMonitor.stop()
     }
@@ -379,13 +400,118 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         return Self.statusItemImage(style: style)
     }
 
+    private func handleQuickSwitchAnchorHoverChange(_ isHovering: Bool) {
+        isHoveringQuickSwitchAnchor = isHovering
+
+        if isHovering {
+            presentQuickSwitchPopoverIfNeeded()
+        } else {
+            scheduleQuickSwitchPopoverDismissIfNeeded()
+        }
+    }
+
+    private func handleQuickSwitchPopoverHoverChange(_ isHovering: Bool) {
+        isHoveringQuickSwitchPopover = isHovering
+
+        if isHovering {
+            quickSwitchDismissWorkItem?.cancel()
+        } else {
+            scheduleQuickSwitchPopoverDismissIfNeeded()
+        }
+    }
+
+    private func presentQuickSwitchPopoverIfNeeded() {
+        quickSwitchDismissWorkItem?.cancel()
+
+        guard popover.isShown,
+              !quickSwitchAnchorFrame.isEmpty,
+              let anchorView = popover.contentViewController?.view
+        else {
+            return
+        }
+
+        let overlayView = QuickSwitchOverlayView(
+            rows: viewModel.quickSwitchRows,
+            onSelect: { [weak self] accountID in
+                self?.closeQuickSwitchPopover()
+                self?.closePopover()
+                self?.viewModel.requestSwitchToAccount(id: accountID)
+            },
+            onHoverChanged: { [weak self] isHovering in
+                self?.handleQuickSwitchPopoverHoverChange(isHovering)
+            }
+        )
+
+        if let quickSwitchHostingController {
+            quickSwitchHostingController.rootView = overlayView
+        } else {
+            let hostingController = NSHostingController(rootView: overlayView)
+            quickSwitchHostingController = hostingController
+            quickSwitchPopover.contentViewController = hostingController
+        }
+
+        quickSwitchPopover.contentSize = NSSize(
+            width: Self.quickSwitchPopoverWidth,
+            height: Self.quickSwitchPopoverHeight
+        )
+
+        if quickSwitchPopover.isShown {
+            refreshQuickSwitchPopoverPositionIfNeeded()
+            return
+        }
+
+        quickSwitchPopover.show(
+            relativeTo: quickSwitchAnchorFrame,
+            of: anchorView,
+            preferredEdge: .maxX
+        )
+    }
+
+    private func refreshQuickSwitchPopoverPositionIfNeeded() {
+        guard quickSwitchPopover.isShown else {
+            return
+        }
+
+        closeQuickSwitchPopover()
+
+        if isHoveringQuickSwitchAnchor || isHoveringQuickSwitchPopover {
+            presentQuickSwitchPopoverIfNeeded()
+        }
+    }
+
+    private func scheduleQuickSwitchPopoverDismissIfNeeded() {
+        quickSwitchDismissWorkItem?.cancel()
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else {
+                return
+            }
+
+            if !self.isHoveringQuickSwitchAnchor && !self.isHoveringQuickSwitchPopover {
+                self.closeQuickSwitchPopover()
+            }
+        }
+
+        quickSwitchDismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: workItem)
+    }
+
+    private func closeQuickSwitchPopover() {
+        quickSwitchDismissWorkItem?.cancel()
+        isHoveringQuickSwitchPopover = false
+
+        if quickSwitchPopover.isShown {
+            quickSwitchPopover.performClose(nil)
+        }
+    }
+
     @objc
     private func handleMenuBarIconStyleDidChange(_ notification: Notification) {
         statusItem.button?.image = currentStatusItemImage()
     }
 
     static func preferredPopoverContentSize(forContentSize size: NSSize) -> NSSize {
-        let clampedWidth = min(max(size.width, popoverWidth), maxPopoverWidth)
+        let clampedWidth = popoverWidth
         let clampedHeight = min(max(size.height, minPopoverHeight), maxPopoverHeight)
         return NSSize(width: clampedWidth, height: clampedHeight)
     }

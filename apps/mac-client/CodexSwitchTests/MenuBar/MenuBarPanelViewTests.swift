@@ -4,9 +4,9 @@ import XCTest
 
 @MainActor
 final class MenuBarPanelViewTests: XCTestCase {
-    func testPanelWidthExpandsWhenQuickSwitchOverlayIsVisible() {
+    func testPanelWidthStaysBaseWidthWhenQuickSwitchOverlayIsVisible() {
         XCTAssertEqual(MenuBarPanelView.contentWidth(isShowingQuickSwitchOverlay: false), 360)
-        XCTAssertEqual(MenuBarPanelView.contentWidth(isShowingQuickSwitchOverlay: true), 692)
+        XCTAssertEqual(MenuBarPanelView.contentWidth(isShowingQuickSwitchOverlay: true), 360)
     }
 
     func testQuickSwitchOverlayOriginAnchorsToRightOfTriggerRow() {

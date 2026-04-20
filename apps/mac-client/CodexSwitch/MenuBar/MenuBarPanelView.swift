@@ -5,23 +5,24 @@ public struct MenuBarPanelView: View {
     static let quickSwitchOverlayWidth: CGFloat = 320
     static let quickSwitchHorizontalSpacing: CGFloat = 12
     @ObservedObject private var viewModel: MenuBarViewModel
+    private let onQuickSwitchAnchorFrameChange: ((CGRect) -> Void)?
+    private let onQuickSwitchHoverChange: ((Bool) -> Void)?
     @State private var isShowingAddAccountOptions = false
-    @State private var isShowingQuickSwitchOverlay = false
-    @State private var quickSwitchDismissWorkItem: DispatchWorkItem?
-    @State private var quickSwitchAnchorFrame: CGRect = .zero
 
     static let quickSwitchCoordinateSpaceName = "MenuBarPanelQuickSwitchCoordinateSpace"
 
-    public init(viewModel: MenuBarViewModel) {
+    public init(
+        viewModel: MenuBarViewModel,
+        onQuickSwitchAnchorFrameChange: ((CGRect) -> Void)? = nil,
+        onQuickSwitchHoverChange: ((Bool) -> Void)? = nil
+    ) {
         self.viewModel = viewModel
+        self.onQuickSwitchAnchorFrameChange = onQuickSwitchAnchorFrameChange
+        self.onQuickSwitchHoverChange = onQuickSwitchHoverChange
     }
 
     public static func contentWidth(isShowingQuickSwitchOverlay: Bool) -> CGFloat {
-        guard isShowingQuickSwitchOverlay else {
-            return basePanelWidth
-        }
-
-        return basePanelWidth + quickSwitchHorizontalSpacing + quickSwitchOverlayWidth
+        return basePanelWidth
     }
 
     public var body: some View {
@@ -30,25 +31,6 @@ public struct MenuBarPanelView: View {
         }
         .frame(width: Self.basePanelWidth, alignment: .leading)
         .coordinateSpace(name: Self.quickSwitchCoordinateSpaceName)
-        .frame(width: Self.contentWidth(isShowingQuickSwitchOverlay: isShowingQuickSwitchOverlay), alignment: .leading)
-        .overlay(alignment: .topLeading) {
-            if isShowingQuickSwitchOverlay, !quickSwitchAnchorFrame.isEmpty {
-                let origin = MenuBarQuickSwitchOverlayLayout.overlayOrigin(for: quickSwitchAnchorFrame)
-                QuickSwitchOverlayView(
-                    rows: viewModel.quickSwitchRows,
-                    onSelect: { accountID in
-                        updateQuickSwitchVisibility(isVisible: false, withDelay: false)
-                        viewModel.requestSwitchToAccount(id: accountID)
-                    },
-                    onHoverChanged: { isHovering in
-                        updateQuickSwitchVisibility(isVisible: isHovering, withDelay: !isHovering)
-                    }
-                )
-                .offset(x: origin.x, y: origin.y)
-                .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .topLeading)))
-                .zIndex(2)
-            }
-        }
         .overlay(alignment: .bottom) {
             if let removalFeedback = viewModel.removalFeedback {
                 feedbackBanner(removalFeedback)
@@ -57,7 +39,7 @@ public struct MenuBarPanelView: View {
             }
         }
         .onPreferenceChange(QuickSwitchAnchorFramePreferenceKey.self) { frame in
-            quickSwitchAnchorFrame = frame
+            onQuickSwitchAnchorFrameChange?(frame)
         }
         .alert(item: Binding(
             get: { viewModel.alertMessage },
@@ -343,7 +325,7 @@ public struct MenuBarPanelView: View {
             systemImage: "arrow.left.arrow.right",
             trailingSystemImage: "chevron.right",
             onHoverChanged: { isHovering in
-                updateQuickSwitchVisibility(isVisible: isHovering, withDelay: !isHovering)
+                onQuickSwitchHoverChange?(isHovering)
             }
         ) {}
         .background(
@@ -354,25 +336,6 @@ public struct MenuBarPanelView: View {
                 )
             }
         )
-    }
-
-    private func updateQuickSwitchVisibility(isVisible: Bool, withDelay: Bool) {
-        quickSwitchDismissWorkItem?.cancel()
-
-        guard withDelay else {
-            withAnimation(.easeInOut(duration: 0.12)) {
-                isShowingQuickSwitchOverlay = isVisible
-            }
-            return
-        }
-
-        let workItem = DispatchWorkItem {
-            withAnimation(.easeInOut(duration: 0.12)) {
-                isShowingQuickSwitchOverlay = isVisible
-            }
-        }
-        quickSwitchDismissWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: workItem)
     }
 }
 
