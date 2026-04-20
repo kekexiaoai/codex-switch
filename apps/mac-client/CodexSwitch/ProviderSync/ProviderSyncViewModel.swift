@@ -145,6 +145,10 @@ public final class ProviderSyncViewModel: ObservableObject {
     }
 
     public func pruneOldBackups() async {
+        guard canPruneOldBackups else {
+            return
+        }
+
         do {
             try service.pruneBackups()
             lastMessage = ProviderSyncMessage(
