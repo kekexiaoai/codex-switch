@@ -19,3 +19,4 @@ node_modules/
 apps/rust-client/ui/dist/
 apps/rust-client/src-tauri/target/
 apps/rust-client/ui/.vite/
+*.tsbuildinfo

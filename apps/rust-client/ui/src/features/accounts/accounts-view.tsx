@@ -4,11 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccountListItem, LoginJobState, UsageSnapshot } from "@/lib/tauri";
+import { displayEmail } from "./display-email";
 
 export function AccountsView({
   accounts,
   usage,
   loginState,
+  showFullEmail,
   onImportCurrent,
   onImportBackup,
   onSwitch,
@@ -18,6 +20,7 @@ export function AccountsView({
   accounts: AccountListItem[];
   usage?: UsageSnapshot | null;
   loginState?: LoginJobState | null;
+  showFullEmail: boolean;
   onImportCurrent: () => void;
   onImportBackup: () => void;
   onSwitch: (id: string) => void;
@@ -62,7 +65,7 @@ export function AccountsView({
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <div className="font-medium">{account.emailMask}</div>
+                  <div className="font-medium">{displayEmail(account, showFullEmail)}</div>
                   {account.isActive ? <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700">Active</Badge> : null}
                 </div>
                 <div className="text-xs text-muted-foreground">
@@ -91,7 +94,9 @@ export function AccountsView({
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="text-xl font-semibold">{active?.emailMask ?? "未检测到账号"}</div>
+            <div className="text-xl font-semibold">
+              {active ? displayEmail(active, showFullEmail) : "未检测到账号"}
+            </div>
             <div className="text-sm text-muted-foreground">{active ? `Tier: ${active.tier.toUpperCase()}` : "先导入或登录一个账号。"}</div>
             {usage ? (
               <div className="grid grid-cols-2 gap-3">

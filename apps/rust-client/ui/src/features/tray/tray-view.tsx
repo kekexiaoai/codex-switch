@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccountListItem, UsageSnapshot } from "@/lib/tauri";
+import { displayEmail } from "@/features/accounts/display-email";
 
 export function TrayView({
   accounts,
   usage,
+  showFullEmail,
   onSwitch,
   onRefresh,
   onOpenMain,
@@ -13,6 +15,7 @@ export function TrayView({
 }: {
   accounts: AccountListItem[];
   usage?: UsageSnapshot | null;
+  showFullEmail: boolean;
   onSwitch: (id: string) => void;
   onRefresh: () => void;
   onOpenMain: () => void;
@@ -27,7 +30,7 @@ export function TrayView({
         <Card>
           <CardHeader>
             <div>
-              <CardTitle>{active?.emailMask ?? "No account"}</CardTitle>
+              <CardTitle>{active ? displayEmail(active, showFullEmail) : "No account"}</CardTitle>
               <CardDescription>{usage ? `${usage.fiveHour.percentUsed}% / ${usage.weekly.percentUsed}%` : "点击刷新查看 usage"}</CardDescription>
             </div>
           </CardHeader>
@@ -44,7 +47,7 @@ export function TrayView({
                 onClick={() => onSwitch(account.id)}
                 className="flex w-full items-center justify-between rounded-xl border border-border bg-panelAlt px-3 py-2 text-left"
               >
-                <span>{account.emailMask}</span>
+                <span>{displayEmail(account, showFullEmail)}</span>
                 <span className="text-xs text-muted-foreground">{account.tier.toUpperCase()}</span>
               </button>
             ))}

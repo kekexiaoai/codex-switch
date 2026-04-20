@@ -115,6 +115,7 @@ export function App() {
       <TrayView
         accounts={snapshot.accounts}
         usage={snapshot.activeUsage}
+        showFullEmail={snapshot.settings.showFullEmail}
         onSwitch={(id) => void switchAccount(id).then(refreshAll)}
         onRefresh={() => void refreshUsage().then(refreshAll)}
         onOpenMain={() => void showMainWindow()}
@@ -149,6 +150,7 @@ export function App() {
               accounts={snapshot.accounts}
               usage={snapshot.activeUsage}
               loginState={loginState}
+              showFullEmail={snapshot.settings.showFullEmail}
               onImportCurrent={() => {
                 void runAction("正在导入当前账号…", () => importCurrentAccount(), "当前账号已导入。");
               }}
