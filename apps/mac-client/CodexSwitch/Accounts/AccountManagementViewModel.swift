@@ -4,6 +4,8 @@ public struct AccountManagementRowModel: Identifiable, Equatable {
     public let id: String
     public let emailText: String
     public let tierText: String
+    public let fiveHourPercent: Int
+    public let weeklyPercent: Int
     public let fiveHourText: String
     public let weeklyText: String
     public let isActive: Bool
@@ -16,6 +18,7 @@ public final class AccountManagementViewModel: ObservableObject {
     @Published public private(set) var rows: [AccountManagementRowModel] = []
     @Published public private(set) var lastErrorMessage: String?
     @Published public private(set) var isReordering = false
+    @Published public private(set) var showEmails = false
 
     private let service: any AccountManagementServicing
 
@@ -29,17 +32,22 @@ public final class AccountManagementViewModel: ObservableObject {
         do {
             let accounts = try await service.loadAccounts()
             let activeAccountID = await service.currentActiveAccountID()
+            let showEmails = service.showEmails()
             var nextRows: [AccountManagementRowModel] = []
 
             for (index, account) in accounts.enumerated() {
                 let snapshot = await service.usageSnapshot(for: account.id)
+                let fiveHourPercent = snapshot?.fiveHour.percentUsed ?? 0
+                let weeklyPercent = snapshot?.weekly.percentUsed ?? 0
                 nextRows.append(
                     AccountManagementRowModel(
                         id: account.id,
-                        emailText: account.emailMask,
+                        emailText: account.displayEmail(showFullEmail: showEmails),
                         tierText: account.tier.rawValue.capitalized,
-                        fiveHourText: "5H \(snapshot?.fiveHour.percentUsed ?? 0)%",
-                        weeklyText: "7D \(snapshot?.weekly.percentUsed ?? 0)%",
+                        fiveHourPercent: fiveHourPercent,
+                        weeklyPercent: weeklyPercent,
+                        fiveHourText: "5H \(fiveHourPercent)%",
+                        weeklyText: "7D \(weeklyPercent)%",
                         isActive: account.id == activeAccountID,
                         canMoveUp: index > 0,
                         canMoveDown: index < accounts.count - 1
@@ -48,10 +56,16 @@ public final class AccountManagementViewModel: ObservableObject {
             }
 
             rows = nextRows
+            self.showEmails = showEmails
             lastErrorMessage = nil
         } catch {
             lastErrorMessage = error.localizedDescription
         }
+    }
+
+    public func toggleShowEmails() async {
+        service.setShowEmails(!service.showEmails())
+        await load()
     }
 
     public func moveUp(id: String) async {
@@ -122,4 +136,10 @@ private final class PreviewAccountManagementService: AccountManagementServicing 
     func currentActiveAccountID() async -> String? {
         "acct-1"
     }
+
+    func showEmails() -> Bool {
+        false
+    }
+
+    func setShowEmails(_ enabled: Bool) {}
 }

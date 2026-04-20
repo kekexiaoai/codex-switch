@@ -56,6 +56,7 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
     private let activeAccountID: String?
     private let usageSnapshots: [String: CodexUsageSnapshot]
     private let saveError: Error?
+    private var emailVisibilityEnabled: Bool
 
     private(set) var savedOrderHistory: [[String]] = []
 
@@ -63,12 +64,14 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
         accounts: [Account],
         activeAccountID: String? = nil,
         usageSnapshots: [String: CodexUsageSnapshot] = [:],
-        saveError: Error? = nil
+        saveError: Error? = nil,
+        emailVisibilityEnabled: Bool = false
     ) {
         self.accounts = accounts
         self.activeAccountID = activeAccountID
         self.usageSnapshots = usageSnapshots
         self.saveError = saveError
+        self.emailVisibilityEnabled = emailVisibilityEnabled
     }
 
     func loadAccounts() async throws -> [Account] {
@@ -106,6 +109,14 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
 
     func currentActiveAccountID() async -> String? {
         activeAccountID
+    }
+
+    func showEmails() -> Bool {
+        emailVisibilityEnabled
+    }
+
+    func setShowEmails(_ enabled: Bool) {
+        emailVisibilityEnabled = enabled
     }
 }
 

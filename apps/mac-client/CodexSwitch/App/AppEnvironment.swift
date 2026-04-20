@@ -327,7 +327,8 @@ public final class AppEnvironment {
                 orderStore: accountOrderStore,
                 accountRemover: accountRemover,
                 activeAccountController: activeAccountController,
-                usageService: usageService
+                usageService: usageService,
+                emailVisibilityStore: emailVisibilityProvider as? any EmailVisibilityMutating
             )
         )
     }

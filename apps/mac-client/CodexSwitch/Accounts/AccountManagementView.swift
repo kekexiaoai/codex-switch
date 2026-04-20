@@ -19,6 +19,10 @@ public struct AccountManagementView: View {
         ["当前账号", "归档账号", "排序来源"]
     }
 
+    public var emailVisibilityButtonLabel: String {
+        viewModel.showEmails ? "隐藏邮箱" : "显示邮箱"
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             pageHeader
@@ -40,12 +44,23 @@ public struct AccountManagementView: View {
     }
 
     private var pageHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(pageTitle)
-                .font(.title2.weight(.semibold))
-            Text("这里的排序会直接同步到状态栏快速切换菜单。")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(pageTitle)
+                    .font(.title2.weight(.semibold))
+                Text("这里的排序会直接同步到状态栏快速切换菜单。")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Button(emailVisibilityButtonLabel) {
+                Task {
+                    await viewModel.toggleShowEmails()
+                }
+            }
+            .buttonStyle(.bordered)
         }
     }
 
@@ -99,8 +114,8 @@ public struct AccountManagementView: View {
             }
 
             HStack(spacing: 10) {
-                metricPill(row.fiveHourText)
-                metricPill(row.weeklyText)
+                metricCard(title: "5H", percent: row.fiveHourPercent)
+                metricCard(title: "7D", percent: row.weeklyPercent)
                 Spacer()
                 Button {
                     Task {
@@ -138,11 +153,26 @@ public struct AccountManagementView: View {
         )
     }
 
-    private func metricPill(_ title: String) -> some View {
-        Text(title)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.06)))
+    private func metricCard(title: String, percent: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+                Spacer()
+                Text("\(percent)%")
+                    .font(.caption.weight(.semibold))
+            }
+            ProgressView(value: Double(percent), total: 100)
+                .tint(Color(nsColor: .systemTeal))
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .frame(width: 120, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
     }
 }
