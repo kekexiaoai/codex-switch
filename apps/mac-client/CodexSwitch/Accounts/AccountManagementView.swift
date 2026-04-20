@@ -40,6 +40,7 @@ public struct AccountManagementView: View {
                             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .onDrag {
                                 draggedRowID = row.id
+                                viewModel.logDragStarted(id: row.id)
                                 return NSItemProvider(object: row.id as NSString)
                             }
                             .onDrop(
@@ -48,6 +49,27 @@ public struct AccountManagementView: View {
                                     targetRowID: row.id,
                                     draggedRowID: $draggedRowID,
                                     rowIDsInOrder: viewModel.rows.map(\.id),
+                                    logDropEntered: { draggedID, targetID, destinationIndex in
+                                        viewModel.logDropEntered(
+                                            draggedID: draggedID,
+                                            targetID: targetID,
+                                            destinationIndex: destinationIndex
+                                        )
+                                    },
+                                    logDropPerformed: { draggedID, targetID, destinationIndex in
+                                        viewModel.logDropPerformed(
+                                            draggedID: draggedID,
+                                            targetID: targetID,
+                                            destinationIndex: destinationIndex
+                                        )
+                                    },
+                                    logDropIgnored: { draggedID, targetID, reason in
+                                        viewModel.logDropIgnored(
+                                            draggedID: draggedID,
+                                            targetID: targetID,
+                                            reason: reason
+                                        )
+                                    },
                                     moveRow: { draggedID, destinationIndex in
                                         Task {
                                             await viewModel.moveRow(id: draggedID, to: destinationIndex)
@@ -205,23 +227,44 @@ private struct AccountManagementRowDropDelegate: DropDelegate {
     let targetRowID: String
     @Binding var draggedRowID: String?
     let rowIDsInOrder: [String]
+    let logDropEntered: (String, String, Int) -> Void
+    let logDropPerformed: (String, String, Int) -> Void
+    let logDropIgnored: (String?, String, String) -> Void
     let moveRow: (String, Int) -> Void
 
     func dropUpdated(info: DropInfo) -> DropProposal? {
         DropProposal(operation: .move)
     }
 
-    func performDrop(info: DropInfo) -> Bool {
-        defer { draggedRowID = nil }
-
+    func dropEntered(info: DropInfo) {
         guard
             let draggedRowID,
             draggedRowID != targetRowID,
             let destinationIndex = rowIDsInOrder.firstIndex(of: targetRowID)
         else {
+            return
+        }
+
+        logDropEntered(draggedRowID, targetRowID, destinationIndex)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer { draggedRowID = nil }
+
+        guard let draggedRowID else {
+            logDropIgnored(nil, targetRowID, "missing_dragged_row")
+            return false
+        }
+        guard draggedRowID != targetRowID else {
+            logDropIgnored(draggedRowID, targetRowID, "same_target")
+            return false
+        }
+        guard let destinationIndex = rowIDsInOrder.firstIndex(of: targetRowID) else {
+            logDropIgnored(draggedRowID, targetRowID, "missing_target_index")
             return false
         }
 
+        logDropPerformed(draggedRowID, targetRowID, destinationIndex)
         moveRow(draggedRowID, destinationIndex)
         return true
     }

@@ -185,6 +185,7 @@ public final class AppEnvironment {
     public let settingsActionHandler: any SettingsActionHandling
     public let launchAtLoginController: (any LaunchAtLoginControlling)?
     public let emailVisibilityProvider: (any EmailVisibilityProviding)?
+    public let accountReorderLogger: (any CodexDiagnosticsLogging)?
     public let runtimeMode: RuntimeMode
     public let codexPaths: CodexPaths?
     public let providerSyncService: (any ProviderSyncServiceProtocol)?
@@ -202,6 +203,7 @@ public final class AppEnvironment {
         settingsActionHandler: any SettingsActionHandling = NoopSettingsActionHandler(),
         launchAtLoginController: (any LaunchAtLoginControlling)? = nil,
         emailVisibilityProvider: (any EmailVisibilityProviding)? = UserDefaultsEmailVisibilityStore(),
+        accountReorderLogger: (any CodexDiagnosticsLogging)? = nil,
         runtimeMode: RuntimeMode,
         codexPaths: CodexPaths? = nil,
         providerSyncService: (any ProviderSyncServiceProtocol)? = nil
@@ -218,6 +220,7 @@ public final class AppEnvironment {
         self.settingsActionHandler = settingsActionHandler
         self.launchAtLoginController = launchAtLoginController
         self.emailVisibilityProvider = emailVisibilityProvider
+        self.accountReorderLogger = accountReorderLogger
         self.runtimeMode = runtimeMode
         self.codexPaths = codexPaths
         self.providerSyncService = providerSyncService
@@ -236,6 +239,7 @@ public final class AppEnvironment {
         settingsActionHandler: NoopSettingsActionHandler(),
         launchAtLoginController: nil,
         emailVisibilityProvider: UserDefaultsEmailVisibilityStore(),
+        accountReorderLogger: nil,
         runtimeMode: .preview,
         codexPaths: nil,
         providerSyncService: MockProviderSyncService()
@@ -246,6 +250,7 @@ public final class AppEnvironment {
         let fileStore = CodexAuthFileStore(paths: configuration.paths)
         let browserDiagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths, category: .browserLogin)
         let usageDiagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths, category: .usageRefresh)
+        let accountReorderDiagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths, category: .accountReorder)
         let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
         let repository = AccountRepository(catalog: archivedAccountStore)
         let importer = CodexAuthImporter(fileStore: fileStore)
@@ -295,6 +300,7 @@ public final class AppEnvironment {
             settingsActionHandler: LiveSettingsActionHandler(paths: configuration.paths),
             launchAtLoginController: LiveLaunchAtLoginController(),
             emailVisibilityProvider: UserDefaultsEmailVisibilityStore(defaults: configuration.settingsDefaults),
+            accountReorderLogger: accountReorderDiagnosticsLogger,
             runtimeMode: .live,
             codexPaths: configuration.paths,
             providerSyncService: LiveProviderSyncService(paths: configuration.paths)
@@ -329,7 +335,8 @@ public final class AppEnvironment {
                 activeAccountController: activeAccountController,
                 usageService: usageService,
                 emailVisibilityStore: emailVisibilityProvider as? any EmailVisibilityMutating
-            )
+            ),
+            logger: accountReorderLogger ?? NullCodexDiagnosticsLogger()
         )
     }
 

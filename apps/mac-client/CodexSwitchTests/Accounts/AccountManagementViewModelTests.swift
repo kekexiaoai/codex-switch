@@ -62,13 +62,18 @@ final class AccountManagementViewModelTests: XCTestCase {
                 makeAccount(id: "acct-3", order: 2, tier: .pro),
             ]
         )
-        let viewModel = AccountManagementViewModel(service: service)
+        let logger = InMemoryDiagnosticsLogger()
+        let viewModel = AccountManagementViewModel(service: service, logger: logger)
 
         await viewModel.load()
         await viewModel.moveRow(id: "acct-1", to: 1)
 
         XCTAssertEqual(viewModel.rows.map(\.id), ["acct-2", "acct-1", "acct-3"])
         XCTAssertEqual(service.savedOrderHistory, [["acct-2", "acct-1", "acct-3"]])
+        XCTAssertTrue(logger.entries.contains("account_reorder_loaded count=3 order=acct-1,acct-2,acct-3"))
+        XCTAssertTrue(logger.entries.contains("account_reorder_requested source=0 destination=1 order=acct-1,acct-2,acct-3"))
+        XCTAssertTrue(logger.entries.contains("account_reorder_persist_started order=acct-2,acct-1,acct-3"))
+        XCTAssertTrue(logger.entries.contains("account_reorder_persist_succeeded order=acct-2,acct-1,acct-3"))
     }
 
     func testMoveRowsKeepsRowsAndExposesErrorWhenSaveFails() async {
@@ -176,5 +181,13 @@ private enum StubError: LocalizedError {
 
     var errorDescription: String? {
         "failed"
+    }
+}
+
+private final class InMemoryDiagnosticsLogger: CodexDiagnosticsLogging {
+    private(set) var entries: [String] = []
+
+    func log(_ message: String) {
+        entries.append(message)
     }
 }

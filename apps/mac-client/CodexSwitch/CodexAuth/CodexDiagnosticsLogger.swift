@@ -44,6 +44,7 @@ public protocol CodexDiagnosticsLogging {
 public enum CodexDiagnosticsLogCategory: Equatable {
     case browserLogin
     case usageRefresh
+    case accountReorder
 }
 
 public struct NullCodexDiagnosticsLogger: CodexDiagnosticsLogging {
@@ -71,6 +72,8 @@ public final class CodexDiagnosticsFileLogger: CodexDiagnosticsLogging {
             self.logFileURL = paths.browserLoginDiagnosticsLogURL
         case .usageRefresh:
             self.logFileURL = paths.usageRefreshDiagnosticsLogURL
+        case .accountReorder:
+            self.logFileURL = paths.accountReorderDiagnosticsLogURL
         }
         self.fileManager = fileManager
         self.now = now
@@ -123,6 +126,7 @@ public struct CodexDiagnosticsLogReader {
         let candidateURLs = [
             logFileURL.appendingPathComponent("browser-login.log"),
             logFileURL.appendingPathComponent("usage-refresh.log"),
+            logFileURL.appendingPathComponent("account-reorder.log"),
         ]
         let safeLines = candidateURLs
             .filter { fileManager.fileExists(atPath: $0.path) }

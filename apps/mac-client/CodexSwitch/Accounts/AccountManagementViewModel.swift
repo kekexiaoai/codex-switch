@@ -21,12 +21,17 @@ public final class AccountManagementViewModel: ObservableObject {
     @Published public private(set) var showEmails = false
 
     private let service: any AccountManagementServicing
+    private let logger: any CodexDiagnosticsLogging
     private let timeFormatter = CodexUserFacingTimeFormatter()
 
     public static let preview = AccountManagementViewModel(service: PreviewAccountManagementService())
 
-    public init(service: any AccountManagementServicing) {
+    public init(
+        service: any AccountManagementServicing,
+        logger: any CodexDiagnosticsLogging = NullCodexDiagnosticsLogger()
+    ) {
         self.service = service
+        self.logger = logger
     }
 
     public func load() async {
@@ -59,8 +64,10 @@ public final class AccountManagementViewModel: ObservableObject {
             rows = nextRows
             self.showEmails = showEmails
             lastErrorMessage = nil
+            logger.log("account_reorder_loaded count=\(nextRows.count) order=\(orderDescription(for: nextRows.map(\.id)))")
         } catch {
             lastErrorMessage = error.localizedDescription
+            logger.log("account_reorder_load_failed error=\(error.localizedDescription)")
         }
     }
 
@@ -85,34 +92,58 @@ public final class AccountManagementViewModel: ObservableObject {
 
     public func moveRow(id: String, to destination: Int) async {
         guard !isReordering else {
+            logger.log("account_reorder_ignored reason=reordering_in_progress dragged=\(id) destination=\(destination)")
             return
         }
         guard let sourceIndex = rows.firstIndex(where: { $0.id == id }) else {
+            logger.log("account_reorder_ignored reason=missing_dragged_row dragged=\(id) destination=\(destination)")
             return
         }
 
-        let originalRows = rows
-        let reorderedRows = reorderedRows(
-            afterMoving: rows,
-            fromOffsets: IndexSet(integer: sourceIndex),
-            toOffset: destination
-        )
-        guard reorderedRows != originalRows else {
-            return
-        }
-
-        rows = reorderedRows
-        await persistOrder(reorderedRows.map(\.id), originalRows: originalRows)
+        await applyReorder(fromOffsets: IndexSet(integer: sourceIndex), toOffset: destination)
     }
 
     public func moveRows(fromOffsets source: IndexSet, toOffset destination: Int) async {
         guard !isReordering else {
+            logger.log("account_reorder_ignored reason=reordering_in_progress source=\(indexDescription(for: source)) destination=\(destination)")
             return
         }
 
+        await applyReorder(fromOffsets: source, toOffset: destination)
+    }
+
+    func logDragStarted(id: String) {
+        logger.log("account_reorder_drag_started dragged=\(id) order=\(currentOrderDescription())")
+    }
+
+    func logDropEntered(draggedID: String, targetID: String, destinationIndex: Int) {
+        logger.log(
+            "account_reorder_drop_entered dragged=\(draggedID) target=\(targetID) destination=\(destinationIndex) order=\(currentOrderDescription())"
+        )
+    }
+
+    func logDropPerformed(draggedID: String, targetID: String, destinationIndex: Int) {
+        logger.log(
+            "account_reorder_drop_performed dragged=\(draggedID) target=\(targetID) destination=\(destinationIndex) order=\(currentOrderDescription())"
+        )
+    }
+
+    func logDropIgnored(draggedID: String?, targetID: String, reason: String) {
+        logger.log(
+            "account_reorder_drop_ignored reason=\(reason) dragged=\(draggedID ?? "nil") target=\(targetID) order=\(currentOrderDescription())"
+        )
+    }
+
+    private func applyReorder(fromOffsets source: IndexSet, toOffset destination: Int) async {
         let originalRows = rows
+        logger.log(
+            "account_reorder_requested source=\(indexDescription(for: source)) destination=\(destination) order=\(orderDescription(for: originalRows.map(\.id)))"
+        )
         let reorderedRows = reorderedRows(afterMoving: rows, fromOffsets: source, toOffset: destination)
         guard reorderedRows != originalRows else {
+            logger.log(
+                "account_reorder_noop source=\(indexDescription(for: source)) destination=\(destination) order=\(orderDescription(for: originalRows.map(\.id)))"
+            )
             return
         }
 
@@ -123,13 +154,18 @@ public final class AccountManagementViewModel: ObservableObject {
     private func persistOrder(_ orderedIDs: [String], originalRows: [AccountManagementRowModel]) async {
         isReordering = true
         defer { isReordering = false }
+        logger.log("account_reorder_persist_started order=\(orderDescription(for: orderedIDs))")
 
         do {
             try await service.saveManualOrder(idsInOrder: orderedIDs)
+            logger.log("account_reorder_persist_succeeded order=\(orderDescription(for: orderedIDs))")
             await load()
         } catch {
             rows = originalRows
             lastErrorMessage = error.localizedDescription
+            logger.log(
+                "account_reorder_persist_failed error=\(error.localizedDescription) reverted_order=\(orderDescription(for: originalRows.map(\.id)))"
+            )
         }
     }
 
@@ -157,6 +193,18 @@ public final class AccountManagementViewModel: ObservableObject {
 
         remainingRows.insert(contentsOf: movingRows, at: insertionIndex)
         return remainingRows
+    }
+
+    private func currentOrderDescription() -> String {
+        orderDescription(for: rows.map(\.id))
+    }
+
+    private func orderDescription(for ids: [String]) -> String {
+        ids.isEmpty ? "empty" : ids.joined(separator: ",")
+    }
+
+    private func indexDescription(for source: IndexSet) -> String {
+        source.map(String.init).joined(separator: ",")
     }
 }
 

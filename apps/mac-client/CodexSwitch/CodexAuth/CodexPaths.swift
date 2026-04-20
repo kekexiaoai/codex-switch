@@ -59,6 +59,10 @@ public struct CodexPaths: Equatable {
         diagnosticsDirectoryURL.appendingPathComponent("usage-refresh.log")
     }
 
+    public var accountReorderDiagnosticsLogURL: URL {
+        diagnosticsDirectoryURL.appendingPathComponent("account-reorder.log")
+    }
+
     public var loginDiagnosticsLogURL: URL {
         browserLoginDiagnosticsLogURL
     }

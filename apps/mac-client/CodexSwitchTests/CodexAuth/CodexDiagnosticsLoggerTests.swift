@@ -59,4 +59,18 @@ final class CodexDiagnosticsLoggerTests: XCTestCase {
             "2026-03-29T13:41:24Z usage_refresh_local_succeeded mode=automatic account=acct-1 source=rollout_logs",
         ])
     }
+
+    func testFileLoggerWritesAccountReorderEntriesToDedicatedLogFile() throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let logger = CodexDiagnosticsFileLogger(
+            paths: paths,
+            category: .accountReorder,
+            now: { Date(timeIntervalSince1970: 1_743_157_872) }
+        )
+
+        logger.log("account_reorder_drag_started dragged=acct-1 order=acct-1,acct-2")
+
+        let contents = try String(contentsOf: paths.accountReorderDiagnosticsLogURL, encoding: .utf8)
+        XCTAssertTrue(contents.contains("account_reorder_drag_started dragged=acct-1 order=acct-1,acct-2"))
+    }
 }

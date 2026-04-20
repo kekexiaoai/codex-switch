@@ -14,6 +14,7 @@ final class CodexPathsTests: XCTestCase {
         XCTAssertEqual(paths.diagnosticsDirectoryURL.path, "/tmp/codex-home/.codex/codex-switch")
         XCTAssertEqual(paths.browserLoginDiagnosticsLogURL.path, "/tmp/codex-home/.codex/codex-switch/browser-login.log")
         XCTAssertEqual(paths.usageRefreshDiagnosticsLogURL.path, "/tmp/codex-home/.codex/codex-switch/usage-refresh.log")
+        XCTAssertEqual(paths.accountReorderDiagnosticsLogURL.path, "/tmp/codex-home/.codex/codex-switch/account-reorder.log")
     }
 
     func testAccountStoresArchiveMetadataNeededByCodexBackend() {

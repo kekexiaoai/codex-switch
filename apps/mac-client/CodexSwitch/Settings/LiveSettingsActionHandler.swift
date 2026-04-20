@@ -51,6 +51,7 @@ public struct LiveSettingsActionHandler: SettingsActionHandling {
         case .clearDiagnosticsLog:
             try removeItemIfPresent(at: paths.browserLoginDiagnosticsLogURL)
             try removeItemIfPresent(at: paths.usageRefreshDiagnosticsLogURL)
+            try removeItemIfPresent(at: paths.accountReorderDiagnosticsLogURL)
             return SettingsActionMessage(
                 title: SettingsStrings.text(.diagnosticsClearedTitle, preferredLanguages: preferredLanguages),
                 message: SettingsStrings.text(.diagnosticsClearedMessage, preferredLanguages: preferredLanguages)
