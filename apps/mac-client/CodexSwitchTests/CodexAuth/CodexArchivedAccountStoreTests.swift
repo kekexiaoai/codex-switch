@@ -138,6 +138,41 @@ final class CodexArchivedAccountStoreTests: XCTestCase {
         XCTAssertEqual(accounts.map(\.manualOrder), [0, 1, 2])
     }
 
+    func testSaveManualOrderHandlesDuplicateStableAccountIDsWithoutCrashing() async throws {
+        let baseDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: baseDirectory) }
+
+        let paths = CodexPaths(baseDirectory: baseDirectory)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        let store = CodexArchivedAccountStore(fileStore: fileStore)
+
+        let olderAlexFilename = "older-alex.json"
+        let newerAlexFilename = "newer-alex.json"
+        let bethFilename = CodexArchiveNaming.archiveFilename(for: "beth@example.com")
+        try fileStore.writeArchive(data: try sampleAuthData(email: "alex@example.com", tier: "team"), filename: olderAlexFilename)
+        try fileStore.writeArchive(data: try sampleAuthData(email: "alex@example.com", tier: "pro"), filename: newerAlexFilename)
+        try fileStore.writeArchive(data: try sampleAuthData(email: "beth@example.com", tier: "plus"), filename: bethFilename)
+        try fileStore.saveMetadataCache(
+            CodexAccountMetadataCache(entries: [
+                olderAlexFilename: CodexAccountMetadataEntry(source: .backupImport, lastImportedAt: Date(timeIntervalSince1970: 1_711_584_800), manualOrder: 0),
+                newerAlexFilename: CodexAccountMetadataEntry(source: .browserLogin, lastImportedAt: Date(timeIntervalSince1970: 1_711_685_800), manualOrder: 1),
+                bethFilename: CodexAccountMetadataEntry(source: .currentAuth, lastImportedAt: Date(timeIntervalSince1970: 1_711_585_800), manualOrder: 2),
+            ])
+        )
+
+        try await store.saveManualOrder(idsInOrder: [
+            "subject-beth@example.com",
+            "subject-alex@example.com",
+        ])
+
+        let metadata = try fileStore.loadMetadataCache()
+        XCTAssertEqual(metadata.entries[bethFilename]?.manualOrder, 0)
+        XCTAssertEqual(metadata.entries[olderAlexFilename]?.manualOrder, 1)
+        XCTAssertEqual(metadata.entries[newerAlexFilename]?.manualOrder, 1)
+    }
+
     private func sampleAuthData(email: String, tier: String) throws -> Data {
         let payload = [
             "sub": "subject-\(email)",

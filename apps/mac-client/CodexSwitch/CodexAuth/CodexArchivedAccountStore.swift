@@ -71,26 +71,29 @@ public struct CodexArchivedAccountStore: AccountCatalog, AccountRemoving, Accoun
 
     public func saveManualOrder(idsInOrder: [String]) async throws {
         let loadedAccounts = try await loadAccounts()
-        let loadedAccountsByID = Dictionary(uniqueKeysWithValues: loadedAccounts.map { ($0.id, $0) })
-        let remainingIDs = loadedAccounts
-            .map(\.id)
-            .filter { !idsInOrder.contains($0) }
-        let finalIDs = idsInOrder + remainingIDs
+        let loadedAccountsByID = loadedAccounts.reduce(into: [String: [Account]]()) { result, account in
+            result[account.id, default: []].append(account)
+        }
+        let remainingIDs = uniqueIDs(in: loadedAccounts.map(\.id)).filter { !idsInOrder.contains($0) }
+        let finalIDs = uniqueIDs(in: idsInOrder + remainingIDs)
 
         var metadata = try fileStore.loadMetadataCache()
         for (index, id) in finalIDs.enumerated() {
-            guard
-                let account = loadedAccountsByID[id],
-                let existingEntry = metadata.entries[account.archiveFilename]
-            else {
+            guard let accounts = loadedAccountsByID[id] else {
                 continue
             }
 
-            metadata.entries[account.archiveFilename] = CodexAccountMetadataEntry(
-                source: existingEntry.source,
-                lastImportedAt: existingEntry.lastImportedAt,
-                manualOrder: index
-            )
+            for account in accounts {
+                guard let existingEntry = metadata.entries[account.archiveFilename] else {
+                    continue
+                }
+
+                metadata.entries[account.archiveFilename] = CodexAccountMetadataEntry(
+                    source: existingEntry.source,
+                    lastImportedAt: existingEntry.lastImportedAt,
+                    manualOrder: index
+                )
+            }
         }
 
         try fileStore.saveMetadataCache(metadata)
@@ -156,5 +159,16 @@ public struct CodexArchivedAccountStore: AccountCatalog, AccountRemoving, Accoun
         }
 
         return tokens["id_token"] as? String
+    }
+
+    private func uniqueIDs(in ids: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+
+        for id in ids where seen.insert(id).inserted {
+            result.append(id)
+        }
+
+        return result
     }
 }
