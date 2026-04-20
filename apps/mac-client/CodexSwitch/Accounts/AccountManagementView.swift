@@ -97,21 +97,24 @@ public struct AccountManagementView: View {
     @ViewBuilder
     private var topInsertionDropZone: some View {
         if !viewModel.rows.isEmpty {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color.accentColor.opacity(draggedRowID == nil ? 0.18 : 0.5), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.accentColor.opacity(draggedRowID == nil ? 0.04 : 0.10))
-                )
-                .frame(height: draggedRowID == nil ? 18 : 34)
+            Color.clear
+                .frame(height: 18)
                 .overlay {
                     if draggedRowID != nil {
-                        Text(topInsertionHintLabel)
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.secondary)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.accentColor.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                            .background(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color.accentColor.opacity(0.08))
+                            )
+                            .overlay {
+                                Text(topInsertionHintLabel)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(.secondary)
+                            }
                     }
                 }
-                .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .contentShape(Rectangle())
                 .onDrop(
                     of: [UTType.text],
                     delegate: AccountManagementInsertionDropDelegate(
