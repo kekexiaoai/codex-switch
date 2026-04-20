@@ -1,7 +1,9 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 public struct AccountManagementView: View {
     @ObservedObject private var viewModel: AccountManagementViewModel
+    @State private var draggedRowID: String?
 
     public init(viewModel: AccountManagementViewModel) {
         self.viewModel = viewModel
@@ -31,21 +33,31 @@ public struct AccountManagementView: View {
         VStack(alignment: .leading, spacing: 20) {
             pageHeader
             summaryStrip
-            List {
-                ForEach(viewModel.rows) { row in
-                    accountCard(row)
-                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                        .listRowBackground(Color.clear)
-                }
-                .onMove { source, destination in
-                    Task {
-                        await viewModel.moveRows(fromOffsets: source, toOffset: destination)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(viewModel.rows) { row in
+                        accountCard(row)
+                            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .onDrag {
+                                draggedRowID = row.id
+                                return NSItemProvider(object: row.id as NSString)
+                            }
+                            .onDrop(
+                                of: [UTType.text],
+                                delegate: AccountManagementRowDropDelegate(
+                                    targetRowID: row.id,
+                                    draggedRowID: $draggedRowID,
+                                    rowIDsInOrder: viewModel.rows.map(\.id),
+                                    moveRow: { draggedID, destinationIndex in
+                                        Task {
+                                            await viewModel.moveRow(id: draggedID, to: destinationIndex)
+                                        }
+                                    }
+                                )
+                            )
                     }
                 }
-                .moveDisabled(viewModel.isReordering)
             }
-            .listStyle(.plain)
-            .background(Color.clear)
         }
         .padding(20)
         .task {
@@ -186,5 +198,31 @@ public struct AccountManagementView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.primary.opacity(0.05))
         )
+    }
+}
+
+private struct AccountManagementRowDropDelegate: DropDelegate {
+    let targetRowID: String
+    @Binding var draggedRowID: String?
+    let rowIDsInOrder: [String]
+    let moveRow: (String, Int) -> Void
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer { draggedRowID = nil }
+
+        guard
+            let draggedRowID,
+            draggedRowID != targetRowID,
+            let destinationIndex = rowIDsInOrder.firstIndex(of: targetRowID)
+        else {
+            return false
+        }
+
+        moveRow(draggedRowID, destinationIndex)
+        return true
     }
 }

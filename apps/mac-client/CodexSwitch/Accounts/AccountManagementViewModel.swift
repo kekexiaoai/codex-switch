@@ -73,14 +73,36 @@ public final class AccountManagementViewModel: ObservableObject {
         guard let index = rows.firstIndex(where: { $0.id == id }), index > 0 else {
             return
         }
-        await moveRows(fromOffsets: IndexSet(integer: index), toOffset: index - 1)
+        await moveRow(id: id, to: index - 1)
     }
 
     public func moveDown(id: String) async {
         guard let index = rows.firstIndex(where: { $0.id == id }), index < rows.count - 1 else {
             return
         }
-        await moveRows(fromOffsets: IndexSet(integer: index), toOffset: index + 2)
+        await moveRow(id: id, to: index + 1)
+    }
+
+    public func moveRow(id: String, to destination: Int) async {
+        guard !isReordering else {
+            return
+        }
+        guard let sourceIndex = rows.firstIndex(where: { $0.id == id }) else {
+            return
+        }
+
+        let originalRows = rows
+        let reorderedRows = reorderedRows(
+            afterMoving: rows,
+            fromOffsets: IndexSet(integer: sourceIndex),
+            toOffset: destination
+        )
+        guard reorderedRows != originalRows else {
+            return
+        }
+
+        rows = reorderedRows
+        await persistOrder(reorderedRows.map(\.id), originalRows: originalRows)
     }
 
     public func moveRows(fromOffsets source: IndexSet, toOffset destination: Int) async {
