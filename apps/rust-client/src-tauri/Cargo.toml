@@ -1,0 +1,43 @@
+[package]
+name = "codex-switch"
+version = "0.1.0"
+edition = "2021"
+description = "A native macOS menu bar client for managing multiple Codex-style accounts"
+authors = ["Codex Switch Team"]
+license = "MIT"
+rust-version = "1.70"
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5"
+log = "0.4"
+env_logger = "0.11"
+thiserror = "2"
+anyhow = "1"
+rusqlite = { version = "0.31", features = ["chrono"] }
+walkdir = "2"
+open = "5"
+notify = "6"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[dev-dependencies]
+tempfile = "3"
