@@ -3,14 +3,14 @@ import SwiftUI
 
 @MainActor
 final class MenuBarHostingController: NSHostingController<MenuBarShellView> {
-    private let onHeightChange: (CGFloat) -> Void
-    private var lastReportedHeight: CGFloat = 0
+    private let onSizeChange: (NSSize) -> Void
+    private var lastReportedSize: NSSize = .zero
 
     init(
         rootView: MenuBarShellView,
-        onHeightChange: @escaping (CGFloat) -> Void
+        onSizeChange: @escaping (NSSize) -> Void
     ) {
-        self.onHeightChange = onHeightChange
+        self.onSizeChange = onSizeChange
         super.init(rootView: rootView)
     }
 
@@ -20,7 +20,7 @@ final class MenuBarHostingController: NSHostingController<MenuBarShellView> {
 
     override var preferredContentSize: NSSize {
         didSet {
-            reportPreferredHeight(preferredContentSize.height)
+            reportPreferredSize(preferredContentSize)
         }
     }
 
@@ -43,21 +43,21 @@ final class MenuBarHostingController: NSHostingController<MenuBarShellView> {
     }
 
     private func reportMeasuredHeight() {
-        let measuredHeight = preferredContentSize.height > 0
-            ? preferredContentSize.height
-            : view.fittingSize.height
-        reportPreferredHeight(measuredHeight)
+        let measuredSize = preferredContentSize.width > 0 && preferredContentSize.height > 0
+            ? preferredContentSize
+            : NSSize(width: view.fittingSize.width, height: view.fittingSize.height)
+        reportPreferredSize(measuredSize)
     }
 
-    private func reportPreferredHeight(_ height: CGFloat) {
-        guard height > 0 else {
+    private func reportPreferredSize(_ size: NSSize) {
+        guard size.width > 0, size.height > 0 else {
             return
         }
-        guard abs(height - lastReportedHeight) > 0.5 else {
+        guard abs(size.width - lastReportedSize.width) > 0.5 || abs(size.height - lastReportedSize.height) > 0.5 else {
             return
         }
-        lastReportedHeight = height
-        onHeightChange(height)
+        lastReportedSize = size
+        onSizeChange(size)
     }
 }
 
@@ -194,6 +194,7 @@ struct MenuBarPopoverPresenter {
 @MainActor
 public final class StatusItemController: NSObject, NSPopoverDelegate {
     static let popoverWidth: CGFloat = 360
+    static let maxPopoverWidth: CGFloat = 720
     static let minPopoverHeight: CGFloat = 380
     static let maxPopoverHeight: CGFloat = 720
     static let statusItemAccessibilityTitle = "Codex Switch"
@@ -237,7 +238,7 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private let popover = NSPopover()
     private let viewModel: MenuBarViewModel
     private let settingsDefaults: UserDefaults
-    private var preferredContentHeight: CGFloat = StatusItemController.minPopoverHeight
+    private var preferredContentSize: NSSize = NSSize(width: StatusItemController.popoverWidth, height: StatusItemController.minPopoverHeight)
     private weak var hostingController: MenuBarHostingController?
     private lazy var outsideClickMonitor = PopoverOutsideClickMonitor(
         watchedWindows: { [weak self] in
@@ -292,11 +293,11 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         )
         popover.delegate = self
         popover.behavior = .transient
-        popover.contentSize = Self.preferredPopoverContentSize(forContentHeight: preferredContentHeight)
+        popover.contentSize = Self.preferredPopoverContentSize(forContentSize: preferredContentSize)
         let hostingController = MenuBarHostingController(
             rootView: MenuBarShellView(viewModel: viewModel),
-            onHeightChange: { [weak self] height in
-                    self?.updatePopoverContentSize(forContentHeight: height)
+            onSizeChange: { [weak self] size in
+                    self?.updatePopoverContentSize(forContentSize: size)
             }
         )
         if #available(macOS 13.0, *) {
@@ -360,11 +361,11 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         outsideClickMonitor.stop()
     }
 
-    private func updatePopoverContentSize(forContentHeight height: CGFloat) {
-        preferredContentHeight = height
+    private func updatePopoverContentSize(forContentSize size: NSSize) {
+        preferredContentSize = size
         guard let nextSize = Self.resolvedPopoverContentSize(
             currentSize: popover.contentSize,
-            forContentHeight: height,
+            forContentSize: size,
             isPopoverShown: popover.isShown
         ) else {
             return
@@ -383,21 +384,22 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
         statusItem.button?.image = currentStatusItemImage()
     }
 
-    static func preferredPopoverContentSize(forContentHeight height: CGFloat) -> NSSize {
-        let clampedHeight = min(max(height, minPopoverHeight), maxPopoverHeight)
-        return NSSize(width: popoverWidth, height: clampedHeight)
+    static func preferredPopoverContentSize(forContentSize size: NSSize) -> NSSize {
+        let clampedWidth = min(max(size.width, popoverWidth), maxPopoverWidth)
+        let clampedHeight = min(max(size.height, minPopoverHeight), maxPopoverHeight)
+        return NSSize(width: clampedWidth, height: clampedHeight)
     }
 
     static func resolvedPopoverContentSize(
         currentSize: NSSize,
-        forContentHeight height: CGFloat,
+        forContentSize size: NSSize,
         isPopoverShown: Bool
     ) -> NSSize? {
         guard !isPopoverShown else {
             return nil
         }
 
-        let nextSize = preferredPopoverContentSize(forContentHeight: height)
+        let nextSize = preferredPopoverContentSize(forContentSize: size)
         guard currentSize != nextSize else {
             return nil
         }

@@ -1,6 +1,9 @@
 import SwiftUI
 
 public struct MenuBarPanelView: View {
+    static let basePanelWidth: CGFloat = 360
+    static let quickSwitchOverlayWidth: CGFloat = 320
+    static let quickSwitchHorizontalSpacing: CGFloat = 12
     @ObservedObject private var viewModel: MenuBarViewModel
     @State private var isShowingAddAccountOptions = false
     @State private var isShowingQuickSwitchOverlay = false
@@ -13,12 +16,21 @@ public struct MenuBarPanelView: View {
         self.viewModel = viewModel
     }
 
+    public static func contentWidth(isShowingQuickSwitchOverlay: Bool) -> CGFloat {
+        guard isShowingQuickSwitchOverlay else {
+            return basePanelWidth
+        }
+
+        return basePanelWidth + quickSwitchHorizontalSpacing + quickSwitchOverlayWidth
+    }
+
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             panelContent
         }
-        .frame(width: 360)
+        .frame(width: Self.basePanelWidth, alignment: .leading)
         .coordinateSpace(name: Self.quickSwitchCoordinateSpaceName)
+        .frame(width: Self.contentWidth(isShowingQuickSwitchOverlay: isShowingQuickSwitchOverlay), alignment: .leading)
         .overlay(alignment: .topLeading) {
             if isShowingQuickSwitchOverlay, !quickSwitchAnchorFrame.isEmpty {
                 let origin = MenuBarQuickSwitchOverlayLayout.overlayOrigin(for: quickSwitchAnchorFrame)
@@ -377,7 +389,7 @@ private struct MenuBarActionRowButtonStyle: ButtonStyle {
 }
 
 enum MenuBarQuickSwitchOverlayLayout {
-    static let horizontalSpacing: CGFloat = 12
+    static let horizontalSpacing: CGFloat = MenuBarPanelView.quickSwitchHorizontalSpacing
 
     static func overlayOrigin(for anchorFrame: CGRect) -> CGPoint {
         CGPoint(

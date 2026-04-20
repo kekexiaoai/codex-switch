@@ -25,17 +25,29 @@ final class StatusItemControllerTests: XCTestCase {
         XCTAssertEqual(StatusItemController.resourceName(for: .highContrastLightBold), "StatusBarIconLightHighContrastBold")
     }
 
-    func testPopoverSizeClampsToMinimumAndMaximumHeight() {
+    func testPopoverSizeClampsToMinimumAndMaximumWidthAndHeight() {
         XCTAssertEqual(
-            StatusItemController.preferredPopoverContentSize(forContentHeight: 200),
+            StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 200, height: 200)),
             NSSize(width: 360, height: 380)
         )
         XCTAssertEqual(
-            StatusItemController.preferredPopoverContentSize(forContentHeight: 560),
+            StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 360, height: 560)),
             NSSize(width: 360, height: 560)
         )
         XCTAssertEqual(
-            StatusItemController.preferredPopoverContentSize(forContentHeight: 1200),
+            StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 1200, height: 1200)),
+            NSSize(width: 720, height: 720)
+        )
+        XCTAssertEqual(
+            StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 692, height: 560)),
+            NSSize(width: 692, height: 560)
+        )
+        XCTAssertEqual(
+            StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 900, height: 560)),
+            NSSize(width: 720, height: 560)
+        )
+        XCTAssertEqual(
+            StatusItemController.preferredPopoverContentSize(forContentSize: NSSize(width: 360, height: 1200)),
             NSSize(width: 360, height: 720)
         )
     }
@@ -48,10 +60,10 @@ final class StatusItemControllerTests: XCTestCase {
             ]
         )
         let viewModel = MenuBarViewModel(service: service)
-        var reportedHeights: [CGFloat] = []
+        var reportedSizes: [NSSize] = []
         let hostingController = MenuBarHostingController(
             rootView: MenuBarShellView(viewModel: viewModel),
-            onHeightChange: { reportedHeights.append($0) }
+            onSizeChange: { reportedSizes.append($0) }
         )
 
         _ = hostingController.view
@@ -66,16 +78,16 @@ final class StatusItemControllerTests: XCTestCase {
         await Task.yield()
         hostingController.scheduleHeightRefresh()
         await Task.yield()
-        let expandedHeight = reportedHeights.last ?? 0
+        let expandedSize = reportedSizes.last ?? .zero
 
         await viewModel.refresh()
         await Task.yield()
         hostingController.scheduleHeightRefresh()
         await Task.yield()
-        let shrunkenHeight = reportedHeights.last ?? 0
+        let shrunkenSize = reportedSizes.last ?? .zero
 
-        XCTAssertGreaterThan(expandedHeight, 0)
-        XCTAssertEqual(shrunkenHeight, expandedHeight, accuracy: 1)
+        XCTAssertGreaterThan(expandedSize.height, 0)
+        XCTAssertEqual(shrunkenSize.height, expandedSize.height, accuracy: 1)
     }
 
     func testPopoverPresenterActivatesAppBeforeShowingPopover() {
@@ -101,7 +113,7 @@ final class StatusItemControllerTests: XCTestCase {
         XCTAssertNil(
             StatusItemController.resolvedPopoverContentSize(
                 currentSize: currentSize,
-                forContentHeight: 720,
+                forContentSize: NSSize(width: 692, height: 720),
                 isPopoverShown: true
             )
         )
@@ -113,10 +125,10 @@ final class StatusItemControllerTests: XCTestCase {
         XCTAssertEqual(
             StatusItemController.resolvedPopoverContentSize(
                 currentSize: currentSize,
-                forContentHeight: 560,
+                forContentSize: NSSize(width: 692, height: 560),
                 isPopoverShown: false
             ),
-            NSSize(width: StatusItemController.popoverWidth, height: 560)
+            NSSize(width: 692, height: 560)
         )
     }
 

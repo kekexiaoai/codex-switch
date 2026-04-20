@@ -4,6 +4,11 @@ import XCTest
 
 @MainActor
 final class MenuBarPanelViewTests: XCTestCase {
+    func testPanelWidthExpandsWhenQuickSwitchOverlayIsVisible() {
+        XCTAssertEqual(MenuBarPanelView.contentWidth(isShowingQuickSwitchOverlay: false), 360)
+        XCTAssertEqual(MenuBarPanelView.contentWidth(isShowingQuickSwitchOverlay: true), 692)
+    }
+
     func testQuickSwitchOverlayOriginAnchorsToRightOfTriggerRow() {
         let anchorFrame = CGRect(x: 6, y: 184, width: 328, height: 28)
 
