@@ -7,3 +7,4 @@
 ## Notes
 
 - Swift 代码在此阶段之后再考虑最终清理。
+- README 已切换到 Rust + Tauri 主线，设置页也已接入真实 autostart 插件。

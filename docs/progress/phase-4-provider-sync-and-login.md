@@ -9,3 +9,4 @@
 
 - 该阶段对 `.codex` 兼容性要求最高。
 - 当前已完成同步、切换、备份创建、恢复、清理与登录后自动导入。
+- 浏览器登录已切换为本地 callback server + PKCE 授权 URL + token exchange + `auth.json` 写回的桌面 broker。

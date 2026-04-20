@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   events,
   getAppSnapshot,
+  getAutostartEnabled,
   importCurrentAccount,
   onEvent,
   openView,
@@ -11,6 +12,7 @@ import {
   restoreProviderBackup,
   runProviderSync,
   saveSettings,
+  setAutostartEnabled,
   showMainWindow,
   startBrowserLogin,
   switchAccount,
@@ -58,7 +60,11 @@ export function App() {
   const isTray = search.get("panel") === "tray";
 
   const refreshAll = async () => {
-    const next = await getAppSnapshot();
+    const [next, autostartEnabled] = await Promise.all([
+      getAppSnapshot(),
+      getAutostartEnabled().catch(() => false),
+    ]);
+    next.settings.launchAtLogin = autostartEnabled;
     setSnapshot(next);
     setTargetProvider(next.providerStatus.currentProvider || "openai");
     setSelectedBackupId(next.providerStatus.backups[0]?.id ?? null);
@@ -196,7 +202,14 @@ export function App() {
             <SettingsView
               settings={snapshot.settings}
               onChange={(settings) => {
-                void runAction("正在保存设置…", () => saveSettings(settings), "设置已保存。");
+                void runAction(
+                  "正在保存设置…",
+                  () =>
+                    setAutostartEnabled(settings.launchAtLogin).then(() =>
+                      saveSettings(settings),
+                    ),
+                  settings.launchAtLogin ? "已启用开机启动。" : "已关闭开机启动。",
+                );
               }}
             />
           ) : null}

@@ -17,6 +17,8 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager, WebviewUrl, WebviewWindowBuilder,
 };
+#[cfg(desktop)]
+use tauri_plugin_autostart::MacosLauncher;
 
 pub use state::AppState;
 
@@ -45,6 +47,11 @@ pub fn run() {
             commands::diagnostics_recent
         ])
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle().plugin(tauri_plugin_autostart::init(
+                MacosLauncher::LaunchAgent,
+                None::<Vec<&str>>,
+            ))?;
             create_tray_panel_window(app)?;
             let open_main = MenuItem::with_id(app, "open-main", "打开主窗口", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;

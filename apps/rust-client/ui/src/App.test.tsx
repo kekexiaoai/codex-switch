@@ -22,11 +22,13 @@ vi.mock("@/lib/tauri", () => ({
     },
   }),
   importCurrentAccount: vi.fn(),
+  getAutostartEnabled: vi.fn().mockResolvedValue(false),
   switchAccount: vi.fn(),
   refreshUsage: vi.fn(),
   runProviderSync: vi.fn(),
   switchProvider: vi.fn(),
   saveSettings: vi.fn(),
+  setAutostartEnabled: vi.fn(),
   showMainWindow: vi.fn(),
   startBrowserLogin: vi.fn(),
   events: {

@@ -1,5 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import {
+  disable as disableAutostart,
+  enable as enableAutostart,
+  isEnabled as isAutostartEnabled,
+} from "@tauri-apps/plugin-autostart";
 
 export type UsageSourceMode = "automatic" | "localOnly";
 
@@ -112,6 +117,18 @@ export function openView(view: "accounts" | "usage" | "provider-sync" | "diagnos
 
 export function quitApp() {
   return invoke("app_quit");
+}
+
+export function getAutostartEnabled() {
+  return isAutostartEnabled();
+}
+
+export async function setAutostartEnabled(enabled: boolean) {
+  if (enabled) {
+    await enableAutostart();
+    return;
+  }
+  await disableAutostart();
 }
 
 export function importCurrentAccount() {
