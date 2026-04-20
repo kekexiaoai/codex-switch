@@ -25,6 +25,10 @@ public struct AccountManagementView: View {
         viewModel.addAccountActions.map(\.title)
     }
 
+    public var cancelAddAccountButtonLabel: String {
+        MenuBarStrings.text(.cancelLogin)
+    }
+
     public var reorderInstructionText: String {
         viewModel.isReordering ? "正在保存最新排序..." : "拖动卡片即可调整顺序。"
     }
@@ -177,9 +181,7 @@ public struct AccountManagementView: View {
                 Menu {
                     ForEach(viewModel.addAccountActions) { action in
                         Button(action.title, systemImage: action.systemImageName) {
-                            Task {
-                                await viewModel.performAddAccountAction(action)
-                            }
+                            viewModel.startAddAccountAction(action)
                         }
                     }
                 } label: {
@@ -227,11 +229,28 @@ public struct AccountManagementView: View {
     @ViewBuilder
     private var feedbackBanner: some View {
         if viewModel.isPerformingAddAccountAction, let progressText = viewModel.addAccountProgressText {
-            HStack(spacing: 10) {
-                ProgressView()
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(progressText)
+                        .font(.subheadline.weight(.medium))
+                }
+
+                if let progressMessage = viewModel.addAccountProgressMessage, !progressMessage.isEmpty {
+                    Text(progressMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if viewModel.showsCancelAddAccountAction {
+                    Button(cancelAddAccountButtonLabel) {
+                        viewModel.cancelAddAccountAction()
+                    }
+                    .buttonStyle(.borderedProminent)
                     .controlSize(.small)
-                Text(progressText)
-                    .font(.subheadline.weight(.medium))
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)

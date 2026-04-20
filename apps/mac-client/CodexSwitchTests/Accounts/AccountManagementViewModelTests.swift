@@ -3,6 +3,31 @@ import XCTest
 
 @MainActor
 final class AccountManagementViewModelTests: XCTestCase {
+    func testStartBrowserLoginActionCanBeCancelled() async throws {
+        let service = InMemoryAccountManagementService(
+            accounts: [
+                makeAccount(id: "acct-1", order: 0, tier: .team),
+            ],
+            blockingActions: [.loginInBrowser]
+        )
+        let viewModel = AccountManagementViewModel(service: service)
+
+        viewModel.startAddAccountAction(.loginInBrowser)
+        try await waitForCondition { await service.invocationCount(for: .loginInBrowser) == 1 }
+
+        XCTAssertTrue(viewModel.isPerformingAddAccountAction)
+        XCTAssertEqual(viewModel.addAccountProgressText, MenuBarStrings.text(.browserLoginInProgressTitle))
+        XCTAssertTrue(viewModel.showsCancelAddAccountAction)
+
+        viewModel.cancelAddAccountAction()
+        try await waitForCondition { await service.didObserveCancellation(for: .loginInBrowser) }
+
+        XCTAssertFalse(viewModel.isPerformingAddAccountAction)
+        XCTAssertFalse(viewModel.showsCancelAddAccountAction)
+        XCTAssertNil(viewModel.addAccountProgressText)
+        XCTAssertNil(viewModel.lastErrorMessage)
+    }
+
     func testPerformAddAccountActionReloadsRowsAfterImportCurrentAccount() async throws {
         let service = InMemoryAccountManagementService(
             accounts: [
@@ -182,6 +207,9 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
     private var emailVisibilityEnabled: Bool
     private let importedAccountsByAction: [AccountManagementAddAction: Account]
     private let addAccountErrorsByAction: [AccountManagementAddAction: Error]
+    private let blockingActions: Set<AccountManagementAddAction>
+    private var actionInvocationCounts: [AccountManagementAddAction: Int] = [:]
+    private var cancellationObservations: Set<AccountManagementAddAction> = []
 
     private(set) var savedOrderHistory: [[String]] = []
     private(set) var performedAddActions: [AccountManagementAddAction] = []
@@ -193,7 +221,8 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
         saveError: Error? = nil,
         emailVisibilityEnabled: Bool = false,
         importedAccountsByAction: [AccountManagementAddAction: Account] = [:],
-        addAccountErrorsByAction: [AccountManagementAddAction: Error] = [:]
+        addAccountErrorsByAction: [AccountManagementAddAction: Error] = [:],
+        blockingActions: Set<AccountManagementAddAction> = []
     ) {
         self.accounts = accounts
         self.activeAccountID = activeAccountID
@@ -202,6 +231,7 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
         self.emailVisibilityEnabled = emailVisibilityEnabled
         self.importedAccountsByAction = importedAccountsByAction
         self.addAccountErrorsByAction = addAccountErrorsByAction
+        self.blockingActions = blockingActions
     }
 
     func loadAccounts() async throws -> [Account] {
@@ -251,6 +281,15 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
 
     func performAddAccountAction(_ action: AccountManagementAddAction) async throws -> Account? {
         performedAddActions.append(action)
+        actionInvocationCounts[action, default: 0] += 1
+
+        if blockingActions.contains(action) {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 10_000_000)
+            }
+            cancellationObservations.insert(action)
+            throw CancellationError()
+        }
 
         if let error = addAccountErrorsByAction[action] {
             throw error
@@ -263,6 +302,14 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
         accounts.append(importedAccount)
         activeAccountID = importedAccount.id
         return importedAccount
+    }
+
+    func invocationCount(for action: AccountManagementAddAction) -> Int {
+        actionInvocationCounts[action, default: 0]
+    }
+
+    func didObserveCancellation(for action: AccountManagementAddAction) -> Bool {
+        cancellationObservations.contains(action)
     }
 }
 
@@ -279,5 +326,22 @@ private final class InMemoryDiagnosticsLogger: CodexDiagnosticsLogging {
 
     func log(_ message: String) {
         entries.append(message)
+    }
+}
+
+private extension AccountManagementViewModelTests {
+    func waitForCondition(
+        file: StaticString = #filePath,
+        line: UInt = #line,
+        _ condition: @escaping @Sendable () async -> Bool
+    ) async throws {
+        for _ in 0..<200 {
+            if await condition() {
+                return
+            }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTFail("Timed out waiting for condition", file: file, line: line)
     }
 }

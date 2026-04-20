@@ -54,6 +54,21 @@ public enum AccountManagementAddAction: CaseIterable, Equatable, Identifiable {
             return MenuBarStrings.text(.browserLoginInProgressTitle)
         }
     }
+
+    public var progressMessage: String? {
+        switch self {
+        case .importCurrentAccount:
+            return MenuBarStrings.text(.importingCurrentAccountMessage)
+        case .importBackupAuth:
+            return nil
+        case .loginInBrowser:
+            return MenuBarStrings.text(.browserLoginInProgressMessage)
+        }
+    }
+
+    public var showsCancelButton: Bool {
+        self == .loginInBrowser
+    }
 }
 
 @MainActor
@@ -64,10 +79,14 @@ public final class AccountManagementViewModel: ObservableObject {
     @Published public private(set) var showEmails = false
     @Published public private(set) var isPerformingAddAccountAction = false
     @Published public private(set) var addAccountProgressText: String?
+    @Published public private(set) var addAccountProgressMessage: String?
 
     private let service: any AccountManagementServicing
     private let logger: any CodexDiagnosticsLogging
     private let timeFormatter = CodexUserFacingTimeFormatter()
+    private var addAccountTask: Task<Void, Never>?
+    private var activeAddAccountOperationID: UUID?
+    private var activeAddAccountAction: AccountManagementAddAction?
 
     public static let preview = AccountManagementViewModel(service: PreviewAccountManagementService())
 
@@ -81,6 +100,10 @@ public final class AccountManagementViewModel: ObservableObject {
 
     public var addAccountActions: [AccountManagementAddAction] {
         AccountManagementAddAction.allCases
+    }
+
+    public var showsCancelAddAccountAction: Bool {
+        activeAddAccountAction?.showsCancelButton == true
     }
 
     public func load() async {
@@ -125,28 +148,40 @@ public final class AccountManagementViewModel: ObservableObject {
         await load()
     }
 
-    public func performAddAccountAction(_ action: AccountManagementAddAction) async {
-        guard !isPerformingAddAccountAction else {
+    public func startAddAccountAction(_ action: AccountManagementAddAction) {
+        guard addAccountTask == nil else {
             return
         }
 
+        let operationID = UUID()
+        activeAddAccountOperationID = operationID
+        activeAddAccountAction = action
         isPerformingAddAccountAction = true
         addAccountProgressText = action.progressText
+        addAccountProgressMessage = action.progressMessage
         lastErrorMessage = nil
 
-        defer {
-            isPerformingAddAccountAction = false
-            addAccountProgressText = nil
+        addAccountTask = Task { [weak self] in
+            await self?.performAddAccountAction(action, operationID: operationID)
+        }
+    }
+
+    public func cancelAddAccountAction() {
+        guard addAccountTask != nil else {
+            return
         }
 
-        do {
-            let importedAccount = try await service.performAddAccountAction(action)
-            if importedAccount != nil {
-                await load()
-            }
-        } catch {
-            lastErrorMessage = addAccountErrorMessage(for: action, error: error)
-        }
+        addAccountTask?.cancel()
+        addAccountTask = nil
+        activeAddAccountOperationID = nil
+        activeAddAccountAction = nil
+        isPerformingAddAccountAction = false
+        addAccountProgressText = nil
+        addAccountProgressMessage = nil
+    }
+
+    public func performAddAccountAction(_ action: AccountManagementAddAction) async {
+        await performAddAccountAction(action, operationID: nil)
     }
 
     public func moveUp(id: String) async {
@@ -326,6 +361,61 @@ public final class AccountManagementViewModel: ObservableObject {
                 return MenuBarStrings.text(.browserLoginGenericMessage)
             }
         }
+    }
+
+    private func performAddAccountAction(_ action: AccountManagementAddAction, operationID: UUID?) async {
+        if operationID == nil {
+            guard !isPerformingAddAccountAction else {
+                return
+            }
+
+            activeAddAccountAction = action
+            isPerformingAddAccountAction = true
+            addAccountProgressText = action.progressText
+            addAccountProgressMessage = action.progressMessage
+            lastErrorMessage = nil
+        }
+
+        defer {
+            let isCurrentOperation = isCurrentAddAccountOperation(operationID)
+
+            if isCurrentOperation {
+                addAccountTask = nil
+                activeAddAccountOperationID = nil
+                activeAddAccountAction = nil
+            }
+
+            if operationID == nil || isCurrentOperation {
+                isPerformingAddAccountAction = false
+                addAccountProgressText = nil
+                addAccountProgressMessage = nil
+            }
+        }
+
+        do {
+            let importedAccount = try await service.performAddAccountAction(action)
+            guard !Task.isCancelled else {
+                return
+            }
+            if importedAccount != nil {
+                await load()
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else {
+                return
+            }
+            lastErrorMessage = addAccountErrorMessage(for: action, error: error)
+        }
+    }
+
+    private func isCurrentAddAccountOperation(_ operationID: UUID?) -> Bool {
+        guard let operationID else {
+            return true
+        }
+
+        return activeAddAccountOperationID == operationID
     }
 }
 
