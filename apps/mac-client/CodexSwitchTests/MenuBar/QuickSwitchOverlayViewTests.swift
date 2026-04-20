@@ -10,8 +10,8 @@ final class QuickSwitchOverlayViewTests: XCTestCase {
                     id: "acct-1",
                     emailText: "a@example.com",
                     tierBadgeText: "TEAM",
-                    fiveHourLabel: "5H 42%",
-                    weeklyLabel: "7D 18%",
+                    fiveHourLabel: "5h 42%",
+                    weeklyLabel: "7d 18%",
                     isActive: true
                 ),
             ],
@@ -28,8 +28,8 @@ final class QuickSwitchOverlayViewTests: XCTestCase {
                 id: "acct-1",
                 emailText: "very-long-account-email-address-for-testing@example.com",
                 tierBadgeText: "TEAM",
-                fiveHourLabel: "5H 49%",
-                weeklyLabel: "7D 38%",
+                fiveHourLabel: "5h 49%",
+                weeklyLabel: "7d 38%",
                 isActive: false
             ),
         ]

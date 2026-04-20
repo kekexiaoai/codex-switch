@@ -8,8 +8,8 @@ final class CompactAccountRowViewTests: XCTestCase {
             id: "acct-1",
             emailText: "a@example.com",
             tierBadgeText: "TEAM",
-            fiveHourLabel: "5H 42%",
-            weeklyLabel: "7D 18%",
+            fiveHourLabel: "5h 42%",
+            weeklyLabel: "7d 18%",
             isActive: true
         )
         let view = CompactAccountRowView(row: row)

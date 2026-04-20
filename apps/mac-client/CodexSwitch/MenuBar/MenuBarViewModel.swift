@@ -126,8 +126,8 @@ public final class MenuBarViewModel: ObservableObject {
                 id: account.id,
                 emailText: account.emailMask,
                 tierBadgeText: account.tierLabel.uppercased(),
-                fiveHourLabel: "5H \(account.fiveHourPercent)%",
-                weeklyLabel: "7D \(account.weeklyPercent)%",
+                fiveHourLabel: "5h \(account.fiveHourPercent)%",
+                weeklyLabel: "7d \(account.weeklyPercent)%",
                 isActive: account.isActive
             )
         }

@@ -41,8 +41,8 @@ final class MenuBarViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.quickSwitchRows.map(\.id), ["acct-3", "acct-1", "acct-2"])
         XCTAssertEqual(viewModel.quickSwitchRows.first?.tierBadgeText, "TEAM")
-        XCTAssertEqual(viewModel.quickSwitchRows.first?.fiveHourLabel, "5H 42%")
-        XCTAssertEqual(viewModel.quickSwitchRows.first?.weeklyLabel, "7D 18%")
+        XCTAssertEqual(viewModel.quickSwitchRows.first?.fiveHourLabel, "5h 42%")
+        XCTAssertEqual(viewModel.quickSwitchRows.first?.weeklyLabel, "7d 18%")
         XCTAssertEqual(viewModel.quickSwitchRows.first?.isActive, true)
     }
 
