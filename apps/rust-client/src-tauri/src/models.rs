@@ -105,6 +105,15 @@ pub struct ProviderDistribution {
     pub archived_count: i32,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupEntry {
+    pub id: String,
+    pub target_provider: String,
+    pub total_size: u64,
+    pub created_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderSyncStatus {
@@ -114,6 +123,7 @@ pub struct ProviderSyncStatus {
     pub sqlite_distribution: Vec<ProviderDistribution>,
     pub backup_count: i32,
     pub backup_total_size: u64,
+    pub backups: Vec<BackupEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

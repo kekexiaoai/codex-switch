@@ -1,6 +1,6 @@
 use crate::models::{
-    AppSnapshot, DiagnosticsEvent, LoginJobState, ProviderSyncStatus, SettingsDto, SyncResult,
-    UsageSnapshot,
+    AppSnapshot, BackupEntry, DiagnosticsEvent, LoginJobState, ProviderSyncStatus, SettingsDto,
+    SyncResult, UsageSnapshot,
 };
 use crate::state::{
     AppState, EVENT_ACCOUNTS_CHANGED, EVENT_DIAGNOSTICS_APPENDED, EVENT_SETTINGS_CHANGED,
@@ -16,6 +16,22 @@ pub fn app_show_main_window(app: AppHandle) -> CmdResult<()> {
         .get_webview_window("main")
         .ok_or_else(|| "主窗口不存在".to_string())?;
     show_window(&window)
+}
+
+#[tauri::command]
+pub fn app_open_view(app: AppHandle, view: String) -> CmdResult<()> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "主窗口不存在".to_string())?;
+    show_window(&window)?;
+    let _ = app.emit("shell://navigate", view);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn app_quit(app: AppHandle) -> CmdResult<()> {
+    app.exit(0);
+    Ok(())
 }
 
 #[tauri::command]
@@ -142,6 +158,42 @@ pub fn provider_switch(
         .map_err(|e| e.to_string())?;
     let _ = app.emit(EVENT_DIAGNOSTICS_APPENDED, true);
     Ok(result)
+}
+
+#[tauri::command]
+pub fn provider_sync_backups(state: State<'_, AppState>) -> CmdResult<Vec<BackupEntry>> {
+    state
+        .provider_sync
+        .list_backups()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn provider_sync_restore(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    backup_id: String,
+) -> CmdResult<()> {
+    state
+        .provider_sync
+        .restore_backup(&backup_id)
+        .map_err(|e| e.to_string())?;
+    let _ = app.emit(EVENT_DIAGNOSTICS_APPENDED, true);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn provider_sync_prune(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    keep: Option<usize>,
+) -> CmdResult<()> {
+    state
+        .provider_sync
+        .prune_backups(keep.unwrap_or(5))
+        .map_err(|e| e.to_string())?;
+    let _ = app.emit(EVENT_DIAGNOSTICS_APPENDED, true);
+    Ok(())
 }
 
 #[tauri::command]

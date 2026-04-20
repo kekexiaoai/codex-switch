@@ -25,6 +25,8 @@ pub fn run() {
         .manage(AppState::new())
         .invoke_handler(tauri::generate_handler![
             commands::app_show_main_window,
+            commands::app_open_view,
+            commands::app_quit,
             commands::app_snapshot,
             commands::accounts_list,
             commands::accounts_import_current,
@@ -35,6 +37,9 @@ pub fn run() {
             commands::provider_sync_status,
             commands::provider_sync_run,
             commands::provider_switch,
+            commands::provider_sync_backups,
+            commands::provider_sync_restore,
+            commands::provider_sync_prune,
             commands::settings_get,
             commands::settings_update,
             commands::diagnostics_recent

@@ -8,12 +8,16 @@ export function TrayView({
   onSwitch,
   onRefresh,
   onOpenMain,
+  onOpenSettings,
+  onQuit,
 }: {
   accounts: AccountListItem[];
   usage?: UsageSnapshot | null;
   onSwitch: (id: string) => void;
   onRefresh: () => void;
   onOpenMain: () => void;
+  onOpenSettings: () => void;
+  onQuit: () => void;
 }) {
   const active = accounts.find((account) => account.isActive) ?? accounts[0];
 
@@ -51,6 +55,12 @@ export function TrayView({
             刷新
           </Button>
           <Button onClick={onOpenMain}>打开主窗口</Button>
+          <Button variant="secondary" onClick={onOpenSettings}>
+            设置
+          </Button>
+          <Button variant="secondary" onClick={onQuit}>
+            退出
+          </Button>
         </div>
       </div>
     </div>

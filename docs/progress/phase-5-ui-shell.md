@@ -2,10 +2,10 @@
 
 - [x] 实现 Accounts / Usage / Provider Sync / Diagnostics / Settings 页面
 - [x] 实现托盘快切与快速操作
-- [ ] 完成主窗口、托盘、对话框和提示的桌面化收口
-- [ ] 完成错误态、空态、任务反馈和 loading 体验
+- [x] 完成主窗口、托盘、对话框和提示的桌面化收口
+- [x] 完成错误态、空态、任务反馈和 loading 体验
 
 ## Notes
 
 - 禁止出现 SaaS dashboard 或 marketing hero 风格。
-- 当前已完成桌面化基础壳层和页面骨架，下一步补全更细的反馈与状态体验。
+- 当前已完成桌面化壳层、托盘导航、反馈提示与备份管理面板。

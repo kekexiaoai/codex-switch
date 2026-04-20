@@ -34,6 +34,13 @@ export interface ProviderDistribution {
   archivedCount: number;
 }
 
+export interface BackupEntry {
+  id: string;
+  targetProvider: string;
+  totalSize: number;
+  createdAt: string;
+}
+
 export interface ProviderSyncStatus {
   currentProvider: string;
   configuredProviders: string[];
@@ -41,6 +48,7 @@ export interface ProviderSyncStatus {
   sqliteDistribution: ProviderDistribution[];
   backupCount: number;
   backupTotalSize: number;
+  backups: BackupEntry[];
 }
 
 export interface SettingsDto {
@@ -83,6 +91,7 @@ export const events = {
   settingsChanged: "settings://changed",
   diagnosticsAppended: "diagnostics://appended",
   jobsChanged: "jobs://state-changed",
+  shellNavigate: "shell://navigate",
 } as const;
 
 export function onEvent<T>(event: string, handler: (payload: T) => void): Promise<UnlistenFn> {
@@ -95,6 +104,14 @@ export function getAppSnapshot() {
 
 export function showMainWindow() {
   return invoke("app_show_main_window");
+}
+
+export function openView(view: "accounts" | "usage" | "provider-sync" | "diagnostics" | "settings") {
+  return invoke("app_open_view", { view });
+}
+
+export function quitApp() {
+  return invoke("app_quit");
 }
 
 export function importCurrentAccount() {
@@ -123,6 +140,18 @@ export function runProviderSync(targetProvider?: string) {
 
 export function switchProvider(provider: string) {
   return invoke<SyncResult>("provider_switch", { provider });
+}
+
+export function loadProviderBackups() {
+  return invoke<BackupEntry[]>("provider_sync_backups");
+}
+
+export function restoreProviderBackup(backupId: string) {
+  return invoke("provider_sync_restore", { backupId });
+}
+
+export function pruneProviderBackups(keep = 5) {
+  return invoke("provider_sync_prune", { keep });
 }
 
 export function getSettings() {

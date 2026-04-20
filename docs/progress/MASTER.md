@@ -18,16 +18,16 @@
 - [x] Phase 1: 规格与计划落盘 (4/4 tasks) [details](./phase-1-spec-and-planning.md)
 - [x] Phase 2: 工程骨架 (3/3 tasks) [details](./phase-2-app-scaffold.md)
 - [x] Phase 3: 核心服务迁移 (5/5 tasks) [details](./phase-3-core-services.md)
-- [ ] Phase 4: Provider Sync 与桌面登录 (3/4 tasks) [details](./phase-4-provider-sync-and-login.md)
-- [ ] Phase 5: 主窗口与托盘 UI (2/4 tasks) [details](./phase-5-ui-shell.md)
+- [x] Phase 4: Provider Sync 与桌面登录 (4/4 tasks) [details](./phase-4-provider-sync-and-login.md)
+- [x] Phase 5: 主窗口与托盘 UI (4/4 tasks) [details](./phase-5-ui-shell.md)
 - [ ] Phase 6: 打包与验收 (0/3 tasks) [details](./phase-6-release-and-validation.md)
 
 ## Current Status
 
-- 当前正在执行：Phase 4 / 补齐 Provider Sync 回滚能力与桌面登录收口
+- 当前正在执行：Phase 6 / 打包、README 与更完整验收收口
 
 ## Next Steps
 
 1. 提交当前实现 commit
-2. 补齐 Provider Sync 回滚与更多备份操作
-3. 完成主窗口/托盘的反馈与桌面化收口
+2. 更新 README 与打包说明
+3. 继续补端到端验收和更细的桌面体验

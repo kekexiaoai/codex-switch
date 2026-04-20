@@ -1,12 +1,12 @@
 use crate::error::{AppError, AppResult};
-use crate::models::{ProviderDistribution, ProviderSyncStatus, SyncResult};
+use crate::models::{BackupEntry, ProviderDistribution, ProviderSyncStatus, SyncResult};
 use crate::paths::CodexPaths;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use rusqlite::Connection;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone)]
@@ -21,27 +21,33 @@ impl ProviderSyncService {
 
     pub fn load_status(&self) -> AppResult<ProviderSyncStatus> {
         let config_text = fs::read_to_string(self.paths.config_file()).unwrap_or_default();
+        let backups = self.list_backups()?;
         Ok(ProviderSyncStatus {
             current_provider: read_current_provider(&config_text).0,
             configured_providers: list_configured_provider_ids(&config_text),
             rollout_distribution: self.scan_rollout_distribution()?,
             sqlite_distribution: self.sqlite_distribution()?,
-            backup_count: count_dirs(self.paths.provider_sync_backups_dir())? as i32,
-            backup_total_size: dir_size(self.paths.provider_sync_backups_dir())?,
+            backup_count: backups.len() as i32,
+            backup_total_size: backups.iter().map(|entry| entry.total_size).sum(),
+            backups,
         })
     }
 
     pub fn sync(&self, target_provider: Option<String>) -> AppResult<SyncResult> {
         let status = self.load_status()?;
         let provider = target_provider.unwrap_or(status.current_provider);
-        let backup_dir = self.create_backup(&provider)?;
-        let changes = self.rewrite_rollouts(&provider)?;
-        let rows_changed = self.update_sqlite(&provider)?;
-        let _ = backup_dir;
+        let changes = self.collect_rollout_changes(&provider)?;
+        let backup_dir = self.create_backup(&provider, &changes)?;
+        let result = self.apply_sync(&provider, &changes);
+        if let Err(error) = result {
+            self.restore_backup_dir(&backup_dir)?;
+            return Err(error);
+        }
+        self.prune_backups(5)?;
         Ok(SyncResult {
             target_provider: provider,
-            files_changed: changes,
-            rows_changed,
+            files_changed: changes.len() as i32,
+            rows_changed: result?,
             config_updated: false,
         })
     }
@@ -49,20 +55,98 @@ impl ProviderSyncService {
     pub fn switch_provider(&self, provider: String) -> AppResult<SyncResult> {
         let config_path = self.paths.config_file();
         let config_text = fs::read_to_string(&config_path).unwrap_or_default();
-        let updated = set_root_provider(&config_text, &provider);
+        let changes = self.collect_rollout_changes(&provider)?;
+        let backup_dir = self.create_backup(&provider, &changes)?;
         if let Some(parent) = config_path.parent() {
             fs::create_dir_all(parent)?;
         }
-        fs::write(&config_path, updated)?;
-        let mut result = self.sync(Some(provider))?;
-        result.config_updated = true;
-        Ok(result)
+        fs::write(&config_path, set_root_provider(&config_text, &provider))?;
+        let result = self.apply_sync(&provider, &changes);
+        match result {
+            Ok(rows_changed) => {
+                self.prune_backups(5)?;
+                Ok(SyncResult {
+                    target_provider: provider,
+                    files_changed: changes.len() as i32,
+                    rows_changed,
+                    config_updated: true,
+                })
+            }
+            Err(error) => {
+                self.restore_backup_dir(&backup_dir)?;
+                Err(error)
+            }
+        }
     }
 
-    fn create_backup(&self, provider: &str) -> AppResult<PathBuf> {
+    pub fn list_backups(&self) -> AppResult<Vec<BackupEntry>> {
+        let root = self.paths.provider_sync_backups_dir();
+        if !root.exists() {
+            return Ok(vec![]);
+        }
+        let mut backups = vec![];
+        for entry in fs::read_dir(root)? {
+            let entry = entry?;
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let id = path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default()
+                .to_string();
+            let metadata_path = path.join("metadata.json");
+            let target_provider = if metadata_path.exists() {
+                fs::read_to_string(&metadata_path)
+                    .ok()
+                    .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+                    .and_then(|value| {
+                        value
+                            .get("targetProvider")
+                            .and_then(|value| value.as_str())
+                            .map(str::to_string)
+                    })
+                    .unwrap_or_else(|| "unknown".into())
+            } else {
+                "unknown".into()
+            };
+            let created_at = parse_backup_timestamp(&id).unwrap_or_else(Utc::now);
+            backups.push(BackupEntry {
+                id,
+                target_provider,
+                total_size: dir_size(path)?,
+                created_at,
+            });
+        }
+        backups.sort_by(|left, right| right.id.cmp(&left.id));
+        Ok(backups)
+    }
+
+    pub fn restore_backup(&self, backup_id: &str) -> AppResult<()> {
+        let dir = self.paths.provider_sync_backups_dir().join(backup_id);
+        if !dir.exists() {
+            return Err(AppError::NotFound(format!("provider backup {backup_id}")));
+        }
+        self.restore_backup_dir(&dir)
+    }
+
+    pub fn prune_backups(&self, keep: usize) -> AppResult<()> {
+        let backups = self.list_backups()?;
+        for backup in backups.into_iter().skip(keep) {
+            let dir = self.paths.provider_sync_backups_dir().join(backup.id);
+            if dir.exists() {
+                fs::remove_dir_all(dir)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn create_backup(&self, provider: &str, changes: &[RolloutChange]) -> AppResult<PathBuf> {
         let timestamp = Utc::now().format("%Y%m%dT%H%M%S").to_string();
         let dir = self.paths.provider_sync_backups_dir().join(timestamp);
         fs::create_dir_all(dir.join("db"))?;
+        fs::create_dir_all(dir.join("sessions"))?;
         if self.paths.config_file().exists() {
             fs::copy(self.paths.config_file(), dir.join("config.toml"))?;
         }
@@ -71,6 +155,17 @@ impl ProviderSyncService {
                 self.paths.sqlite_database(),
                 dir.join("db").join("state_5.sqlite"),
             )?;
+        }
+        for change in changes {
+            let relative = change
+                .path
+                .strip_prefix(self.paths.sessions_dir())
+                .unwrap_or(change.path.as_path());
+            let target = dir.join("sessions").join(relative);
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(target, &change.original)?;
         }
         fs::write(
             dir.join("metadata.json"),
@@ -134,8 +229,18 @@ impl ProviderSyncService {
         Ok(rows.filter_map(Result::ok).collect())
     }
 
-    fn rewrite_rollouts(&self, provider: &str) -> AppResult<i32> {
-        let mut changed = 0;
+    fn update_sqlite(&self, provider: &str) -> AppResult<i32> {
+        let path = self.paths.sqlite_database();
+        if !path.exists() {
+            return Ok(0);
+        }
+        let connection = Connection::open(path)?;
+        let changed = connection.execute("UPDATE threads SET model_provider = ?1", [provider])?;
+        Ok(changed as i32)
+    }
+
+    fn collect_rollout_changes(&self, provider: &str) -> AppResult<Vec<RolloutChange>> {
+        let mut changes = vec![];
         for entry in WalkDir::new(self.paths.sessions_dir())
             .into_iter()
             .filter_map(Result::ok)
@@ -169,21 +274,56 @@ impl ProviderSyncService {
                     rebuilt.push('\n');
                     rebuilt.push_str(line);
                 }
-                fs::write(entry.path(), rebuilt)?;
-                changed += 1;
+                changes.push(RolloutChange {
+                    path: entry.path().to_path_buf(),
+                    original: content,
+                    updated: rebuilt,
+                });
             }
         }
-        Ok(changed)
+        Ok(changes)
     }
 
-    fn update_sqlite(&self, provider: &str) -> AppResult<i32> {
-        let path = self.paths.sqlite_database();
-        if !path.exists() {
-            return Ok(0);
+    fn apply_sync(&self, provider: &str, changes: &[RolloutChange]) -> AppResult<i32> {
+        for change in changes {
+            fs::write(&change.path, &change.updated)?;
         }
-        let connection = Connection::open(path)?;
-        let changed = connection.execute("UPDATE threads SET model_provider = ?1", [provider])?;
-        Ok(changed as i32)
+        self.update_sqlite(provider)
+    }
+
+    fn restore_backup_dir(&self, dir: &Path) -> AppResult<()> {
+        let config = dir.join("config.toml");
+        if config.exists() {
+            if let Some(parent) = self.paths.config_file().parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(config, self.paths.config_file())?;
+        }
+
+        let sqlite = dir.join("db").join("state_5.sqlite");
+        if sqlite.exists() {
+            if let Some(parent) = self.paths.sqlite_database().parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(sqlite, self.paths.sqlite_database())?;
+        }
+
+        let sessions = dir.join("sessions");
+        if sessions.exists() {
+            for entry in WalkDir::new(&sessions)
+                .into_iter()
+                .filter_map(Result::ok)
+                .filter(|entry| entry.file_type().is_file())
+            {
+                let relative = entry.path().strip_prefix(&sessions).unwrap_or(entry.path());
+                let target = self.paths.sessions_dir().join(relative);
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::copy(entry.path(), target)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -237,16 +377,6 @@ pub fn set_root_provider(config_text: &str, provider: &str) -> String {
     lines.join("\n")
 }
 
-fn count_dirs(path: PathBuf) -> AppResult<usize> {
-    if !path.exists() {
-        return Ok(0);
-    }
-    Ok(fs::read_dir(path)?
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().is_dir())
-        .count())
-}
-
 fn dir_size(path: PathBuf) -> AppResult<u64> {
     if !path.exists() {
         return Ok(0);
@@ -265,9 +395,28 @@ fn dir_size(path: PathBuf) -> AppResult<u64> {
     Ok(size)
 }
 
+fn parse_backup_timestamp(raw: &str) -> Option<DateTime<Utc>> {
+    chrono::NaiveDateTime::parse_from_str(raw, "%Y%m%dT%H%M%S")
+        .ok()
+        .map(|time| DateTime::<Utc>::from_naive_utc_and_offset(time, Utc))
+}
+
+#[derive(Debug, Clone)]
+struct RolloutChange {
+    path: PathBuf,
+    original: String,
+    updated: String,
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{list_configured_provider_ids, read_current_provider, set_root_provider};
+    use super::{
+        list_configured_provider_ids, read_current_provider, set_root_provider, ProviderSyncService,
+    };
+    use crate::paths::CodexPaths;
+    use rusqlite::Connection;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn reads_and_updates_root_provider() {
@@ -281,5 +430,53 @@ mod tests {
             list_configured_provider_ids(config),
             vec!["custom".to_string(), "openai".to_string()]
         );
+    }
+
+    #[test]
+    fn sync_creates_backup_and_restore_brings_provider_back() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        let sessions_dir = base.join("sessions/2026/04/21");
+        fs::create_dir_all(&sessions_dir).unwrap();
+        fs::write(
+            base.join("config.toml"),
+            "model_provider = \"openai\"\n\n[model_providers.custom]\n",
+        )
+        .unwrap();
+        fs::write(
+            sessions_dir.join("rollout-1.jsonl"),
+            "{\"payload\":{\"model_provider\":\"openai\"}}\n{\"type\":\"noop\"}\n",
+        )
+        .unwrap();
+        let connection = Connection::open(base.join("state_5.sqlite")).unwrap();
+        connection
+            .execute("CREATE TABLE threads (model_provider TEXT)", [])
+            .unwrap();
+        connection
+            .execute("INSERT INTO threads (model_provider) VALUES ('openai')", [])
+            .unwrap();
+
+        let service = ProviderSyncService::new(CodexPaths::new(base.clone()));
+        let result = service.switch_provider("custom".into()).unwrap();
+        assert_eq!(result.files_changed, 1);
+        assert_eq!(
+            fs::read_to_string(base.join("config.toml")).unwrap(),
+            "model_provider = \"custom\"\n\n[model_providers.custom]"
+        );
+        assert!(fs::read_to_string(sessions_dir.join("rollout-1.jsonl"))
+            .unwrap()
+            .contains("\"model_provider\":\"custom\""));
+        let backups = service.list_backups().unwrap();
+        assert_eq!(backups.len(), 1);
+        service.restore_backup(&backups[0].id).unwrap();
+        assert!(fs::read_to_string(sessions_dir.join("rollout-1.jsonl"))
+            .unwrap()
+            .contains("\"model_provider\":\"openai\""));
+        let restored_provider: String = connection
+            .query_row("SELECT model_provider FROM threads LIMIT 1", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(restored_provider, "openai");
     }
 }

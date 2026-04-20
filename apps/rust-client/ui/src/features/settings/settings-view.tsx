@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { SettingsDto } from "@/lib/tauri";
 
@@ -19,6 +20,24 @@ export function SettingsView({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="rounded-xl border border-border bg-panelAlt px-4 py-3">
+            <div className="font-medium">Usage Source Mode</div>
+            <div className="mt-1 text-sm text-muted-foreground">自动模式优先远端 API，Local Only 只读取本地日志和缓存。</div>
+            <div className="mt-3 flex gap-2">
+              <Button
+                variant={settings.usageSourceMode === "automatic" ? "default" : "secondary"}
+                onClick={() => onChange({ ...settings, usageSourceMode: "automatic" })}
+              >
+                Automatic
+              </Button>
+              <Button
+                variant={settings.usageSourceMode === "localOnly" ? "default" : "secondary"}
+                onClick={() => onChange({ ...settings, usageSourceMode: "localOnly" })}
+              >
+                Local Only
+              </Button>
+            </div>
+          </div>
           <SettingRow
             title="启用 Usage 刷新"
             description="关闭后只显示缓存和静态状态。"

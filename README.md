@@ -1,42 +1,78 @@
 # Codex Switch
 
-Standalone macOS menu bar client for managing multiple Codex-style accounts, usage snapshots, and one-click switching.
+Codex Switch 是一个以桌面软件体验为目标的多账号 Codex 管理器，当前主线实现正在迁移到 `Rust + Tauri + React + shadcn/ui`。
 
 ## Current Status
 
-This repository is initialized with a planning-first scaffold. The first implementation milestone is a native macOS menu bar client with mock data, local persistence, and a clean path to wire up real account switching later.
+仓库已经完成第一轮 Tauri 重构骨架，当前可用内容包括：
+
+- `apps/rust-client/src-tauri/` 下的 Tauri 2 + Rust 后端
+- `apps/rust-client/ui/` 下的 React + TypeScript + Tailwind + shadcn/ui 前端
+- 主窗口 + 托盘面板双壳层
+- `.codex` 路径、auth 导入/归档/切换、JWT 解码、usage 刷新、diagnostics、settings、Provider Sync 基础闭环
+- OpenSpec、分析文档、实施计划与进度跟踪
+
+Swift 版本仍保留在 `apps/mac-client/`，当前仅作为行为基线和迁移参考，不再是主实施方向。
 
 ## Product Direction
 
-- Native macOS app built with SwiftUI plus an AppKit menu bar host
-- Menu bar first experience, no traditional main window required for v1
-- Local account storage using Keychain plus Application Support
-- Usage refresh and active-account switching implemented by our own client logic
-- `codex-auth` is reference material only, not a runtime dependency
-- macOS 12 compatibility first via `NSStatusItem + NSPopover`, with an optional `MenuBarExtra` implementation for macOS 13+
+- 主窗口为主入口，托盘为快速入口
+- UI 去 Web 化，强调桌面软件质感，而不是网页式 SaaS 后台
+- 保持 `.codex` 数据兼容：
+  - `~/.codex/auth.json`
+  - `~/.codex/accounts/*.json`
+  - `~/.codex/accounts/usage-cache.json`
+  - `~/.codex/sessions/**/rollout-*.jsonl`
+  - `~/.codex/config.toml`
+  - `~/.codex/state_5.sqlite`
+  - `~/.codex/codex-switch/*.log`
 
-## Planned Repository Layout
+## Repository Layout
 
-- `apps/mac-client/`: macOS app project and source files
-- `docs/plans/`: implementation plans and design notes
-- `docs/usage-refresh.md`: current usage refresh triggers, source modes, and diagnostics events
-- `tests/`: shared testing notes and future cross-target helpers
+- `apps/rust-client/`: Tauri 桌面端主实现
+- `apps/mac-client/`: 旧 Swift/macOS 基线实现
+- `docs/analysis/`: 重构分析文档
+- `docs/plan/`: 分阶段实施计划
+- `docs/progress/`: 持续进度追踪
+- `openspec/changes/refactor-desktop-to-tauri-rust/`: 当前重构规格
+- `tests/`: 仓库级辅助测试
 
-## Near-Term Milestones
+## Local Development
 
-1. Generate the macOS app project and a working macOS 12-compatible menu bar shell.
-2. Add mock account data, progress cards, and account-switch interactions.
-3. Introduce persistence, refresh orchestration, and secure credential storage.
-4. Replace mock data with real account/session integration.
+### Frontend
 
-## Tooling
+```bash
+cd apps/rust-client/ui
+npm install
+npm test
+npm run build
+```
 
-- Xcode 14+
-- Swift 5.7+
-- macOS 12+ supported
-- macOS 13+ may use `MenuBarExtra` behind a runtime availability check
+### Rust / Tauri Backend
 
-## Local Packaging
+```bash
+cd apps/rust-client/src-tauri
+cargo fmt --check
+cargo test
+```
 
-- Build a double-clickable app bundle: `./scripts/package-macos-app.sh`
-- Output bundle: `dist/Codex Switch.app`
+### Tauri App
+
+正式联调时由 Tauri 使用：
+
+- `apps/rust-client/ui` 作为前端工作区
+- `apps/rust-client/src-tauri` 作为桌面运行时
+
+## Verification
+
+当前已验证：
+
+- `openspec validate refactor-desktop-to-tauri-rust --strict`
+- `npm test`
+- `npm run build`
+- `cargo test`
+
+## Migration Notes
+
+- 当前实现已经覆盖主要骨架和核心服务，但仍在继续收口高级能力与完整验收。
+- Swift 代码暂不删除，等 Tauri 版本进一步达到更高对等度后再进行最终清理。

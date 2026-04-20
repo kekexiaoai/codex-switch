@@ -18,6 +18,7 @@ vi.mock("@/lib/tauri", () => ({
       sqliteDistribution: [],
       backupCount: 0,
       backupTotalSize: 0,
+      backups: [],
     },
   }),
   importCurrentAccount: vi.fn(),

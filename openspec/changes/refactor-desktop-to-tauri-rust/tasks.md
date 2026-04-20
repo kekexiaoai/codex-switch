@@ -20,7 +20,7 @@
 
 ## 4. Advanced Feature Migration
 
-- [ ] 4.1 Implement provider sync with config parsing, rollout rewriting, SQLite updates, backup, and rollback
+- [x] 4.1 Implement provider sync with config parsing, rollout rewriting, SQLite updates, backup, and rollback
 - [x] 4.2 Implement desktop-owned browser login coordination with completion tracking
 - [x] 4.3 Integrate provider sync and browser login into the desktop UI flow
 
