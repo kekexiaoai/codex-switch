@@ -10,6 +10,7 @@ enum SettingsStrings {
         case usage
         case providerManagement
         case advanced
+        case enableAccountReorderDiagnostics
         case launchAtLogin
         case menuBarIcon
         case showFullAccountEmails
@@ -169,6 +170,7 @@ enum SettingsStrings {
         case .usage: return "Usage"
         case .providerManagement: return "Provider Management"
         case .advanced: return "Advanced"
+        case .enableAccountReorderDiagnostics: return "Enable Account Reorder Debug Log"
         case .launchAtLogin: return "Launch at Login"
         case .menuBarIcon: return "Menu Bar Icon"
         case .showFullAccountEmails: return "Show full account emails"
@@ -239,6 +241,7 @@ enum SettingsStrings {
         case .usage: return "用量"
         case .providerManagement: return "Provider 管理"
         case .advanced: return "高级"
+        case .enableAccountReorderDiagnostics: return "启用账号排序调试日志"
         case .launchAtLogin: return "开机启动"
         case .menuBarIcon: return "菜单栏图标"
         case .showFullAccountEmails: return "显示完整账号邮箱"
@@ -392,7 +395,7 @@ public struct SettingsView: View {
     }
 
     public var advancedControlLabels: [String] {
-        SettingsUtilityAction.allCases.map { action in
+        [SettingsStrings.text(.enableAccountReorderDiagnostics, preferredLanguages: preferredLanguages)] + SettingsUtilityAction.allCases.map { action in
             label(for: action)
         }
     }
@@ -535,6 +538,16 @@ public struct SettingsView: View {
                 }
 
                 settingsSection(SettingsStrings.text(.advanced, preferredLanguages: preferredLanguages)) {
+                    Toggle(
+                        SettingsStrings.text(.enableAccountReorderDiagnostics, preferredLanguages: preferredLanguages),
+                        isOn: Binding(
+                            get: { viewModel.accountReorderDiagnosticsEnabled },
+                            set: { viewModel.setAccountReorderDiagnosticsEnabled($0) }
+                        )
+                    )
+
+                    Divider()
+
                     utilityButton(for: .openCodexDirectory)
                     utilityButton(for: .openDiagnosticsLog)
                     utilityButton(for: .exportDiagnosticsSummary)

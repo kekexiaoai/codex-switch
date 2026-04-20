@@ -113,6 +113,27 @@ public final class CodexDiagnosticsFileLogger: CodexDiagnosticsLogging {
 
 }
 
+public struct ConditionalCodexDiagnosticsLogger: CodexDiagnosticsLogging {
+    private let base: any CodexDiagnosticsLogging
+    private let isEnabled: () -> Bool
+
+    public init(
+        base: any CodexDiagnosticsLogging,
+        isEnabled: @escaping () -> Bool
+    ) {
+        self.base = base
+        self.isEnabled = isEnabled
+    }
+
+    public func log(_ message: String) {
+        guard isEnabled() else {
+            return
+        }
+
+        base.log(message)
+    }
+}
+
 public struct CodexDiagnosticsLogReader {
     private let logFileURL: URL
     private let fileManager: FileManager

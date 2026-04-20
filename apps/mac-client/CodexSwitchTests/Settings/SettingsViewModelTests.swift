@@ -29,6 +29,20 @@ final class SettingsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.usageSourceMode, .localOnly)
     }
 
+    func testSettingsViewModelPersistsAccountReorderDiagnosticsPreference() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.AccountReorderDiagnostics")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.AccountReorderDiagnostics")
+
+        let viewModel = SettingsViewModel(defaults: defaults)
+
+        XCTAssertFalse(viewModel.accountReorderDiagnosticsEnabled)
+
+        viewModel.setAccountReorderDiagnosticsEnabled(true)
+
+        XCTAssertTrue(defaults.bool(forKey: SettingsViewModel.accountReorderDiagnosticsEnabledKey))
+        XCTAssertTrue(viewModel.accountReorderDiagnosticsEnabled)
+    }
+
     func testSettingsViewModelPersistsLaunchAtLoginPreference() {
         let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.General")!
         defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.General")

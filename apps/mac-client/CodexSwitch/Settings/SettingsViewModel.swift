@@ -111,6 +111,7 @@ public final class SettingsViewModel: ObservableObject {
     public nonisolated static let showEmailsKey = "showEmails"
     public nonisolated static let usageRefreshEnabledKey = "usageRefreshEnabled"
     public nonisolated static let usageSourceModeKey = "usageSourceMode"
+    public nonisolated static let accountReorderDiagnosticsEnabledKey = "accountReorderDiagnosticsEnabled"
     public nonisolated static let launchAtLoginKey = "launchAtLogin"
     public nonisolated static let menuBarIconStyleKey = "menuBarIconStyle"
     public nonisolated static let menuBarIconStyleDidChangeNotification = Notification.Name("SettingsViewModel.menuBarIconStyleDidChange")
@@ -118,6 +119,7 @@ public final class SettingsViewModel: ObservableObject {
     @Published public private(set) var showEmails: Bool
     @Published public private(set) var usageRefreshEnabled: Bool
     @Published public private(set) var usageSourceMode: CodexUsageSourceMode
+    @Published public private(set) var accountReorderDiagnosticsEnabled: Bool
     @Published public private(set) var launchAtLogin: Bool
     @Published public private(set) var menuBarIconStyle: MenuBarIconStyle
     @Published public private(set) var pendingConfirmation: SettingsConfirmationRequest?
@@ -156,6 +158,7 @@ public final class SettingsViewModel: ObservableObject {
         self.usageSourceMode = CodexUsageSourceMode(
             rawValue: defaults.string(forKey: Self.usageSourceModeKey) ?? CodexUsageSourceMode.automatic.rawValue
         ) ?? .automatic
+        self.accountReorderDiagnosticsEnabled = defaults.bool(forKey: Self.accountReorderDiagnosticsEnabledKey)
         let storedLaunchAtLogin = defaults.bool(forKey: Self.launchAtLoginKey)
         let resolvedLaunchAtLogin = launchAtLoginController?.isEnabled() ?? storedLaunchAtLogin
         self.launchAtLogin = resolvedLaunchAtLogin
@@ -189,6 +192,11 @@ public final class SettingsViewModel: ObservableObject {
     public func setUsageSourceMode(_ mode: CodexUsageSourceMode) {
         defaults.set(mode.rawValue, forKey: Self.usageSourceModeKey)
         usageSourceMode = mode
+    }
+
+    public func setAccountReorderDiagnosticsEnabled(_ enabled: Bool) {
+        defaults.set(enabled, forKey: Self.accountReorderDiagnosticsEnabledKey)
+        accountReorderDiagnosticsEnabled = enabled
     }
 
     public func setLaunchAtLogin(_ enabled: Bool) {

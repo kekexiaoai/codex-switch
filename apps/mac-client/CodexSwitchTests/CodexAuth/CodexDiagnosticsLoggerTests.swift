@@ -73,4 +73,26 @@ final class CodexDiagnosticsLoggerTests: XCTestCase {
         let contents = try String(contentsOf: paths.accountReorderDiagnosticsLogURL, encoding: .utf8)
         XCTAssertTrue(contents.contains("account_reorder_drag_started dragged=acct-1 order=acct-1,acct-2"))
     }
+
+    func testConditionalLoggerSkipsEntriesWhenDisabled() throws {
+        let paths = CodexPaths(baseDirectory: tempDirectoryURL)
+        let baseLogger = CodexDiagnosticsFileLogger(
+            paths: paths,
+            category: .accountReorder,
+            now: { Date(timeIntervalSince1970: 1_743_157_872) }
+        )
+        var enabled = false
+        let logger = ConditionalCodexDiagnosticsLogger(
+            base: baseLogger,
+            isEnabled: { enabled }
+        )
+
+        logger.log("account_reorder_drag_started dragged=acct-1")
+        enabled = true
+        logger.log("account_reorder_drag_started dragged=acct-2")
+
+        let contents = try String(contentsOf: paths.accountReorderDiagnosticsLogURL, encoding: .utf8)
+        XCTAssertFalse(contents.contains("dragged=acct-1"))
+        XCTAssertTrue(contents.contains("dragged=acct-2"))
+    }
 }

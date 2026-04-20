@@ -31,6 +31,7 @@ final class SettingsViewTests: XCTestCase {
             "Automatic mode requests usage from the ChatGPT web backend first, then falls back to local Codex session logs. Local Only skips the remote request and reads only ~/.codex/sessions/YYYY/MM/DD/ rollout logs and cache."
         )
         XCTAssertEqual(view.advancedControlLabels, [
+            "Enable Account Reorder Debug Log",
             "Open ~/.codex",
             "Open Diagnostics Folder",
             "Export Diagnostics Summary",
@@ -61,7 +62,7 @@ final class SettingsViewTests: XCTestCase {
         XCTAssertEqual(view.usageRiskTitle, "用量风险提示")
         XCTAssertEqual(
             view.advancedControlLabels,
-            ["打开 ~/.codex", "打开诊断目录", "导出诊断摘要"]
+            ["启用账号排序调试日志", "打开 ~/.codex", "打开诊断目录", "导出诊断摘要"]
         )
     }
 

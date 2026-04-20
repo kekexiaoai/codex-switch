@@ -250,7 +250,12 @@ public final class AppEnvironment {
         let fileStore = CodexAuthFileStore(paths: configuration.paths)
         let browserDiagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths, category: .browserLogin)
         let usageDiagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths, category: .usageRefresh)
-        let accountReorderDiagnosticsLogger = CodexDiagnosticsFileLogger(paths: configuration.paths, category: .accountReorder)
+        let accountReorderDiagnosticsLogger = ConditionalCodexDiagnosticsLogger(
+            base: CodexDiagnosticsFileLogger(paths: configuration.paths, category: .accountReorder),
+            isEnabled: {
+                configuration.settingsDefaults.bool(forKey: SettingsViewModel.accountReorderDiagnosticsEnabledKey)
+            }
+        )
         let archivedAccountStore = CodexArchivedAccountStore(fileStore: fileStore)
         let repository = AccountRepository(catalog: archivedAccountStore)
         let importer = CodexAuthImporter(fileStore: fileStore)
