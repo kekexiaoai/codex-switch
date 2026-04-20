@@ -371,6 +371,10 @@ public struct SettingsView: View {
         MenuBarIconStyle.allCases.map { StatusItemController.resourceName(for: $0) }
     }
 
+    public var menuBarIconPreviewUsesDarkBackground: Bool {
+        true
+    }
+
     public var privacyControlLabels: [String] {
         [SettingsStrings.text(.showFullAccountEmails, preferredLanguages: preferredLanguages)] + SettingsDestructiveAction.allCases.map { action in
             label(for: action)
@@ -695,10 +699,10 @@ public struct SettingsView: View {
         VStack(spacing: 8) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(nsColor: .windowBackgroundColor))
+                    .fill(Color(nsColor: NSColor(calibratedWhite: 0.16, alpha: 1)))
 
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(Color.secondary.opacity(0.18))
+                    .strokeBorder(Color.white.opacity(0.14))
 
                 if let image = StatusItemController.statusItemImage(style: style) {
                     Image(nsImage: image)

@@ -18,6 +18,7 @@ final class SettingsViewTests: XCTestCase {
             view.menuBarIconPreviewResourceNames,
             ["StatusBarIconLightHighContrast", "StatusBarIconLightHighContrastBold"]
         )
+        XCTAssertTrue(view.menuBarIconPreviewUsesDarkBackground)
         XCTAssertEqual(view.privacyControlLabels, [
             "Show full account emails",
             "Clear Diagnostics Log",
