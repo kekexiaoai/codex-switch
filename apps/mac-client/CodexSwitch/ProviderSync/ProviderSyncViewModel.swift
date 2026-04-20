@@ -23,6 +23,10 @@ public final class ProviderSyncViewModel: ObservableObject {
         self.preferredLanguages = preferredLanguages
     }
 
+    public var canPruneOldBackups: Bool {
+        backups.count > 1 && !isSyncing
+    }
+
     // MARK: - Load
 
     public func loadStatus() async {

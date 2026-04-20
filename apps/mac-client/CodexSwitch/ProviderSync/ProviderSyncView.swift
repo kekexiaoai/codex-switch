@@ -563,7 +563,7 @@ public struct ProviderSyncView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .disabled(viewModel.backups.count <= 5 || viewModel.isSyncing)
+                    .disabled(!viewModel.canPruneOldBackups)
                 }
             }
         }

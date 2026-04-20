@@ -145,7 +145,7 @@ public struct LiveProviderSyncService: ProviderSyncServiceProtocol {
     }
 
     public func pruneBackups() throws {
-        try backupManager.pruneBackups()
+        try backupManager.pruneBackups(keeping: 1)
     }
 
     // MARK: - Lock
