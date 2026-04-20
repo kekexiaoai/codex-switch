@@ -114,8 +114,8 @@ public struct AccountManagementView: View {
             }
 
             HStack(spacing: 10) {
-                metricCard(title: "5H", percent: row.fiveHourPercent)
-                metricCard(title: "7D", percent: row.weeklyPercent)
+                metricCard(title: "5H", percent: row.fiveHourPercent, resetText: row.fiveHourResetText)
+                metricCard(title: "7D", percent: row.weeklyPercent, resetText: row.weeklyResetText)
                 Spacer()
                 Button {
                     Task {
@@ -153,13 +153,17 @@ public struct AccountManagementView: View {
         )
     }
 
-    private func metricCard(title: String, percent: Int) -> some View {
+    private func metricCard(title: String, percent: Int, resetText: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(title)
                     .font(.caption.weight(.semibold))
                     .foregroundColor(.secondary)
-                Spacer()
+                Text(resetText)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
                 Text("\(percent)%")
                     .font(.caption.weight(.semibold))
             }

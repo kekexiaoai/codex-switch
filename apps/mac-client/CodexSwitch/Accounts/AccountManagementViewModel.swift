@@ -6,6 +6,8 @@ public struct AccountManagementRowModel: Identifiable, Equatable {
     public let tierText: String
     public let fiveHourPercent: Int
     public let weeklyPercent: Int
+    public let fiveHourResetText: String
+    public let weeklyResetText: String
     public let fiveHourText: String
     public let weeklyText: String
     public let isActive: Bool
@@ -21,6 +23,7 @@ public final class AccountManagementViewModel: ObservableObject {
     @Published public private(set) var showEmails = false
 
     private let service: any AccountManagementServicing
+    private let timeFormatter = CodexUserFacingTimeFormatter()
 
     public static let preview = AccountManagementViewModel(service: PreviewAccountManagementService())
 
@@ -46,6 +49,8 @@ public final class AccountManagementViewModel: ObservableObject {
                         tierText: account.tier.rawValue.capitalized,
                         fiveHourPercent: fiveHourPercent,
                         weeklyPercent: weeklyPercent,
+                        fiveHourResetText: snapshot.map { "重置 \(timeFormatter.compactClockTimestamp(from: $0.fiveHour.resetsAt))" } ?? "重置 --:--",
+                        weeklyResetText: snapshot.map { "重置 \(timeFormatter.compactClockTimestamp(from: $0.weekly.resetsAt))" } ?? "重置 --:--",
                         fiveHourText: "5H \(fiveHourPercent)%",
                         weeklyText: "7D \(weeklyPercent)%",
                         isActive: account.id == activeAccountID,
@@ -76,9 +81,11 @@ public final class AccountManagementViewModel: ObservableObject {
             return
         }
 
+        let originalRows = rows
         var orderedIDs = rows.map(\.id)
         orderedIDs.swapAt(index, index - 1)
-        await persistOrder(orderedIDs)
+        rows.swapAt(index, index - 1)
+        await persistOrder(orderedIDs, originalRows: originalRows)
     }
 
     public func moveDown(id: String) async {
@@ -89,12 +96,14 @@ public final class AccountManagementViewModel: ObservableObject {
             return
         }
 
+        let originalRows = rows
         var orderedIDs = rows.map(\.id)
         orderedIDs.swapAt(index, index + 1)
-        await persistOrder(orderedIDs)
+        rows.swapAt(index, index + 1)
+        await persistOrder(orderedIDs, originalRows: originalRows)
     }
 
-    private func persistOrder(_ orderedIDs: [String]) async {
+    private func persistOrder(_ orderedIDs: [String], originalRows: [AccountManagementRowModel]) async {
         isReordering = true
         defer { isReordering = false }
 
@@ -102,6 +111,7 @@ public final class AccountManagementViewModel: ObservableObject {
             try await service.saveManualOrder(idsInOrder: orderedIDs)
             await load()
         } catch {
+            rows = originalRows
             lastErrorMessage = error.localizedDescription
         }
     }
