@@ -21,10 +21,6 @@ public struct AccountManagementView: View {
         viewModel.isReordering ? "正在保存最新排序..." : "拖动卡片即可调整顺序。"
     }
 
-    public var topInsertionHintLabel: String {
-        "拖到这里置顶"
-    }
-
     public var summaryLabels: [String] {
         ["当前账号", "归档账号", "排序来源"]
     }
@@ -99,21 +95,6 @@ public struct AccountManagementView: View {
         if !viewModel.rows.isEmpty {
             Color.clear
                 .frame(height: 18)
-                .overlay {
-                    if draggedRowID != nil {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(Color.accentColor.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.accentColor.opacity(0.08))
-                            )
-                            .overlay {
-                                Text(topInsertionHintLabel)
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundColor(.secondary)
-                            }
-                    }
-                }
                 .contentShape(Rectangle())
                 .onDrop(
                     of: [UTType.text],
