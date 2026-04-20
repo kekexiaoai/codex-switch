@@ -7,11 +7,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
     private var statusItemController: StatusItemController?
     private var mainWindowPresenter: (any MainWindowPresenting)?
 
-    init(mainWindowPresenter: (any MainWindowPresenting)? = nil) {
-        self.mainWindowPresenter = mainWindowPresenter
-        super.init()
-    }
-
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
