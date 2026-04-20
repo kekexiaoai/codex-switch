@@ -30,6 +30,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/rust-client/ui/package-lock.json
+
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
@@ -37,14 +44,31 @@ jobs:
         run: |
           echo "Expected architecture: ${{ matrix.arch }}"
           uname -m
-          swift --version
+          rustc --version
+          cargo --version
+          node --version
+          npm --version
           xcodebuild -version
 
       - name: Validate Workflow Runner Labels
         run: ./scripts/verify-github-workflow-runners.sh
 
-      - name: Xcode Project Tests
-        run: xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'
+      - name: Install Frontend Dependencies
+        working-directory: apps/rust-client/ui
+        run: npm ci
 
-      - name: Verify Packaging Script
-        run: ./scripts/package-macos-app.sh
+      - name: Frontend Tests
+        working-directory: apps/rust-client/ui
+        run: npm test
+
+      - name: Frontend Build
+        working-directory: apps/rust-client/ui
+        run: npm run build
+
+      - name: Rust Tests
+        working-directory: apps/rust-client/src-tauri
+        run: cargo test
+
+      - name: Rust Build
+        working-directory: apps/rust-client/src-tauri
+        run: cargo build
