@@ -10,6 +10,7 @@ export function AccountsView({
   usage,
   loginState,
   onImportCurrent,
+  onImportBackup,
   onSwitch,
   onRefreshUsage,
   onLogin,
@@ -18,6 +19,7 @@ export function AccountsView({
   usage?: UsageSnapshot | null;
   loginState?: LoginJobState | null;
   onImportCurrent: () => void;
+  onImportBackup: () => void;
   onSwitch: (id: string) => void;
   onRefreshUsage: () => void;
   onLogin: () => void;
@@ -36,6 +38,10 @@ export function AccountsView({
             <Button variant="secondary" onClick={onImportCurrent}>
               <Import className="h-4 w-4" />
               导入当前
+            </Button>
+            <Button variant="secondary" onClick={onImportBackup}>
+              <Import className="h-4 w-4" />
+              导入备份
             </Button>
             <Button onClick={onLogin}>
               <UserRoundPlus className="h-4 w-4" />

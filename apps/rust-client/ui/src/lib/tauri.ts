@@ -5,6 +5,7 @@ import {
   enable as enableAutostart,
   isEnabled as isAutostartEnabled,
 } from "@tauri-apps/plugin-autostart";
+import { open } from "@tauri-apps/plugin-dialog";
 
 export type UsageSourceMode = "automatic" | "localOnly";
 
@@ -133,6 +134,24 @@ export async function setAutostartEnabled(enabled: boolean) {
 
 export function importCurrentAccount() {
   return invoke<AccountListItem>("accounts_import_current");
+}
+
+export function accountsImportBackup(path: string) {
+  return invoke<AccountListItem>("accounts_import_backup", { path });
+}
+
+export async function pickAuthBackupFile() {
+  const selected = await open({
+    multiple: false,
+    directory: false,
+    filters: [
+      {
+        name: "Codex Auth JSON",
+        extensions: ["json"],
+      },
+    ],
+  });
+  return typeof selected === "string" ? selected : null;
 }
 
 export function switchAccount(accountId: string) {

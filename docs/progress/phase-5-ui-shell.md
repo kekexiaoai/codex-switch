@@ -9,3 +9,4 @@
 
 - 禁止出现 SaaS dashboard 或 marketing hero 风格。
 - 当前已完成桌面化壳层、托盘导航、反馈提示与备份管理面板。
+- 账号页已补上“导入备份”入口，并通过桌面文件选择器接入 `accounts_import_backup`。

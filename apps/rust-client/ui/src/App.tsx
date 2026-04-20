@@ -3,9 +3,11 @@ import {
   events,
   getAppSnapshot,
   getAutostartEnabled,
+  accountsImportBackup,
   importCurrentAccount,
   onEvent,
   openView,
+  pickAuthBackupFile,
   pruneProviderBackups,
   quitApp,
   refreshUsage,
@@ -149,6 +151,19 @@ export function App() {
               loginState={loginState}
               onImportCurrent={() => {
                 void runAction("正在导入当前账号…", () => importCurrentAccount(), "当前账号已导入。");
+              }}
+              onImportBackup={() => {
+                void runAction(
+                  "正在选择备份文件…",
+                  async () => {
+                    const selected = await pickAuthBackupFile();
+                    if (!selected) {
+                      throw new Error("已取消备份文件选择");
+                    }
+                    return accountsImportBackup(selected);
+                  },
+                  "备份账号已导入。",
+                ).catch(() => undefined);
               }}
               onSwitch={(id) => {
                 void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。");

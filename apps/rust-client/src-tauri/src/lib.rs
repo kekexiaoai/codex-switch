@@ -52,6 +52,7 @@ pub fn run() {
                 MacosLauncher::LaunchAgent,
                 None::<Vec<&str>>,
             ))?;
+            app.handle().plugin(tauri_plugin_dialog::init())?;
             create_tray_panel_window(app)?;
             let open_main = MenuItem::with_id(app, "open-main", "打开主窗口", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;

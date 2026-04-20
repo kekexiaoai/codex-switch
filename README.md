@@ -78,4 +78,5 @@ cargo test
 - 当前实现已经覆盖主要骨架和核心服务，但仍在继续收口高级能力与完整验收。
 - 浏览器登录已经切换到桌面 broker：本地 callback server + PKCE 授权 URL + token exchange + `auth.json` 写回。
 - `Launch at login` 已开始接入 Tauri autostart 插件，不再只是本地偏好位。
+- 账号页已经支持通过原生文件选择器导入备份 `auth.json`。
 - Swift 代码暂不删除，等 Tauri 版本进一步达到更高对等度后再进行最终清理。

@@ -1,1 +1,1 @@
-{"main-capability":{"identifier":"main-capability","description":"Capability for Codex Switch main and tray windows","local":true,"windows":["main","tray-panel"],"permissions":["core:default","autostart:allow-enable","autostart:allow-disable","autostart:allow-is-enabled"]}}
+{"main-capability":{"identifier":"main-capability","description":"Capability for Codex Switch main and tray windows","local":true,"windows":["main","tray-panel"],"permissions":["core:default","dialog:allow-open","autostart:allow-enable","autostart:allow-disable","autostart:allow-is-enabled"]}}

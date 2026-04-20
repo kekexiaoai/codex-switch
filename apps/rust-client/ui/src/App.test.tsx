@@ -21,7 +21,9 @@ vi.mock("@/lib/tauri", () => ({
       backups: [],
     },
   }),
+  accountsImportBackup: vi.fn(),
   importCurrentAccount: vi.fn(),
+  pickAuthBackupFile: vi.fn(),
   getAutostartEnabled: vi.fn().mockResolvedValue(false),
   switchAccount: vi.fn(),
   refreshUsage: vi.fn(),
@@ -48,6 +50,7 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("Desktop Runtime")).toBeInTheDocument();
     expect(screen.getAllByText("Accounts").length).toBeGreaterThan(0);
+    expect(screen.getByText("导入备份")).toBeInTheDocument();
     expect(screen.queryByText("Welcome")).not.toBeInTheDocument();
   });
 });
