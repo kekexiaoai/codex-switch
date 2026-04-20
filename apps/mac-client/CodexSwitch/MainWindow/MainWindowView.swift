@@ -7,6 +7,14 @@ public struct MainWindowView: View {
     private let settingsContent: AnyView
     private let statusContent: AnyView
 
+    public var contentMinimumWidth: CGFloat {
+        520
+    }
+
+    public var contentMinimumHeight: CGFloat {
+        560
+    }
+
     public init(
         viewModel: MainWindowViewModel,
         accountsContent: AnyView = AnyView(EmptyView()),
@@ -39,6 +47,7 @@ public struct MainWindowView: View {
             Divider()
 
             currentContent
+                .frame(minWidth: contentMinimumWidth, minHeight: contentMinimumHeight)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }

@@ -9,7 +9,7 @@ public protocol MainWindowPresenting {
 @MainActor
 public final class MainWindowPresenter: MainWindowPresenting {
     public static let defaultContentSize = NSSize(width: 640, height: 640)
-    public static let minimumContentSize = NSSize(width: 640, height: 560)
+    public static let minimumContentSize = NSSize(width: 520, height: 560)
     private let makeViewModel: @MainActor (MainWindowRoute) -> MainWindowViewModel
     private let makeWindowController: @MainActor (MainWindowViewModel) -> NSWindowController
     private let updateWindowController: @MainActor (NSWindowController, MainWindowViewModel) -> Void
