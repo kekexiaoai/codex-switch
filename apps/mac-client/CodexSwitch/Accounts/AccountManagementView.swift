@@ -33,6 +33,14 @@ public struct AccountManagementView: View {
         ["5 小时额度", "7 天额度"]
     }
 
+    public func progressSummaryText(percent: Int) -> String {
+        "使用进度 \(percent)%"
+    }
+
+    public func resetSummaryText(_ resetText: String) -> String {
+        resetText.replacingOccurrences(of: "重置 ", with: "重置时间 ")
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             pageHeader
@@ -253,39 +261,20 @@ public struct AccountManagementView: View {
     }
 
     private func metricCard(title: String, percent: Int, resetText: String, accentColor: Color) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline.weight(.semibold))
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text("\(percent)%")
-                    .font(.system(size: 28, weight: .semibold, design: .rounded))
-                Text("已使用")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.primary.opacity(0.06))
-                    )
-            }
-            Text("使用进度")
-                .font(.caption.weight(.semibold))
-                .foregroundColor(.secondary)
             ProgressView(value: Double(percent), total: 100)
                 .tint(accentColor)
-                .controlSize(.regular)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("重置时间")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
-                Text(resetText)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
-            }
+                .controlSize(.small)
+            Text(progressSummaryText(percent: percent))
+                .font(.subheadline.weight(.medium))
+            Text(resetSummaryText(resetText))
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
