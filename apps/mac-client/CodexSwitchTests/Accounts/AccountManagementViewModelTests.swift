@@ -3,6 +3,47 @@ import XCTest
 
 @MainActor
 final class AccountManagementViewModelTests: XCTestCase {
+    func testPerformAddAccountActionReloadsRowsAfterImportCurrentAccount() async throws {
+        let service = InMemoryAccountManagementService(
+            accounts: [
+                makeAccount(id: "acct-1", order: 0, tier: .team),
+            ],
+            activeAccountID: "acct-1",
+            importedAccountsByAction: [
+                .importCurrentAccount: makeAccount(id: "acct-2", order: 1, tier: .plus),
+            ]
+        )
+        let viewModel = AccountManagementViewModel(service: service)
+
+        await viewModel.load()
+        await viewModel.performAddAccountAction(.importCurrentAccount)
+
+        XCTAssertEqual(service.performedAddActions, [.importCurrentAccount])
+        XCTAssertEqual(viewModel.rows.map(\.id), ["acct-1", "acct-2"])
+        XCTAssertEqual(viewModel.rows.first(where: \.isActive)?.id, "acct-2")
+        XCTAssertNil(viewModel.lastErrorMessage)
+        XCTAssertFalse(viewModel.isPerformingAddAccountAction)
+    }
+
+    func testPerformAddAccountActionShowsErrorWhenImportFails() async {
+        let service = InMemoryAccountManagementService(
+            accounts: [
+                makeAccount(id: "acct-1", order: 0, tier: .team),
+            ],
+            addAccountErrorsByAction: [
+                .importCurrentAccount: StubError.failed,
+            ]
+        )
+        let viewModel = AccountManagementViewModel(service: service)
+
+        await viewModel.load()
+        await viewModel.performAddAccountAction(.importCurrentAccount)
+
+        XCTAssertEqual(service.performedAddActions, [.importCurrentAccount])
+        XCTAssertEqual(viewModel.lastErrorMessage, "failed")
+        XCTAssertFalse(viewModel.isPerformingAddAccountAction)
+    }
+
     func testMoveRowsPersistsManualOrderAndReloadsRows() async throws {
         let service = InMemoryAccountManagementService(
             accounts: [
@@ -135,25 +176,32 @@ final class AccountManagementViewModelTests: XCTestCase {
 @MainActor
 private final class InMemoryAccountManagementService: AccountManagementServicing {
     private var accounts: [Account]
-    private let activeAccountID: String?
+    private var activeAccountID: String?
     private let usageSnapshots: [String: CodexUsageSnapshot]
     private let saveError: Error?
     private var emailVisibilityEnabled: Bool
+    private let importedAccountsByAction: [AccountManagementAddAction: Account]
+    private let addAccountErrorsByAction: [AccountManagementAddAction: Error]
 
     private(set) var savedOrderHistory: [[String]] = []
+    private(set) var performedAddActions: [AccountManagementAddAction] = []
 
     init(
         accounts: [Account],
         activeAccountID: String? = nil,
         usageSnapshots: [String: CodexUsageSnapshot] = [:],
         saveError: Error? = nil,
-        emailVisibilityEnabled: Bool = false
+        emailVisibilityEnabled: Bool = false,
+        importedAccountsByAction: [AccountManagementAddAction: Account] = [:],
+        addAccountErrorsByAction: [AccountManagementAddAction: Error] = [:]
     ) {
         self.accounts = accounts
         self.activeAccountID = activeAccountID
         self.usageSnapshots = usageSnapshots
         self.saveError = saveError
         self.emailVisibilityEnabled = emailVisibilityEnabled
+        self.importedAccountsByAction = importedAccountsByAction
+        self.addAccountErrorsByAction = addAccountErrorsByAction
     }
 
     func loadAccounts() async throws -> [Account] {
@@ -199,6 +247,22 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
 
     func setShowEmails(_ enabled: Bool) {
         emailVisibilityEnabled = enabled
+    }
+
+    func performAddAccountAction(_ action: AccountManagementAddAction) async throws -> Account? {
+        performedAddActions.append(action)
+
+        if let error = addAccountErrorsByAction[action] {
+            throw error
+        }
+
+        guard let importedAccount = importedAccountsByAction[action] else {
+            return nil
+        }
+
+        accounts.append(importedAccount)
+        activeAccountID = importedAccount.id
+        return importedAccount
     }
 }
 

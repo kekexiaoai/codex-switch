@@ -6,6 +6,7 @@ public protocol AccountManagementServicing {
     func saveManualOrder(idsInOrder: [String]) async throws
     func removeAccount(id: String) async throws
     func activateAccount(id: String) async throws
+    func performAddAccountAction(_ action: AccountManagementAddAction) async throws -> Account?
     func usageSnapshot(for accountID: String) async -> CodexUsageSnapshot?
     func currentActiveAccountID() async -> String?
     func showEmails() -> Bool
@@ -20,6 +21,9 @@ public struct AccountManagementService: AccountManagementServicing {
     private let activeAccountController: ActiveAccountController?
     private let usageService: (any UsageService)?
     private let emailVisibilityStore: (any EmailVisibilityMutating)?
+    private let accountImporter: CodexAuthImporter?
+    private let backupAuthPicker: (any BackupAuthPicking)?
+    private let loginCoordinator: CodexLoginCoordinator?
 
     public init(
         accountRepository: AccountRepository?,
@@ -27,7 +31,10 @@ public struct AccountManagementService: AccountManagementServicing {
         accountRemover: (any AccountRemoving)?,
         activeAccountController: ActiveAccountController?,
         usageService: (any UsageService)?,
-        emailVisibilityStore: (any EmailVisibilityMutating)?
+        emailVisibilityStore: (any EmailVisibilityMutating)?,
+        accountImporter: CodexAuthImporter? = nil,
+        backupAuthPicker: (any BackupAuthPicking)? = nil,
+        loginCoordinator: CodexLoginCoordinator? = nil
     ) {
         self.accountRepository = accountRepository
         self.orderStore = orderStore
@@ -35,6 +42,9 @@ public struct AccountManagementService: AccountManagementServicing {
         self.activeAccountController = activeAccountController
         self.usageService = usageService
         self.emailVisibilityStore = emailVisibilityStore
+        self.accountImporter = accountImporter
+        self.backupAuthPicker = backupAuthPicker
+        self.loginCoordinator = loginCoordinator
     }
 
     public func loadAccounts() async throws -> [Account] {
@@ -54,6 +64,39 @@ public struct AccountManagementService: AccountManagementServicing {
 
     public func activateAccount(id: String) async throws {
         try await activeAccountController?.activateAccount(id: id)
+    }
+
+    public func performAddAccountAction(_ action: AccountManagementAddAction) async throws -> Account? {
+        switch action {
+        case .importCurrentAccount:
+            guard let accountImporter else {
+                return nil
+            }
+
+            let account = try accountImporter.importCurrentAccount()
+            try await activeAccountController?.activateAccount(id: account.id)
+            return account
+        case .importBackupAuth:
+            guard let accountImporter, let backupAuthPicker else {
+                return nil
+            }
+
+            guard let backupURL = await backupAuthPicker.pickBackupAuthURL() else {
+                return nil
+            }
+
+            let account = try accountImporter.importBackupAuth(from: backupURL)
+            try await activeAccountController?.activateAccount(id: account.id)
+            return account
+        case .loginInBrowser:
+            guard let loginCoordinator else {
+                return nil
+            }
+
+            let account = try await loginCoordinator.loginAndImport()
+            try await activeAccountController?.activateAccount(id: account.id)
+            return account
+        }
     }
 
     public func usageSnapshot(for accountID: String) async -> CodexUsageSnapshot? {

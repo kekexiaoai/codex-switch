@@ -13,12 +13,57 @@ public struct AccountManagementRowModel: Identifiable, Equatable {
     public let isActive: Bool
 }
 
+public enum AccountManagementAddAction: CaseIterable, Equatable, Identifiable {
+    case importCurrentAccount
+    case importBackupAuth
+    case loginInBrowser
+
+    public var id: Self {
+        self
+    }
+
+    public var title: String {
+        switch self {
+        case .importCurrentAccount:
+            return MenuBarStrings.text(.importCurrentAccount)
+        case .importBackupAuth:
+            return MenuBarStrings.text(.importBackupAuth)
+        case .loginInBrowser:
+            return MenuBarStrings.text(.loginInBrowser)
+        }
+    }
+
+    public var systemImageName: String {
+        switch self {
+        case .importCurrentAccount:
+            return "person.crop.circle.badge.clock"
+        case .importBackupAuth:
+            return "tray.and.arrow.down"
+        case .loginInBrowser:
+            return "globe"
+        }
+    }
+
+    public var progressText: String? {
+        switch self {
+        case .importCurrentAccount:
+            return MenuBarStrings.text(.importingCurrentAccountTitle)
+        case .importBackupAuth:
+            return nil
+        case .loginInBrowser:
+            return MenuBarStrings.text(.browserLoginInProgressTitle)
+        }
+    }
+}
+
 @MainActor
 public final class AccountManagementViewModel: ObservableObject {
     @Published public private(set) var rows: [AccountManagementRowModel] = []
     @Published public private(set) var lastErrorMessage: String?
     @Published public private(set) var isReordering = false
     @Published public private(set) var showEmails = false
+    @Published public private(set) var isPerformingAddAccountAction = false
+    @Published public private(set) var addAccountProgressText: String?
 
     private let service: any AccountManagementServicing
     private let logger: any CodexDiagnosticsLogging
@@ -32,6 +77,10 @@ public final class AccountManagementViewModel: ObservableObject {
     ) {
         self.service = service
         self.logger = logger
+    }
+
+    public var addAccountActions: [AccountManagementAddAction] {
+        AccountManagementAddAction.allCases
     }
 
     public func load() async {
@@ -74,6 +123,30 @@ public final class AccountManagementViewModel: ObservableObject {
     public func toggleShowEmails() async {
         service.setShowEmails(!service.showEmails())
         await load()
+    }
+
+    public func performAddAccountAction(_ action: AccountManagementAddAction) async {
+        guard !isPerformingAddAccountAction else {
+            return
+        }
+
+        isPerformingAddAccountAction = true
+        addAccountProgressText = action.progressText
+        lastErrorMessage = nil
+
+        defer {
+            isPerformingAddAccountAction = false
+            addAccountProgressText = nil
+        }
+
+        do {
+            let importedAccount = try await service.performAddAccountAction(action)
+            if importedAccount != nil {
+                await load()
+            }
+        } catch {
+            lastErrorMessage = addAccountErrorMessage(for: action, error: error)
+        }
     }
 
     public func moveUp(id: String) async {
@@ -206,6 +279,54 @@ public final class AccountManagementViewModel: ObservableObject {
     private func indexDescription(for source: IndexSet) -> String {
         source.map(String.init).joined(separator: ",")
     }
+
+    private func addAccountErrorMessage(for action: AccountManagementAddAction, error: Error) -> String {
+        guard let authError = error as? CodexAuthError else {
+            return error.localizedDescription
+        }
+
+        switch action {
+        case .importCurrentAccount:
+            switch authError {
+            case .currentAuthFileMissing, .authFileUnreadable:
+                return MenuBarStrings.text(.cannotImportCurrentAccountNoAuth)
+            case .apiKeyModeDetected, .idTokenMissing:
+                return MenuBarStrings.text(.cannotImportCurrentAccountNoSession)
+            case .authJSONInvalid, .jwtPayloadInvalid:
+                return MenuBarStrings.text(.cannotImportCurrentAccountInvalid)
+            case .archiveWriteFailed:
+                return MenuBarStrings.text(.cannotImportCurrentAccountArchive)
+            default:
+                return MenuBarStrings.text(.cannotImportCurrentAccountGeneric)
+            }
+        case .importBackupAuth:
+            switch authError {
+            case .authFileUnreadable:
+                return MenuBarStrings.text(.cannotImportBackupAuthUnreadable)
+            case .apiKeyModeDetected, .idTokenMissing, .authJSONInvalid, .jwtPayloadInvalid:
+                return MenuBarStrings.text(.cannotImportBackupAuthInvalid)
+            case .archiveWriteFailed:
+                return MenuBarStrings.text(.cannotImportBackupAuthArchive)
+            default:
+                return MenuBarStrings.text(.cannotImportBackupAuthGeneric)
+            }
+        case .loginInBrowser:
+            switch authError {
+            case .browserLaunchFailed:
+                return MenuBarStrings.text(.browserCouldNotOpenMessage)
+            case .loginCancelled:
+                return MenuBarStrings.text(.browserLoginCancelledMessage)
+            case .loginTimedOut:
+                return MenuBarStrings.text(.browserLoginTimedOutMessage)
+            case .currentAuthFileMissing, .idTokenMissing, .authJSONInvalid, .jwtPayloadInvalid:
+                return MenuBarStrings.text(.browserLoginNoSessionMessage)
+            case .loginFailed:
+                return MenuBarStrings.text(.browserLoginFailedMessage)
+            default:
+                return MenuBarStrings.text(.browserLoginGenericMessage)
+            }
+        }
+    }
 }
 
 @MainActor
@@ -243,4 +364,8 @@ private final class PreviewAccountManagementService: AccountManagementServicing 
     }
 
     func setShowEmails(_ enabled: Bool) {}
+
+    func performAddAccountAction(_ action: AccountManagementAddAction) async throws -> Account? {
+        nil
+    }
 }

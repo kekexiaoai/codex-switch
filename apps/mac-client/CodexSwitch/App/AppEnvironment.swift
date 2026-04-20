@@ -339,7 +339,10 @@ public final class AppEnvironment {
                 accountRemover: accountRemover,
                 activeAccountController: activeAccountController,
                 usageService: usageService,
-                emailVisibilityStore: emailVisibilityProvider as? any EmailVisibilityMutating
+                emailVisibilityStore: emailVisibilityProvider as? any EmailVisibilityMutating,
+                accountImporter: accountImporter,
+                backupAuthPicker: makeAccountManagementBackupAuthPicker(),
+                loginCoordinator: loginCoordinator
             ),
             logger: accountReorderLogger ?? NullCodexDiagnosticsLogger()
         )
@@ -387,5 +390,14 @@ public final class AppEnvironment {
         }
 
         return claims.accountID
+    }
+
+    @MainActor
+    private func makeAccountManagementBackupAuthPicker() -> (any BackupAuthPicking)? {
+        #if canImport(AppKit)
+        return OpenPanelBackupAuthPicker()
+        #else
+        return nil
+        #endif
     }
 }

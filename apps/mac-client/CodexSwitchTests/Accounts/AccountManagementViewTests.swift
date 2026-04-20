@@ -7,6 +7,15 @@ final class AccountManagementViewTests: XCTestCase {
         let view = AccountManagementView(viewModel: .preview)
 
         XCTAssertEqual(view.pageTitle, "账号")
+        XCTAssertEqual(view.addAccountButtonLabel, MenuBarStrings.text(.addAccount))
+        XCTAssertEqual(
+            view.addAccountActionTitles,
+            [
+                MenuBarStrings.text(.importCurrentAccount),
+                MenuBarStrings.text(.importBackupAuth),
+                MenuBarStrings.text(.loginInBrowser),
+            ]
+        )
         XCTAssertEqual(view.summaryLabels, ["当前账号", "归档账号", "排序来源"])
         XCTAssertEqual(view.emailVisibilityButtonLabel, "显示邮箱")
         XCTAssertEqual(view.reorderInstructionText, "拖动卡片即可调整顺序。")

@@ -17,6 +17,14 @@ public struct AccountManagementView: View {
         "账号"
     }
 
+    public var addAccountButtonLabel: String {
+        MenuBarStrings.text(.addAccount)
+    }
+
+    public var addAccountActionTitles: [String] {
+        viewModel.addAccountActions.map(\.title)
+    }
+
     public var reorderInstructionText: String {
         viewModel.isReordering ? "正在保存最新排序..." : "拖动卡片即可调整顺序。"
     }
@@ -45,51 +53,56 @@ public struct AccountManagementView: View {
         VStack(alignment: .leading, spacing: 20) {
             pageHeader
             summaryStrip
+            feedbackBanner
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 12) {
-                    topInsertionDropZone
-                    ForEach(viewModel.rows) { row in
-                        accountCard(row)
-                            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .onDrag {
-                                draggedRowID = row.id
-                                viewModel.logDragStarted(id: row.id)
-                                return NSItemProvider(object: row.id as NSString)
-                            }
-                            .onDrop(
-                                of: [UTType.text],
-                                delegate: AccountManagementInsertionDropDelegate(
-                                    targetLabel: row.id,
-                                    destinationIndex: destinationIndex(for: row.id),
-                                    draggedRowID: $draggedRowID,
-                                    logDropEntered: { draggedID, targetID, destinationIndex in
-                                        viewModel.logDropEntered(
-                                            draggedID: draggedID,
-                                            targetID: targetID,
-                                            destinationIndex: destinationIndex
-                                        )
-                                    },
-                                    logDropPerformed: { draggedID, targetID, destinationIndex in
-                                        viewModel.logDropPerformed(
-                                            draggedID: draggedID,
-                                            targetID: targetID,
-                                            destinationIndex: destinationIndex
-                                        )
-                                    },
-                                    logDropIgnored: { draggedID, targetID, reason in
-                                        viewModel.logDropIgnored(
-                                            draggedID: draggedID,
-                                            targetID: targetID,
-                                            reason: reason
-                                        )
-                                    },
-                                    moveRow: { draggedID, destinationIndex in
-                                        Task {
-                                            await viewModel.moveRow(id: draggedID, to: destinationIndex)
+                    if viewModel.rows.isEmpty {
+                        emptyStateCard
+                    } else {
+                        topInsertionDropZone
+                        ForEach(viewModel.rows) { row in
+                            accountCard(row)
+                                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .onDrag {
+                                    draggedRowID = row.id
+                                    viewModel.logDragStarted(id: row.id)
+                                    return NSItemProvider(object: row.id as NSString)
+                                }
+                                .onDrop(
+                                    of: [UTType.text],
+                                    delegate: AccountManagementInsertionDropDelegate(
+                                        targetLabel: row.id,
+                                        destinationIndex: destinationIndex(for: row.id),
+                                        draggedRowID: $draggedRowID,
+                                        logDropEntered: { draggedID, targetID, destinationIndex in
+                                            viewModel.logDropEntered(
+                                                draggedID: draggedID,
+                                                targetID: targetID,
+                                                destinationIndex: destinationIndex
+                                            )
+                                        },
+                                        logDropPerformed: { draggedID, targetID, destinationIndex in
+                                            viewModel.logDropPerformed(
+                                                draggedID: draggedID,
+                                                targetID: targetID,
+                                                destinationIndex: destinationIndex
+                                            )
+                                        },
+                                        logDropIgnored: { draggedID, targetID, reason in
+                                            viewModel.logDropIgnored(
+                                                draggedID: draggedID,
+                                                targetID: targetID,
+                                                reason: reason
+                                            )
+                                        },
+                                        moveRow: { draggedID, destinationIndex in
+                                            Task {
+                                                await viewModel.moveRow(id: draggedID, to: destinationIndex)
+                                            }
                                         }
-                                    }
+                                    )
                                 )
-                            )
+                        }
                     }
                 }
             }
@@ -160,12 +173,28 @@ public struct AccountManagementView: View {
 
             Spacer()
 
-            Button(emailVisibilityButtonLabel) {
-                Task {
-                    await viewModel.toggleShowEmails()
+            HStack(spacing: 10) {
+                Menu {
+                    ForEach(viewModel.addAccountActions) { action in
+                        Button(action.title, systemImage: action.systemImageName) {
+                            Task {
+                                await viewModel.performAddAccountAction(action)
+                            }
+                        }
+                    }
+                } label: {
+                    Label(addAccountButtonLabel, systemImage: "plus")
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(viewModel.isPerformingAddAccountAction)
+
+                Button(emailVisibilityButtonLabel) {
+                    Task {
+                        await viewModel.toggleShowEmails()
+                    }
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
         }
     }
 
@@ -192,6 +221,56 @@ public struct AccountManagementView: View {
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.primary.opacity(0.05))
+        )
+    }
+
+    @ViewBuilder
+    private var feedbackBanner: some View {
+        if viewModel.isPerformingAddAccountAction, let progressText = viewModel.addAccountProgressText {
+            HStack(spacing: 10) {
+                ProgressView()
+                    .controlSize(.small)
+                Text(progressText)
+                    .font(.subheadline.weight(.medium))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.08))
+            )
+        } else if let lastErrorMessage = viewModel.lastErrorMessage, !lastErrorMessage.isEmpty {
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(Color(nsColor: .systemRed))
+                Text(lastErrorMessage)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(Color(nsColor: .systemRed))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(nsColor: .systemRed).opacity(0.08))
+            )
+        }
+    }
+
+    private var emptyStateCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("还没有归档账号")
+                .font(.headline)
+            Text("可从右上角的“添加账号”继续导入当前账号、导入备份 Auth，或发起浏览器登录。")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.primary.opacity(0.04))
         )
     }
 
@@ -240,12 +319,6 @@ public struct AccountManagementView: View {
                 .foregroundColor(.secondary)
                 .frame(width: 44)
                 .help("拖动调整顺序")
-            }
-
-            if let lastErrorMessage = viewModel.lastErrorMessage, !lastErrorMessage.isEmpty {
-                Text(lastErrorMessage)
-                    .font(.caption)
-                    .foregroundColor(.red)
             }
         }
         .padding(16)
