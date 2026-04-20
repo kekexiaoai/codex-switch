@@ -37,6 +37,23 @@ final class AccountManagementViewModelTests: XCTestCase {
         XCTAssertEqual(service.savedOrderHistory, [["acct-3", "acct-1", "acct-2"]])
     }
 
+    func testMoveRowsToNextPositionPersistsManualOrder() async throws {
+        let service = InMemoryAccountManagementService(
+            accounts: [
+                makeAccount(id: "acct-1", order: 0, tier: .team),
+                makeAccount(id: "acct-2", order: 1, tier: .plus),
+                makeAccount(id: "acct-3", order: 2, tier: .pro),
+            ]
+        )
+        let viewModel = AccountManagementViewModel(service: service)
+
+        await viewModel.load()
+        await viewModel.moveRows(fromOffsets: IndexSet(integer: 0), toOffset: 1)
+
+        XCTAssertEqual(viewModel.rows.map(\.id), ["acct-2", "acct-1", "acct-3"])
+        XCTAssertEqual(service.savedOrderHistory, [["acct-2", "acct-1", "acct-3"]])
+    }
+
     func testMoveRowsKeepsRowsAndExposesErrorWhenSaveFails() async {
         let service = InMemoryAccountManagementService(
             accounts: [

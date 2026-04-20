@@ -131,12 +131,7 @@ public final class AccountManagementViewModel: ObservableObject {
             remainingRows.append(row)
         }
 
-        let removedBeforeDestination = source.reduce(into: 0) { count, index in
-            if index < destination {
-                count += 1
-            }
-        }
-        let insertionIndex = max(0, min(destination - removedBeforeDestination, remainingRows.count))
+        let insertionIndex = max(0, min(destination, remainingRows.count))
 
         remainingRows.insert(contentsOf: movingRows, at: insertionIndex)
         return remainingRows
