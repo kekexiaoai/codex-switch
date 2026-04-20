@@ -53,7 +53,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
                 let hostingController = NSHostingController(rootView: rootView(viewModel: viewModel))
                 let window = NSWindow(contentViewController: hostingController)
                 window.title = "Codex Switch"
-                window.setContentSize(NSSize(width: 960, height: 640))
+                window.setContentSize(MainWindowPresenter.defaultContentSize)
+                window.minSize = MainWindowPresenter.minimumContentSize
                 window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
                 return NSWindowController(window: window)
             },
@@ -64,7 +65,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, MenuBarActionHandling 
                     windowController.window?.contentViewController = NSHostingController(rootView: rootView(viewModel: viewModel))
                 }
                 windowController.window?.title = "Codex Switch"
-                windowController.window?.setContentSize(NSSize(width: 960, height: 640))
+                windowController.window?.setContentSize(MainWindowPresenter.defaultContentSize)
+                windowController.window?.minSize = MainWindowPresenter.minimumContentSize
                 windowController.window?.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             },
             presentWindowController: { windowController in

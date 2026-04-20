@@ -4,6 +4,11 @@ import XCTest
 
 @MainActor
 final class MainWindowPresenterTests: XCTestCase {
+    func testMainWindowPresenterUsesStatusWindowWidthAsDefaultContentWidth() {
+        XCTAssertEqual(MainWindowPresenter.defaultContentSize.width, 640)
+        XCTAssertEqual(MainWindowPresenter.minimumContentSize.width, 640)
+    }
+
     func testMainWindowPresenterReusesWindowAndUpdatesSelectedTab() {
         var makeCount = 0
         var renderedTabs: [MainWindowTab] = []

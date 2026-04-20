@@ -8,6 +8,8 @@ public protocol MainWindowPresenting {
 
 @MainActor
 public final class MainWindowPresenter: MainWindowPresenting {
+    public static let defaultContentSize = NSSize(width: 640, height: 640)
+    public static let minimumContentSize = NSSize(width: 640, height: 560)
     private let makeViewModel: @MainActor (MainWindowRoute) -> MainWindowViewModel
     private let makeWindowController: @MainActor (MainWindowViewModel) -> NSWindowController
     private let updateWindowController: @MainActor (NSWindowController, MainWindowViewModel) -> Void
@@ -45,7 +47,8 @@ public final class MainWindowPresenter: MainWindowPresenting {
         let hostingController = NSHostingController(rootView: MainWindowView(viewModel: viewModel))
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Codex Switch"
-        window.setContentSize(NSSize(width: 960, height: 640))
+        window.setContentSize(defaultContentSize)
+        window.minSize = minimumContentSize
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         return NSWindowController(window: window)
     }
@@ -58,7 +61,8 @@ public final class MainWindowPresenter: MainWindowPresenting {
         }
 
         windowController.window?.title = "Codex Switch"
-        windowController.window?.setContentSize(NSSize(width: 960, height: 640))
+        windowController.window?.setContentSize(defaultContentSize)
+        windowController.window?.minSize = minimumContentSize
         windowController.window?.styleMask = [.titled, .closable, .miniaturizable, .resizable]
     }
 
