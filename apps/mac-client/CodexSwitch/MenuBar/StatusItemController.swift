@@ -211,11 +211,8 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
 
     static func statusItemImage(style: MenuBarIconStyle = .highContrastLightBold) -> NSImage? {
         let resourceName = resourceName(for: style)
-        let image = resourceBundles()
+        let image = resourceURLs(for: resourceName)
             .lazy
-            .compactMap { bundle in
-                bundle.url(forResource: resourceName, withExtension: "png")
-            }
             .compactMap { url in
                 NSImage(contentsOf: url)
             }
@@ -228,11 +225,39 @@ public final class StatusItemController: NSObject, NSPopoverDelegate {
     private static func resourceBundles() -> [Bundle] {
         var bundles = [Bundle.main, Bundle(for: StatusItemController.self)]
 
-#if SWIFT_PACKAGE && !Xcode
-        bundles.append(Bundle.module)
-#endif
+        let resourceBundleName = "CodexSwitch_CodexSwitchKit.bundle"
+        let candidateURLs = [
+            Bundle.main.bundleURL.appendingPathComponent(resourceBundleName),
+            Bundle.main.resourceURL?.appendingPathComponent(resourceBundleName),
+            Bundle(for: StatusItemController.self).bundleURL.appendingPathComponent(resourceBundleName),
+            Bundle(for: StatusItemController.self).resourceURL?.appendingPathComponent(resourceBundleName),
+        ].compactMap { $0 }
+
+        for url in candidateURLs {
+            if let bundle = Bundle(url: url) {
+                bundles.append(bundle)
+            }
+        }
 
         return bundles
+    }
+
+    private static func resourceURLs(for resourceName: String) -> [URL] {
+        let bundleURLs = resourceBundles().compactMap { bundle in
+            bundle.url(forResource: resourceName, withExtension: "png")
+        }
+
+        let sourceResourcesURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Resources", isDirectory: true)
+            .appendingPathComponent("\(resourceName).png")
+
+        if FileManager.default.fileExists(atPath: sourceResourcesURL.path) {
+            return bundleURLs + [sourceResourcesURL]
+        }
+
+        return bundleURLs
     }
 
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

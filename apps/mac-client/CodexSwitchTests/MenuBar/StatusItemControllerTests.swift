@@ -10,6 +10,8 @@ final class StatusItemControllerTests: XCTestCase {
         let boldImage = StatusItemController.statusItemImage(style: .highContrastLightBold)
 
         XCTAssertEqual(StatusItemController.statusItemAccessibilityTitle, "Codex Switch")
+        XCTAssertNotNil(image)
+        XCTAssertNotNil(boldImage)
         if let image {
             XCTAssertEqual(image.isTemplate, false)
             XCTAssertEqual(image.size, NSSize(width: 18, height: 18))
