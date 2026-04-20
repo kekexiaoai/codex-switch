@@ -3,7 +3,7 @@ import XCTest
 
 @MainActor
 final class AccountManagementViewModelTests: XCTestCase {
-    func testMoveDownPersistsManualOrderAndReloadsRows() async throws {
+    func testMoveRowsPersistsManualOrderAndReloadsRows() async throws {
         let service = InMemoryAccountManagementService(
             accounts: [
                 makeAccount(id: "acct-1", order: 0, tier: .team),
@@ -14,13 +14,30 @@ final class AccountManagementViewModelTests: XCTestCase {
         let viewModel = AccountManagementViewModel(service: service)
 
         await viewModel.load()
-        await viewModel.moveDown(id: "acct-1")
+        await viewModel.moveRows(fromOffsets: IndexSet(integer: 0), toOffset: 2)
 
         XCTAssertEqual(viewModel.rows.map(\.id), ["acct-2", "acct-1"])
         XCTAssertEqual(service.savedOrderHistory, [["acct-2", "acct-1"]])
     }
 
-    func testMoveDownKeepsRowsAndExposesErrorWhenSaveFails() async {
+    func testMoveRowsToEarlierPositionPersistsManualOrder() async throws {
+        let service = InMemoryAccountManagementService(
+            accounts: [
+                makeAccount(id: "acct-1", order: 0, tier: .team),
+                makeAccount(id: "acct-2", order: 1, tier: .plus),
+                makeAccount(id: "acct-3", order: 2, tier: .pro),
+            ]
+        )
+        let viewModel = AccountManagementViewModel(service: service)
+
+        await viewModel.load()
+        await viewModel.moveRows(fromOffsets: IndexSet(integer: 2), toOffset: 0)
+
+        XCTAssertEqual(viewModel.rows.map(\.id), ["acct-3", "acct-1", "acct-2"])
+        XCTAssertEqual(service.savedOrderHistory, [["acct-3", "acct-1", "acct-2"]])
+    }
+
+    func testMoveRowsKeepsRowsAndExposesErrorWhenSaveFails() async {
         let service = InMemoryAccountManagementService(
             accounts: [
                 makeAccount(id: "acct-1", order: 0, tier: .team),
@@ -33,7 +50,7 @@ final class AccountManagementViewModelTests: XCTestCase {
 
         await viewModel.load()
         let originalRows = viewModel.rows
-        await viewModel.moveDown(id: "acct-1")
+        await viewModel.moveRows(fromOffsets: IndexSet(integer: 0), toOffset: 2)
 
         XCTAssertEqual(viewModel.rows, originalRows)
         XCTAssertEqual(viewModel.lastErrorMessage, "failed")

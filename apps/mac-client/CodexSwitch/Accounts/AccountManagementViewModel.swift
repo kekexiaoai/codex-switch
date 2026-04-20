@@ -11,8 +11,6 @@ public struct AccountManagementRowModel: Identifiable, Equatable {
     public let fiveHourText: String
     public let weeklyText: String
     public let isActive: Bool
-    public let canMoveUp: Bool
-    public let canMoveDown: Bool
 }
 
 @MainActor
@@ -38,7 +36,7 @@ public final class AccountManagementViewModel: ObservableObject {
             let showEmails = service.showEmails()
             var nextRows: [AccountManagementRowModel] = []
 
-            for (index, account) in accounts.enumerated() {
+            for account in accounts {
                 let snapshot = await service.usageSnapshot(for: account.id)
                 let fiveHourPercent = snapshot?.fiveHour.percentUsed ?? 0
                 let weeklyPercent = snapshot?.weekly.percentUsed ?? 0
@@ -53,9 +51,7 @@ public final class AccountManagementViewModel: ObservableObject {
                         weeklyResetText: snapshot.map { "重置 \(timeFormatter.compactClockTimestamp(from: $0.weekly.resetsAt))" } ?? "重置 --:--",
                         fiveHourText: "5H \(fiveHourPercent)%",
                         weeklyText: "7D \(weeklyPercent)%",
-                        isActive: account.id == activeAccountID,
-                        canMoveUp: index > 0,
-                        canMoveDown: index < accounts.count - 1
+                        isActive: account.id == activeAccountID
                     )
                 )
             }
@@ -74,33 +70,32 @@ public final class AccountManagementViewModel: ObservableObject {
     }
 
     public func moveUp(id: String) async {
-        guard !isReordering else {
-            return
-        }
         guard let index = rows.firstIndex(where: { $0.id == id }), index > 0 else {
             return
         }
-
-        let originalRows = rows
-        var orderedIDs = rows.map(\.id)
-        orderedIDs.swapAt(index, index - 1)
-        rows.swapAt(index, index - 1)
-        await persistOrder(orderedIDs, originalRows: originalRows)
+        await moveRows(fromOffsets: IndexSet(integer: index), toOffset: index - 1)
     }
 
     public func moveDown(id: String) async {
-        guard !isReordering else {
+        guard let index = rows.firstIndex(where: { $0.id == id }), index < rows.count - 1 else {
             return
         }
-        guard let index = rows.firstIndex(where: { $0.id == id }), index < rows.count - 1 else {
+        await moveRows(fromOffsets: IndexSet(integer: index), toOffset: index + 2)
+    }
+
+    public func moveRows(fromOffsets source: IndexSet, toOffset destination: Int) async {
+        guard !isReordering else {
             return
         }
 
         let originalRows = rows
-        var orderedIDs = rows.map(\.id)
-        orderedIDs.swapAt(index, index + 1)
-        rows.swapAt(index, index + 1)
-        await persistOrder(orderedIDs, originalRows: originalRows)
+        let reorderedRows = reorderedRows(afterMoving: rows, fromOffsets: source, toOffset: destination)
+        guard reorderedRows != originalRows else {
+            return
+        }
+
+        rows = reorderedRows
+        await persistOrder(reorderedRows.map(\.id), originalRows: originalRows)
     }
 
     private func persistOrder(_ orderedIDs: [String], originalRows: [AccountManagementRowModel]) async {
@@ -114,6 +109,37 @@ public final class AccountManagementViewModel: ObservableObject {
             rows = originalRows
             lastErrorMessage = error.localizedDescription
         }
+    }
+
+    private func reorderedRows(
+        afterMoving rows: [AccountManagementRowModel],
+        fromOffsets source: IndexSet,
+        toOffset destination: Int
+    ) -> [AccountManagementRowModel] {
+        guard !source.isEmpty else {
+            return rows
+        }
+        guard let maxSourceIndex = source.max(), maxSourceIndex < rows.count else {
+            return rows
+        }
+
+        let movingRows = source.sorted().map { rows[$0] }
+        var remainingRows: [AccountManagementRowModel] = []
+        remainingRows.reserveCapacity(rows.count - movingRows.count)
+
+        for (index, row) in rows.enumerated() where !source.contains(index) {
+            remainingRows.append(row)
+        }
+
+        let removedBeforeDestination = source.reduce(into: 0) { count, index in
+            if index < destination {
+                count += 1
+            }
+        }
+        let insertionIndex = max(0, min(destination - removedBeforeDestination, remainingRows.count))
+
+        remainingRows.insert(contentsOf: movingRows, at: insertionIndex)
+        return remainingRows
     }
 }
 

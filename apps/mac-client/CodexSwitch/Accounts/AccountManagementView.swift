@@ -8,11 +8,15 @@ public struct AccountManagementView: View {
     }
 
     public var columnTitles: [String] {
-        ["账号", "类型", "5H", "7D", "排序"]
+        ["账号", "类型", "5H", "7D", "拖拽"]
     }
 
     public var pageTitle: String {
         "账号"
+    }
+
+    public var reorderInstructionText: String {
+        viewModel.isReordering ? "正在保存最新排序..." : "拖动卡片即可调整顺序。"
     }
 
     public var summaryLabels: [String] {
@@ -27,13 +31,23 @@ public struct AccountManagementView: View {
         VStack(alignment: .leading, spacing: 20) {
             pageHeader
             summaryStrip
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(viewModel.rows) { row in
-                        accountCard(row)
+            List {
+                ForEach(viewModel.rows) { row in
+                    accountCard(row)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+                .onMove { source, destination in
+                    Task {
+                        await viewModel.moveRows(fromOffsets: source, toOffset: destination)
                     }
                 }
+                .moveDisabled(viewModel.isReordering)
             }
+            .listStyle(.plain)
+            .environment(\.editMode, .constant(.active))
+            .background(Color.clear)
         }
         .padding(20)
         .task {
@@ -50,6 +64,9 @@ public struct AccountManagementView: View {
                     .font(.title2.weight(.semibold))
                 Text("这里的排序会直接同步到状态栏快速切换菜单。")
                     .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Text(reorderInstructionText)
+                    .font(.caption)
                     .foregroundColor(.secondary)
             }
 
@@ -117,22 +134,15 @@ public struct AccountManagementView: View {
                 metricCard(title: "5H", percent: row.fiveHourPercent, resetText: row.fiveHourResetText)
                 metricCard(title: "7D", percent: row.weeklyPercent, resetText: row.weeklyResetText)
                 Spacer()
-                Button {
-                    Task {
-                        await viewModel.moveUp(id: row.id)
-                    }
-                } label: {
-                    Image(systemName: "arrow.up")
+                VStack(spacing: 4) {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.title3.weight(.semibold))
+                    Text("拖拽")
+                        .font(.caption2.weight(.semibold))
                 }
-                .disabled(!row.canMoveUp || viewModel.isReordering)
-                Button {
-                    Task {
-                        await viewModel.moveDown(id: row.id)
-                    }
-                } label: {
-                    Image(systemName: "arrow.down")
-                }
-                .disabled(!row.canMoveDown || viewModel.isReordering)
+                .foregroundColor(.secondary)
+                .frame(width: 44)
+                .help("拖动调整顺序")
             }
 
             if let lastErrorMessage = viewModel.lastErrorMessage, !lastErrorMessage.isEmpty {
