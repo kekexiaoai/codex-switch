@@ -64,4 +64,16 @@ final class SettingsViewTests: XCTestCase {
             ["打开 ~/.codex", "打开诊断目录", "导出诊断摘要"]
         )
     }
+
+    func testSettingsViewUsesFlexibleFrameWhenEmbeddedInMainWindow() {
+        let defaults = UserDefaults(suiteName: "CodexSwitchTests.Settings.View.Embedded")!
+        defaults.removePersistentDomain(forName: "CodexSwitchTests.Settings.View.Embedded")
+
+        let view = SettingsView(
+            viewModel: SettingsViewModel(defaults: defaults),
+            layoutMode: .embeddedMainWindow
+        )
+
+        XCTAssertNil(view.fixedFrameSize)
+    }
 }

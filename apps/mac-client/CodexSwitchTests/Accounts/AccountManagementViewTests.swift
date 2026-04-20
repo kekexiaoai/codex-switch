@@ -3,9 +3,11 @@ import XCTest
 
 @MainActor
 final class AccountManagementViewTests: XCTestCase {
-    func testAccountManagementViewShowsMoveControlsAndUsageColumns() {
+    func testAccountManagementViewShowsRichSectionsAndUsageColumns() {
         let view = AccountManagementView(viewModel: .preview)
 
+        XCTAssertEqual(view.pageTitle, "账号")
+        XCTAssertEqual(view.summaryLabels, ["当前账号", "归档账号", "排序来源"])
         XCTAssertTrue(view.columnTitles.contains("5H"))
         XCTAssertTrue(view.columnTitles.contains("7D"))
         XCTAssertTrue(view.columnTitles.contains("排序"))

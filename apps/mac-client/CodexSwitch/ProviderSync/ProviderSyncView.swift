@@ -264,12 +264,23 @@ enum ProviderSyncStrings {
 
 @MainActor
 public struct ProviderSyncView: View {
+    public enum LayoutMode {
+        case standaloneWindow
+        case embeddedMainWindow
+    }
+
     @ObservedObject private var viewModel: ProviderSyncViewModel
     private let preferredLanguages: [String]?
+    private let layoutMode: LayoutMode
 
-    public init(viewModel: ProviderSyncViewModel, preferredLanguages: [String]? = nil) {
+    public init(
+        viewModel: ProviderSyncViewModel,
+        preferredLanguages: [String]? = nil,
+        layoutMode: LayoutMode = .standaloneWindow
+    ) {
         self.preferredLanguages = preferredLanguages
         self.viewModel = viewModel
+        self.layoutMode = layoutMode
     }
 
     var titleText: String {
@@ -293,6 +304,15 @@ public struct ProviderSyncView: View {
         viewModel.lastMessage?.message
     }
 
+    var fixedFrameSize: CGSize? {
+        switch layoutMode {
+        case .standaloneWindow:
+            return CGSize(width: 520, height: 640)
+        case .embeddedMainWindow:
+            return nil
+        }
+    }
+
     public var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
@@ -306,7 +326,7 @@ public struct ProviderSyncView: View {
             }
             .padding(20)
         }
-        .frame(width: 520, height: 640)
+        .modifier(ProviderSyncContainerFrameModifier(layoutMode: layoutMode))
         .overlay {
             if viewModel.isLoading {
                 ProgressView(ProviderSyncStrings.text(.loading, preferredLanguages: preferredLanguages))
@@ -588,5 +608,18 @@ public struct ProviderSyncView: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+private struct ProviderSyncContainerFrameModifier: ViewModifier {
+    let layoutMode: ProviderSyncView.LayoutMode
+
+    func body(content: Content) -> some View {
+        switch layoutMode {
+        case .standaloneWindow:
+            content.frame(width: 520, height: 640)
+        case .embeddedMainWindow:
+            content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
     }
 }

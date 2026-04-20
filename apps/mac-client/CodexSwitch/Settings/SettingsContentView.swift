@@ -10,6 +10,10 @@ public struct SettingsContentView: View {
     }
 
     public var body: some View {
-        SettingsView(viewModel: viewModel, preferredLanguages: preferredLanguages)
+        SettingsView(
+            viewModel: viewModel,
+            preferredLanguages: preferredLanguages,
+            layoutMode: .embeddedMainWindow
+        )
     }
 }

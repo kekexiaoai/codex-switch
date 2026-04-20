@@ -14,6 +14,8 @@ public struct AccountManagementRowModel: Identifiable, Equatable {
 @MainActor
 public final class AccountManagementViewModel: ObservableObject {
     @Published public private(set) var rows: [AccountManagementRowModel] = []
+    @Published public private(set) var lastErrorMessage: String?
+    @Published public private(set) var isReordering = false
 
     private let service: any AccountManagementServicing
 
@@ -46,31 +48,48 @@ public final class AccountManagementViewModel: ObservableObject {
             }
 
             rows = nextRows
+            lastErrorMessage = nil
         } catch {
-            rows = []
+            lastErrorMessage = error.localizedDescription
         }
     }
 
     public func moveUp(id: String) async {
+        guard !isReordering else {
+            return
+        }
         guard let index = rows.firstIndex(where: { $0.id == id }), index > 0 else {
             return
         }
 
         var orderedIDs = rows.map(\.id)
         orderedIDs.swapAt(index, index - 1)
-        try? await service.saveManualOrder(idsInOrder: orderedIDs)
-        await load()
+        await persistOrder(orderedIDs)
     }
 
     public func moveDown(id: String) async {
+        guard !isReordering else {
+            return
+        }
         guard let index = rows.firstIndex(where: { $0.id == id }), index < rows.count - 1 else {
             return
         }
 
         var orderedIDs = rows.map(\.id)
         orderedIDs.swapAt(index, index + 1)
-        try? await service.saveManualOrder(idsInOrder: orderedIDs)
-        await load()
+        await persistOrder(orderedIDs)
+    }
+
+    private func persistOrder(_ orderedIDs: [String]) async {
+        isReordering = true
+        defer { isReordering = false }
+
+        do {
+            try await service.saveManualOrder(idsInOrder: orderedIDs)
+            await load()
+        } catch {
+            lastErrorMessage = error.localizedDescription
+        }
     }
 }
 

@@ -20,6 +20,25 @@ final class AccountManagementViewModelTests: XCTestCase {
         XCTAssertEqual(service.savedOrderHistory, [["acct-2", "acct-1"]])
     }
 
+    func testMoveDownKeepsRowsAndExposesErrorWhenSaveFails() async {
+        let service = InMemoryAccountManagementService(
+            accounts: [
+                makeAccount(id: "acct-1", order: 0, tier: .team),
+                makeAccount(id: "acct-2", order: 1, tier: .plus),
+            ],
+            activeAccountID: "acct-1",
+            saveError: StubError.failed
+        )
+        let viewModel = AccountManagementViewModel(service: service)
+
+        await viewModel.load()
+        let originalRows = viewModel.rows
+        await viewModel.moveDown(id: "acct-1")
+
+        XCTAssertEqual(viewModel.rows, originalRows)
+        XCTAssertEqual(viewModel.lastErrorMessage, "failed")
+    }
+
     private func makeAccount(id: String, order: Int, tier: AccountTier) -> Account {
         Account(
             id: id,
@@ -36,17 +55,20 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
     private var accounts: [Account]
     private let activeAccountID: String?
     private let usageSnapshots: [String: CodexUsageSnapshot]
+    private let saveError: Error?
 
     private(set) var savedOrderHistory: [[String]] = []
 
     init(
         accounts: [Account],
         activeAccountID: String? = nil,
-        usageSnapshots: [String: CodexUsageSnapshot] = [:]
+        usageSnapshots: [String: CodexUsageSnapshot] = [:],
+        saveError: Error? = nil
     ) {
         self.accounts = accounts
         self.activeAccountID = activeAccountID
         self.usageSnapshots = usageSnapshots
+        self.saveError = saveError
     }
 
     func loadAccounts() async throws -> [Account] {
@@ -54,6 +76,9 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
     }
 
     func saveManualOrder(idsInOrder: [String]) async throws {
+        if let saveError {
+            throw saveError
+        }
         savedOrderHistory.append(idsInOrder)
         let orderByID = Dictionary(uniqueKeysWithValues: idsInOrder.enumerated().map { ($1, $0) })
         accounts = accounts.map { account in
@@ -81,5 +106,13 @@ private final class InMemoryAccountManagementService: AccountManagementServicing
 
     func currentActiveAccountID() async -> String? {
         activeAccountID
+    }
+}
+
+private enum StubError: LocalizedError {
+    case failed
+
+    var errorDescription: String? {
+        "failed"
     }
 }

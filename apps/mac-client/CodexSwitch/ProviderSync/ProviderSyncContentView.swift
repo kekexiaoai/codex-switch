@@ -8,6 +8,6 @@ public struct ProviderSyncContentView: View {
     }
 
     public var body: some View {
-        ProviderSyncView(viewModel: viewModel)
+        ProviderSyncView(viewModel: viewModel, layoutMode: .embeddedMainWindow)
     }
 }

@@ -303,21 +303,38 @@ enum SettingsStrings {
 
 @MainActor
 public struct SettingsView: View {
+    public enum LayoutMode {
+        case standaloneWindow
+        case embeddedMainWindow
+    }
+
     @StateObject private var viewModel: SettingsViewModel
     private let preferredLanguages: [String]?
+    private let layoutMode: LayoutMode
     @State private var presentedMessage: SettingsActionMessage?
     @State private var showAddProviderForm: Bool = false
     @State private var newProviderId: String = ""
     @State private var providerIdError: String = ""
 
-    public init(preferredLanguages: [String]? = nil) {
+    public init(preferredLanguages: [String]? = nil, layoutMode: LayoutMode = .standaloneWindow) {
         self.preferredLanguages = preferredLanguages
+        self.layoutMode = layoutMode
         _viewModel = StateObject(wrappedValue: SettingsViewModel(preferredLanguages: preferredLanguages))
     }
 
-    public init(viewModel: SettingsViewModel, preferredLanguages: [String]? = nil) {
+    public init(viewModel: SettingsViewModel, preferredLanguages: [String]? = nil, layoutMode: LayoutMode = .standaloneWindow) {
         self.preferredLanguages = preferredLanguages
+        self.layoutMode = layoutMode
         _viewModel = StateObject(wrappedValue: viewModel)
+    }
+
+    public var fixedFrameSize: CGSize? {
+        switch layoutMode {
+        case .standaloneWindow:
+            return CGSize(width: 440, height: 560)
+        case .embeddedMainWindow:
+            return nil
+        }
     }
 
     private var isProviderIdValid: Bool {
@@ -525,7 +542,7 @@ public struct SettingsView: View {
             }
             .padding(20)
         }
-        .frame(width: 440, height: 560)
+        .modifier(SettingsContainerFrameModifier(layoutMode: layoutMode))
         .confirmationDialog(
             viewModel.pendingConfirmation.map { confirmationTitle(for: $0.action) }
                 ?? SettingsStrings.text(.confirmAction, preferredLanguages: preferredLanguages),
@@ -746,6 +763,19 @@ public struct SettingsView: View {
             return SettingsStrings.text(.clearUsageCacheConfirmationMessage, preferredLanguages: preferredLanguages)
         case .removeArchivedAccounts:
             return SettingsStrings.text(.removeArchivedAccountsConfirmationMessage, preferredLanguages: preferredLanguages)
+        }
+    }
+}
+
+private struct SettingsContainerFrameModifier: ViewModifier {
+    let layoutMode: SettingsView.LayoutMode
+
+    func body(content: Content) -> some View {
+        switch layoutMode {
+        case .standaloneWindow:
+            content.frame(width: 440, height: 560)
+        case .embeddedMainWindow:
+            content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }

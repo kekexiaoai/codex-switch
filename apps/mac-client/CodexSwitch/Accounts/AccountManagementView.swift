@@ -11,38 +11,22 @@ public struct AccountManagementView: View {
         ["账号", "类型", "5H", "7D", "排序"]
     }
 
-    public var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            headerRow
+    public var pageTitle: String {
+        "账号"
+    }
 
+    public var summaryLabels: [String] {
+        ["当前账号", "归档账号", "排序来源"]
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            pageHeader
+            summaryStrip
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 12) {
                     ForEach(viewModel.rows) { row in
-                        HStack(spacing: 12) {
-                            Text(row.emailText)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Text(row.tierText)
-                                .foregroundColor(.secondary)
-                            Text(row.fiveHourText)
-                                .font(.caption.weight(.semibold))
-                            Text(row.weeklyText)
-                                .font(.caption.weight(.semibold))
-                            HStack(spacing: 6) {
-                                Button("↑") {
-                                    Task {
-                                        await viewModel.moveUp(id: row.id)
-                                    }
-                                }
-                                .disabled(!row.canMoveUp)
-                                Button("↓") {
-                                    Task {
-                                        await viewModel.moveDown(id: row.id)
-                                    }
-                                }
-                                .disabled(!row.canMoveDown)
-                            }
-                        }
-                        .padding(.vertical, 6)
+                        accountCard(row)
                     }
                 }
             }
@@ -55,16 +39,110 @@ public struct AccountManagementView: View {
         }
     }
 
-    private var headerRow: some View {
-        HStack(spacing: 12) {
-            Text(columnTitles[0])
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(columnTitles[1])
-            Text(columnTitles[2])
-            Text(columnTitles[3])
-            Text(columnTitles[4])
+    private var pageHeader: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(pageTitle)
+                .font(.title2.weight(.semibold))
+            Text("这里的排序会直接同步到状态栏快速切换菜单。")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
         }
-        .font(.caption.weight(.semibold))
-        .foregroundColor(.secondary)
+    }
+
+    private var summaryStrip: some View {
+        HStack(spacing: 12) {
+            summaryCard(title: summaryLabels[0], value: viewModel.rows.first(where: \.isActive)?.emailText ?? "暂无")
+            summaryCard(title: summaryLabels[1], value: "\(viewModel.rows.count)")
+            summaryCard(title: summaryLabels[2], value: "手动排序")
+        }
+    }
+
+    private func summaryCard(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text(value)
+                .font(.headline)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
+    }
+
+    private func accountCard(_ row: AccountManagementRowModel) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(row.tierText.uppercased())
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule(style: .continuous).fill(Color.accentColor.opacity(0.12)))
+
+                Text(row.emailText)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                Spacer()
+
+                if row.isActive {
+                    Label("当前", systemImage: "checkmark.circle.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Color(nsColor: .systemGreen))
+                }
+            }
+
+            HStack(spacing: 10) {
+                metricPill(row.fiveHourText)
+                metricPill(row.weeklyText)
+                Spacer()
+                Button {
+                    Task {
+                        await viewModel.moveUp(id: row.id)
+                    }
+                } label: {
+                    Image(systemName: "arrow.up")
+                }
+                .disabled(!row.canMoveUp || viewModel.isReordering)
+                Button {
+                    Task {
+                        await viewModel.moveDown(id: row.id)
+                    }
+                } label: {
+                    Image(systemName: "arrow.down")
+                }
+                .disabled(!row.canMoveDown || viewModel.isReordering)
+            }
+
+            if let lastErrorMessage = viewModel.lastErrorMessage, !lastErrorMessage.isEmpty {
+                Text(lastErrorMessage)
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(row.isActive ? Color.accentColor.opacity(0.08) : Color.primary.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(row.isActive ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private func metricPill(_ title: String) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Capsule(style: .continuous).fill(Color.primary.opacity(0.06)))
     }
 }
