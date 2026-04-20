@@ -84,13 +84,11 @@ public struct CodexArchivedAccountStore: AccountCatalog, AccountRemoving, Accoun
             }
 
             for account in accounts {
-                guard let existingEntry = metadata.entries[account.archiveFilename] else {
-                    continue
-                }
+                let existingEntry = metadata.entries[account.archiveFilename]
 
                 metadata.entries[account.archiveFilename] = CodexAccountMetadataEntry(
-                    source: existingEntry.source,
-                    lastImportedAt: existingEntry.lastImportedAt,
+                    source: existingEntry?.source ?? account.source,
+                    lastImportedAt: existingEntry?.lastImportedAt ?? account.lastImportedAt,
                     manualOrder: index
                 )
             }

@@ -173,6 +173,46 @@ final class CodexArchivedAccountStoreTests: XCTestCase {
         XCTAssertEqual(metadata.entries[newerAlexFilename]?.manualOrder, 1)
     }
 
+    func testSaveManualOrderCreatesMissingMetadataEntriesForExistingArchives() async throws {
+        let baseDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: baseDirectory) }
+
+        let paths = CodexPaths(baseDirectory: baseDirectory)
+        let fileStore = CodexAuthFileStore(paths: paths)
+        let store = CodexArchivedAccountStore(fileStore: fileStore)
+
+        let alexFilename = CodexArchiveNaming.archiveFilename(for: "alex@example.com")
+        let bethFilename = CodexArchiveNaming.archiveFilename(for: "beth@example.com")
+        try fileStore.writeArchive(data: try sampleAuthData(email: "alex@example.com", tier: "team"), filename: alexFilename)
+        try fileStore.writeArchive(data: try sampleAuthData(email: "beth@example.com", tier: "pro"), filename: bethFilename)
+        try fileStore.saveMetadataCache(
+            CodexAccountMetadataCache(entries: [
+                bethFilename: CodexAccountMetadataEntry(
+                    source: .backupImport,
+                    lastImportedAt: Date(timeIntervalSince1970: 1_711_585_800),
+                    manualOrder: 1
+                ),
+            ])
+        )
+
+        try await store.saveManualOrder(idsInOrder: [
+            "subject-beth@example.com",
+            "subject-alex@example.com",
+        ])
+
+        let metadata = try fileStore.loadMetadataCache()
+        XCTAssertEqual(metadata.entries[bethFilename]?.manualOrder, 0)
+        XCTAssertEqual(metadata.entries[alexFilename]?.manualOrder, 1)
+
+        let accounts = try await store.loadAccounts()
+        XCTAssertEqual(accounts.map(\.id), [
+            "subject-beth@example.com",
+            "subject-alex@example.com",
+        ])
+    }
+
     private func sampleAuthData(email: String, tier: String) throws -> Data {
         let payload = [
             "sub": "subject-\(email)",
