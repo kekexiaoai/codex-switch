@@ -155,17 +155,18 @@ export function App() {
                 void runAction("正在导入当前账号…", () => importCurrentAccount(), "当前账号已导入。");
               }}
               onImportBackup={() => {
-                void runAction(
-                  "正在选择备份文件…",
-                  async () => {
-                    const selected = await pickAuthBackupFile();
-                    if (!selected) {
-                      throw new Error("已取消备份文件选择");
-                    }
-                    return accountsImportBackup(selected);
-                  },
-                  "备份账号已导入。",
-                ).catch(() => undefined);
+                setFeedback({ kind: "info", message: "正在选择备份文件…" });
+                void pickAuthBackupFile().then((selected) => {
+                  if (!selected) {
+                    setFeedback(null);
+                    return;
+                  }
+                  void runAction(
+                    "正在导入备份账号…",
+                    () => accountsImportBackup(selected),
+                    "备份账号已导入。",
+                  );
+                });
               }}
               onSwitch={(id) => {
                 void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。");
@@ -221,10 +222,12 @@ export function App() {
               onChange={(settings) => {
                 void runAction(
                   "正在保存设置…",
-                  () =>
-                    setAutostartEnabled(settings.launchAtLogin).then(() =>
-                      saveSettings(settings),
-                    ),
+                  async () => {
+                    if (settings.launchAtLogin !== snapshot.settings.launchAtLogin) {
+                      await setAutostartEnabled(settings.launchAtLogin);
+                    }
+                    return saveSettings(settings);
+                  },
                   settings.launchAtLogin ? "已启用开机启动。" : "已关闭开机启动。",
                 );
               }}

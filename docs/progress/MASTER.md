@@ -20,7 +20,7 @@
 - [x] Phase 3: 核心服务迁移 (5/5 tasks) [details](./phase-3-core-services.md)
 - [x] Phase 4: Provider Sync 与桌面登录 (4/4 tasks) [details](./phase-4-provider-sync-and-login.md)
 - [x] Phase 5: 主窗口与托盘 UI (4/4 tasks) [details](./phase-5-ui-shell.md)
-- [ ] Phase 6: 打包与验收 (0/3 tasks) [details](./phase-6-release-and-validation.md)
+- [ ] Phase 6: 打包与验收 (2/3 tasks) [details](./phase-6-release-and-validation.md)
 
 ## Current Status
 
