@@ -2,18 +2,21 @@
 
 ## Build And Test
 
-- Run `swift test` in `apps/mac-client`
-- Run `xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'`
-- Confirm the app launches on a macOS 12 machine
+- Run `npm ci && npm test && npm run build` in `apps/rust-client/ui`
+- Run `cargo test && cargo build` in `apps/rust-client/src-tauri`
+- Run `npm run tauri build -- --bundles app` in `apps/rust-client/ui`
+- Confirm the generated app launches correctly on macOS
 
 ## Product Checks
 
-- Verify the menu bar status item appears on launch
-- Verify the popover renders current account, usage summaries, and account list
-- Verify the Settings window toggles the email visibility preference
+- Verify the tray icon appears on launch
+- Verify the tray panel renders current account, usage summaries, and quick switch rows
+- Verify the main window opens and all feature sections render
+- Verify browser login, backup import, provider sync, and settings flows behave correctly
+- Verify “显示完整邮箱” and “开机启动” settings take effect
 
 ## Packaging
 
-- Confirm bundle identifier and signing settings are correct
-- Archive a release build in Xcode
-- Export a notarized app package when distribution starts
+- Confirm Tauri bundle metadata and icons are correct
+- Confirm the output bundle exists at `apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app`
+- Zip and publish the generated `.app` bundle through the release workflow
