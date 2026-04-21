@@ -11,3 +11,4 @@
 - 当前桌面端已经支持通过原生文件选择器导入备份 auth 文件。
 - 本地 `npm run tauri build -- --bundles app` 已验证可产出 `Codex Switch.app`。
 - `scripts/package-macos-app.sh` 已切换并验证为新的 Tauri bundle 打包入口。
+- `AppState::new()` 已支持通过环境变量切到临时 fixture 目录，方便后续回归验收。

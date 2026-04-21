@@ -48,3 +48,12 @@ npm run tauri build -- --bundles app
 生成的 macOS app bundle 位于：
 
 - `src-tauri/target/release/bundle/macos/Codex Switch.app`
+
+## Fixture Overrides
+
+桌面运行时支持以下环境变量，方便本地 smoke test 和端到端验收：
+
+- `CODEX_SWITCH_CODEX_DIR`
+- `CODEX_SWITCH_CONFIG_DIR`
+
+设置后，`AppState::new()` 会优先使用这些路径，而不是用户真实目录。

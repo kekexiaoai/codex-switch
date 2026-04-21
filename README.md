@@ -74,6 +74,17 @@ npm run tauri build -- --bundles app
 
 - `apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app`
 
+### Fixture Overrides
+
+为了做本地回归或端到端验收，可以用环境变量把桌面端指向临时目录：
+
+```bash
+export CODEX_SWITCH_CODEX_DIR=/path/to/test/.codex
+export CODEX_SWITCH_CONFIG_DIR=/path/to/test/config
+```
+
+应用启动和 `AppState::new()` 会优先使用这些路径。
+
 ## Verification
 
 当前已验证：
