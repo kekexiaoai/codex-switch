@@ -36,3 +36,15 @@
 - 主窗口为主，托盘为辅
 - UI 使用 shadcn/ui 原语，但统一收口为桌面工具风格
 - 所有 `.codex` 文件读写都在 Rust 后端中完成
+
+## Bundle
+
+从 `ui/` 目录执行：
+
+```bash
+npm run tauri build -- --bundles app
+```
+
+生成的 macOS app bundle 位于：
+
+- `src-tauri/target/release/bundle/macos/Codex Switch.app`

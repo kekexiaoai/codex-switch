@@ -30,6 +30,7 @@
     "active": true,
     "targets": "all",
     "icon": [
+      "../../../packaging/icons/AppIcon.icns",
       "../../../packaging/icons/icon.png"
     ]
   }

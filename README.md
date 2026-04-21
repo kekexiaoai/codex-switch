@@ -63,6 +63,17 @@ cargo test
 - `apps/rust-client/ui` 作为前端工作区
 - `apps/rust-client/src-tauri` 作为桌面运行时
 
+本地构建 macOS app bundle：
+
+```bash
+cd apps/rust-client/ui
+npm run tauri build -- --bundles app
+```
+
+输出路径：
+
+- `apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app`
+
 ## Verification
 
 当前已验证：
@@ -72,6 +83,7 @@ cargo test
 - `npm run build`
 - `cargo test`
 - `cargo build`
+- `npm run tauri build -- --bundles app`
 
 ## Migration Notes
 

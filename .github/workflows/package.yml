@@ -34,27 +34,39 @@ jobs:
         with:
           ref: ${{ github.event.inputs.ref || github.ref }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/rust-client/ui/package-lock.json
+
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
-      - name: Run Packaging Script
-        run: ./scripts/package-macos-app.sh
+      - name: Install Frontend Dependencies
+        working-directory: apps/rust-client/ui
+        run: npm ci
+
+      - name: Build Tauri App Bundle
+        working-directory: apps/rust-client/ui
+        run: npm run tauri build -- --bundles app
 
       - name: Inspect Binary Architecture
         run: |
-          file "dist/Codex Switch.app/Contents/MacOS/CodexSwitchApp" | tee /tmp/codex-switch-app-arch.txt
-          file "dist/Codex Switch.app/Contents/Frameworks/CodexSwitchKit.framework/Versions/A/CodexSwitchKit" | tee /tmp/codex-switch-framework-arch.txt
+          file "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app/Contents/MacOS/codex-switch" | tee /tmp/codex-switch-app-arch.txt
           grep -q "${{ matrix.arch }}" /tmp/codex-switch-app-arch.txt
-          grep -q "${{ matrix.arch }}" /tmp/codex-switch-framework-arch.txt
 
       - name: Create Zip Archive
-        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/Codex-Switch-${{ matrix.arch }}-${{ github.run_number }}.zip"
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app" "dist/Codex-Switch-${{ matrix.arch }}-${{ github.run_number }}.zip"
 
       - name: Upload App Bundle
         uses: actions/upload-artifact@v6
         with:
           name: Codex-Switch-app-${{ matrix.arch }}-${{ github.run_number }}
-          path: dist/Codex Switch.app
+          path: apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app
 
       - name: Upload Zip Archive
         uses: actions/upload-artifact@v6

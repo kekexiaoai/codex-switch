@@ -24,10 +24,10 @@
 
 ## Current Status
 
-- 当前正在执行：Phase 6 / 打包、README、autostart 与更完整验收收口
+- 当前正在执行：Phase 6 / 打包、CI/Release workflow、README 与更完整验收收口
 
 ## Next Steps
 
 1. 提交当前实现 commit
-2. 继续更新 README 与打包说明
-3. 继续补端到端验收和更细的桌面体验
+2. 继续补端到端验收和更细的桌面体验
+3. 继续压缩 Swift 基线与旧流程残留

@@ -40,6 +40,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.ref }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/rust-client/ui/package-lock.json
+
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
@@ -62,21 +69,23 @@ jobs:
           echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
           echo "zip_name=Codex-Switch-${TAG_NAME}-arm64.zip" >>"$GITHUB_OUTPUT"
 
-      - name: Xcode Project Tests
-        run: xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'
+      - name: Install Frontend Dependencies
+        working-directory: apps/rust-client/ui
+        run: npm ci
 
       - name: Build App Bundle
-        run: ./scripts/package-macos-app.sh
+        working-directory: apps/rust-client/ui
+        run: npm run tauri build -- --bundles app
 
       - name: Inspect Binary Architecture
         run: |
-          file "dist/Codex Switch.app/Contents/MacOS/CodexSwitchApp" | tee /tmp/codex-switch-app-arch.txt
-          file "dist/Codex Switch.app/Contents/Frameworks/CodexSwitchKit.framework/Versions/A/CodexSwitchKit" | tee /tmp/codex-switch-framework-arch.txt
+          file "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app/Contents/MacOS/codex-switch" | tee /tmp/codex-switch-app-arch.txt
           grep -q "arm64" /tmp/codex-switch-app-arch.txt
-          grep -q "arm64" /tmp/codex-switch-framework-arch.txt
 
       - name: Create Release Archive
-        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
 
       - name: Publish arm64 Asset
         env:
@@ -109,6 +118,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.ref }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/rust-client/ui/package-lock.json
+
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
@@ -131,21 +147,23 @@ jobs:
           echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
           echo "zip_name=Codex-Switch-${TAG_NAME}-x86_64.zip" >>"$GITHUB_OUTPUT"
 
-      - name: Xcode Project Tests
-        run: xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'
+      - name: Install Frontend Dependencies
+        working-directory: apps/rust-client/ui
+        run: npm ci
 
       - name: Build App Bundle
-        run: ./scripts/package-macos-app.sh
+        working-directory: apps/rust-client/ui
+        run: npm run tauri build -- --bundles app
 
       - name: Inspect Binary Architecture
         run: |
-          file "dist/Codex Switch.app/Contents/MacOS/CodexSwitchApp" | tee /tmp/codex-switch-app-arch.txt
-          file "dist/Codex Switch.app/Contents/Frameworks/CodexSwitchKit.framework/Versions/A/CodexSwitchKit" | tee /tmp/codex-switch-framework-arch.txt
+          file "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app/Contents/MacOS/codex-switch" | tee /tmp/codex-switch-app-arch.txt
           grep -q "x86_64" /tmp/codex-switch-app-arch.txt
-          grep -q "x86_64" /tmp/codex-switch-framework-arch.txt
 
       - name: Create Release Archive
-        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
 
       - name: Upload x86_64 Asset To Existing Release
         env:
