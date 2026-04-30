@@ -62,14 +62,23 @@ export function App() {
   const isTray = search.get("panel") === "tray";
 
   const refreshAll = async () => {
-    const [next, autostartEnabled] = await Promise.all([
-      getAppSnapshot(),
-      getAutostartEnabled().catch(() => false),
-    ]);
-    next.settings.launchAtLogin = autostartEnabled;
-    setSnapshot(next);
-    setTargetProvider(next.providerStatus.currentProvider || "openai");
-    setSelectedBackupId(next.providerStatus.backups[0]?.id ?? null);
+    try {
+      const [next, autostartEnabled] = await Promise.all([
+        getAppSnapshot(),
+        getAutostartEnabled().catch(() => false),
+      ]);
+      next.settings.launchAtLogin = autostartEnabled;
+      setSnapshot(next);
+      setTargetProvider(next.providerStatus.currentProvider || "openai");
+      setSelectedBackupId(next.providerStatus.backups[0]?.id ?? null);
+      return true;
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
   };
 
   const runAction = async <T,>(
@@ -80,8 +89,10 @@ export function App() {
     try {
       setFeedback({ kind: "info", message: pendingMessage });
       const result = await action();
-      await refreshAll();
-      setFeedback({ kind: "success", message: successMessage });
+      const refreshed = await refreshAll();
+      if (refreshed) {
+        setFeedback({ kind: "success", message: successMessage });
+      }
       return result;
     } catch (error) {
       setFeedback({

@@ -12,3 +12,4 @@
 - 本地 `npm run tauri build -- --bundles app` 已验证可产出 `Codex Switch.app`。
 - `scripts/package-macos-app.sh` 已切换并验证为新的 Tauri bundle 打包入口。
 - `AppState::new()` 已支持通过环境变量切到临时 fixture 目录，方便后续回归验收。
+- 2026-04-30 排查首屏无数据问题：当前 `auth.json` 可能是 API Key 模式，同时归档目录中单个缺失 `id_token` 的 JSON 会导致整个账号列表失败；已改为跳过不可描述 ChatGPT 账号的归档文件，并在前端显示首屏加载错误。

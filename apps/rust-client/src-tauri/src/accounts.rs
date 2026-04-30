@@ -31,8 +31,12 @@ impl AccountsService {
         let active = self.current_claims().ok().map(|claims| claims.account_id);
         let mut accounts = vec![];
         for path in self.store.list_archived_auth_files()? {
-            let data = fs::read(&path)?;
-            let claims = self.claims_from_auth(&data)?;
+            let Ok(data) = fs::read(&path) else {
+                continue;
+            };
+            let Ok(claims) = self.claims_from_auth(&data) else {
+                continue;
+            };
             let filename = path
                 .file_name()
                 .and_then(|s| s.to_str())
@@ -196,5 +200,30 @@ mod tests {
             accounts[0].record.email.as_deref(),
             Some("alice@example.com")
         );
+    }
+
+    #[test]
+    fn skips_archived_auth_files_that_cannot_describe_chatgpt_accounts() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        let accounts_dir = base.join("accounts");
+        fs::create_dir_all(&accounts_dir).unwrap();
+        fs::write(base.join("auth.json"), r#"{"OPENAI_API_KEY":"sk-test"}"#).unwrap();
+        fs::write(
+            accounts_dir.join("valid.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwic3ViIjoiYWNjdC0xIiwicGxhbiI6InRlYW0ifQ.sig"}}"#,
+        )
+        .unwrap();
+        fs::write(accounts_dir.join("missing-token.json"), r#"{"tokens":{}}"#).unwrap();
+
+        let service = AccountsService::new(CodexPaths::new(base));
+        let accounts = service.list().unwrap();
+
+        assert_eq!(accounts.len(), 1);
+        assert_eq!(
+            accounts[0].record.email.as_deref(),
+            Some("alice@example.com")
+        );
+        assert!(!accounts[0].is_active);
     }
 }
