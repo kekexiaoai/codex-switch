@@ -1,5 +1,6 @@
+import { RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { BackupEntry, ProviderSyncStatus } from "@/lib/tauri";
 
@@ -25,74 +26,68 @@ export function ProviderSyncView({
   onPruneBackups: () => void;
 }) {
   return (
-    <div className="grid h-full grid-cols-[minmax(0,1fr)_360px] gap-4">
-      <Card className="min-h-0">
-        <CardHeader>
-          <div>
-            <CardTitle>Provider 状态</CardTitle>
-            <CardDescription>同时观察 rollout 会话分布和 SQLite threads 分布。</CardDescription>
-          </div>
+    <div className="grid h-full grid-cols-[minmax(0,1fr)_340px] gap-3 overflow-hidden">
+      <Card className="min-h-0 overflow-hidden">
+        <CardHeader className="h-11">
+          <CardTitle>Provider 状态</CardTitle>
+          <div className="text-[11px] text-muted-foreground">Current: {status?.currentProvider ?? "openai"}</div>
         </CardHeader>
-        <CardContent className="grid h-[calc(100%-76px)] grid-cols-2 gap-4 overflow-hidden">
+        <CardContent className="grid h-[calc(100%-44px)] grid-cols-2 gap-3 overflow-hidden">
           <ProviderDistributionPanel title="Rollout Logs" items={status?.rolloutDistribution ?? []} />
           <ProviderDistributionPanel title="SQLite Threads" items={status?.sqliteDistribution ?? []} />
         </CardContent>
       </Card>
-      <div className="flex flex-col gap-4">
+      <div className="flex min-h-0 flex-col gap-3">
         <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>当前 Provider</CardTitle>
-              <CardDescription>当前值与配置列表直接来自 `config.toml`。</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <div>Current: {status?.currentProvider ?? "openai"}</div>
-            <div>Configured: {(status?.configuredProviders ?? []).join(", ") || "openai"}</div>
-            <div>Backups: {status?.backupCount ?? 0}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>同步操作</CardTitle>
-              <CardDescription>备份后再统一改写会话和 SQLite provider。</CardDescription>
-            </div>
+          <CardHeader className="h-11">
+            <CardTitle>同步操作</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Input value={targetProvider} onChange={(event) => onTargetProviderChange(event.target.value)} placeholder="输入 provider，例如 openai" />
+            <div className="space-y-1.5">
+              <div className="desktop-section-title">Target Provider</div>
+              <Input
+                value={targetProvider}
+                onChange={(event) => onTargetProviderChange(event.target.value)}
+                placeholder="openai"
+              />
+            </div>
             <div className="flex gap-2">
-              <Button variant="secondary" onClick={onSync}>
+              <Button variant="secondary" size="sm" onClick={onSync}>
                 同步现有
               </Button>
-              <Button onClick={onSwitch}>
+              <Button size="sm" onClick={onSwitch}>
                 切换并同步
               </Button>
             </div>
+            <div className="desktop-pane space-y-2 p-3 text-[12px]">
+              <InfoRow label="Configured" value={(status?.configuredProviders ?? []).join(", ") || "openai"} />
+              <InfoRow label="Backups" value={`${status?.backupCount ?? 0}`} />
+              <InfoRow label="Size" value={`${((status?.backupTotalSize ?? 0) / 1024).toFixed(1)} KB`} />
+            </div>
           </CardContent>
         </Card>
-        <Card className="min-h-0 flex-1">
-          <CardHeader>
-            <div>
-              <CardTitle>备份</CardTitle>
-              <CardDescription>保留最近同步前的配置、SQLite 和被改写的 rollout 文件。</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="flex h-[calc(100%-76px)] flex-col gap-3 overflow-auto">
-            <div className="flex gap-2">
+        <Card className="min-h-0 flex-1 overflow-hidden">
+          <CardHeader className="h-11">
+            <CardTitle>备份</CardTitle>
+            <div className="flex gap-1.5">
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={() => selectedBackupId && onRestoreBackup(selectedBackupId)}
                 disabled={!selectedBackupId}
               >
-                恢复选中备份
+                <RotateCcw className="h-3.5 w-3.5" />
+                恢复
               </Button>
-              <Button variant="secondary" onClick={onPruneBackups}>
-                清理旧备份
+              <Button variant="secondary" size="sm" onClick={onPruneBackups}>
+                <Trash2 className="h-3.5 w-3.5" />
+                清理
               </Button>
             </div>
+          </CardHeader>
+          <CardContent className="h-[calc(100%-44px)] overflow-auto p-2">
             {status?.backups?.length ? (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {status.backups.map((backup) => (
                   <BackupRow
                     key={backup.id}
@@ -103,9 +98,7 @@ export function ProviderSyncView({
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-border bg-panelAlt p-4 text-sm text-muted-foreground">
-                还没有备份记录。执行同步或切换后会自动创建。
-              </div>
+              <div className="desktop-pane p-3 text-[12px] text-muted-foreground">暂无备份记录</div>
             )}
           </CardContent>
         </Card>
@@ -122,17 +115,17 @@ function ProviderDistributionPanel({
   items: Array<{ provider: string; sessionCount: number }>;
 }) {
   return (
-    <div className="flex min-h-0 flex-col rounded-xl border border-border bg-panelAlt">
-      <div className="border-b border-border px-4 py-3 text-sm font-semibold">{title}</div>
-      <div className="flex-1 overflow-auto p-3">
+    <div className="desktop-pane flex min-h-0 flex-col overflow-hidden">
+      <div className="border-b border-border px-3 py-2 text-[12px] font-semibold">{title}</div>
+      <div className="flex-1 overflow-auto p-2">
         {items.length === 0 ? (
-          <div className="text-sm text-muted-foreground">没有检测到数据。</div>
+          <div className="p-2 text-[12px] text-muted-foreground">没有检测到数据</div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {items.map((item) => (
-              <div key={item.provider} className="flex items-center justify-between rounded-lg border border-border bg-panel px-3 py-2">
-                <span>{item.provider}</span>
-                <span className="text-sm text-muted-foreground">{item.sessionCount}</span>
+              <div key={item.provider} className="desktop-row flex items-center justify-between px-2.5 py-2">
+                <span className="truncate text-[12px]">{item.provider}</span>
+                <span className="text-[12px] text-muted-foreground">{item.sessionCount}</span>
               </div>
             ))}
           </div>
@@ -156,17 +149,26 @@ function BackupRow({
       type="button"
       onClick={() => onSelect(backup.id)}
       className={[
-        "flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition-colors",
-        selected ? "border-slate-400 bg-slate-100" : "border-border bg-panelAlt hover:bg-panel",
+        "desktop-row flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left",
+        selected ? "desktop-row-selected" : "",
       ].join(" ")}
     >
-      <div>
-        <div className="font-medium">{backup.targetProvider}</div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          {new Date(backup.createdAt).toLocaleString()} · {(backup.totalSize / 1024).toFixed(1)} KB
+      <div className="min-w-0">
+        <div className="truncate text-[12px] font-medium">{backup.targetProvider}</div>
+        <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          {new Date(backup.createdAt).toLocaleString()} / {(backup.totalSize / 1024).toFixed(1)} KB
         </div>
       </div>
-      <div className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{backup.id}</div>
+      <div className="shrink-0 text-[10px] uppercase tracking-[0.04em] text-muted-foreground">{backup.id}</div>
     </button>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="max-w-[190px] truncate text-foreground">{value}</span>
+    </div>
   );
 }

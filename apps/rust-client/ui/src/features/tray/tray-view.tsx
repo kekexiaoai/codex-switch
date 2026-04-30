@@ -1,5 +1,5 @@
+import { RefreshCcw, Settings, SquareArrowOutUpRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccountListItem, UsageSnapshot } from "@/lib/tauri";
 import { displayEmail } from "@/features/accounts/display-email";
 
@@ -26,42 +26,50 @@ export function TrayView({
 
   return (
     <div className="tray-window">
-      <div className="flex h-full flex-col gap-3 rounded-[22px] border border-border bg-[rgba(255,255,255,0.92)] p-3 shadow-window backdrop-blur-xl">
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>{active ? displayEmail(active, showFullEmail) : "No account"}</CardTitle>
-              <CardDescription>{usage ? `${usage.fiveHour.percentUsed}% / ${usage.weekly.percentUsed}%` : "点击刷新查看 usage"}</CardDescription>
+      <div className="desktop-frame flex h-full flex-col overflow-hidden rounded-lg bg-panel">
+        <div className="desktop-toolbar flex items-center justify-between px-3">
+          <div className="min-w-0">
+            <div className="truncate text-[13px] font-semibold">
+              {active ? displayEmail(active, showFullEmail) : "No account"}
             </div>
-          </CardHeader>
-        </Card>
-        <Card className="flex-1 min-h-0">
-          <CardHeader>
-            <CardTitle>快速切换</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 overflow-auto">
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {usage ? `${usage.fiveHour.percentUsed}% / ${usage.weekly.percentUsed}%` : "Usage 未刷新"}
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onRefresh} aria-label="刷新">
+            <RefreshCcw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto p-2">
+          <div className="desktop-section-title px-1 pb-1">Accounts</div>
+          <div className="space-y-1">
             {accounts.map((account) => (
               <button
                 key={account.id}
                 type="button"
                 onClick={() => onSwitch(account.id)}
-                className="flex w-full items-center justify-between rounded-xl border border-border bg-panelAlt px-3 py-2 text-left"
+                className={[
+                  "desktop-row flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left",
+                  account.isActive ? "desktop-row-selected" : "",
+                ].join(" ")}
               >
-                <span>{displayEmail(account, showFullEmail)}</span>
-                <span className="text-xs text-muted-foreground">{account.tier.toUpperCase()}</span>
+                <span className="min-w-0 truncate text-[12px]">{displayEmail(account, showFullEmail)}</span>
+                <span className="shrink-0 text-[10px] uppercase text-muted-foreground">{account.tier}</span>
               </button>
             ))}
-          </CardContent>
-        </Card>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={onRefresh}>
-            刷新
+          </div>
+        </div>
+        <div className="desktop-statusbar grid grid-cols-3 gap-1 p-2">
+          <Button variant="secondary" size="sm" onClick={onOpenMain}>
+            <SquareArrowOutUpRight className="h-3.5 w-3.5" />
+            主窗口
           </Button>
-          <Button onClick={onOpenMain}>打开主窗口</Button>
-          <Button variant="secondary" onClick={onOpenSettings}>
+          <Button variant="secondary" size="sm" onClick={onOpenSettings}>
+            <Settings className="h-3.5 w-3.5" />
             设置
           </Button>
-          <Button variant="secondary" onClick={onQuit}>
+          <Button variant="secondary" size="sm" onClick={onQuit}>
+            <X className="h-3.5 w-3.5" />
             退出
           </Button>
         </div>

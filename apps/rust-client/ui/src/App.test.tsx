@@ -48,7 +48,8 @@ import { App } from "./App";
 describe("App", () => {
   it("renders desktop sidebar instead of web navbar", async () => {
     render(<App />);
-    expect(await screen.findByText("Desktop Runtime")).toBeInTheDocument();
+    expect(await screen.findByText("Codex Switch")).toBeInTheDocument();
+    expect(screen.getByText("Desktop")).toBeInTheDocument();
     expect(screen.getAllByText("Accounts").length).toBeGreaterThan(0);
     expect(screen.getByText("导入备份")).toBeInTheDocument();
     expect(screen.queryByText("Welcome")).not.toBeInTheDocument();

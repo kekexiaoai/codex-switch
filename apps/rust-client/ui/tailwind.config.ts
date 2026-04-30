@@ -25,11 +25,11 @@ const config: Config = {
         sm: "var(--radius-sm)",
       },
       boxShadow: {
-        panel: "0 18px 40px rgba(15, 23, 42, 0.08)",
-        window: "0 24px 64px rgba(15, 23, 42, 0.12)",
+        panel: "0 1px 2px rgba(39, 47, 59, 0.08)",
+        window: "0 22px 54px rgba(39, 47, 59, 0.16)",
       },
       fontFamily: {
-        sans: ["SF Pro Display", "SF Pro Text", "Segoe UI", "Inter", "sans-serif"],
+        sans: ["SF Pro Text", "Segoe UI", "sans-serif"],
       },
     },
   },

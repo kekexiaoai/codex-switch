@@ -128,23 +128,23 @@ export function App() {
   return (
     <div className="app-window">
       <Sidebar activeView={view} onChange={setView} />
-      <main className="flex min-w-0 flex-col gap-4 overflow-hidden">
+      <main className="desktop-frame flex min-w-0 flex-col overflow-hidden rounded-r-lg">
         <Topbar view={view} />
         {feedback ? (
           <div
             className={[
-              "rounded-2xl border px-4 py-3 text-sm shadow-panel",
+              "mx-3 mt-3 rounded-md border px-3 py-2 text-[12px]",
               feedback.kind === "error"
                 ? "border-rose-200 bg-rose-50 text-rose-700"
                 : feedback.kind === "success"
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-slate-200 bg-white/80 text-slate-700",
+                  : "border-slate-300 bg-panelAlt text-slate-700",
             ].join(" ")}
           >
             {feedback.message}
           </div>
         ) : null}
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden p-3">
           {view === "accounts" ? (
             <AccountsView
               accounts={snapshot.accounts}

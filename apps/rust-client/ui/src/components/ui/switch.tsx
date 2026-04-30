@@ -12,14 +12,14 @@ export function Switch({ checked, onCheckedChange }: SwitchProps) {
       type="button"
       onClick={() => onCheckedChange(!checked)}
       className={cn(
-        "relative inline-flex h-6 w-11 items-center rounded-full border border-border transition-colors",
-        checked ? "bg-foreground" : "bg-panelAlt",
+        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border transition-colors",
+        checked ? "bg-slate-800" : "bg-panel",
       )}
     >
       <span
         className={cn(
-          "absolute left-1 h-4 w-4 rounded-full bg-white transition-transform",
-          checked && "translate-x-5",
+          "absolute left-0.5 h-4 w-4 rounded-full border border-black/10 bg-white shadow-sm transition-transform",
+          checked && "translate-x-4",
         )}
       />
     </button>
