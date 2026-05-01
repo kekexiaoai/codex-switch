@@ -11,19 +11,19 @@ export function SettingsView({
   onChange: (settings: SettingsDto) => void;
 }) {
   return (
-    <div className="grid h-full grid-cols-[minmax(0,1fr)_310px] gap-3 overflow-hidden">
+    <div className="grid h-full grid-cols-[minmax(0,1fr)_340px] gap-5 overflow-hidden">
       <Card>
-        <CardHeader className="h-11">
+        <CardHeader>
           <CardTitle>偏好设置</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="desktop-pane p-3">
+        <CardContent className="space-y-4">
+          <div className="desktop-pane p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-[13px] font-medium">Usage 数据源</div>
-                <div className="mt-0.5 text-[11px] text-muted-foreground">自动优先远端，失败后回退本地日志</div>
+                <div className="text-[15px] font-black tracking-[-0.03em]">Usage 数据源</div>
+                <div className="mt-1 text-[12px] font-medium text-slate-500">自动优先远端，失败后回退本地日志</div>
               </div>
-              <div className="flex rounded-md border border-border bg-panel p-0.5">
+              <div className="flex rounded-2xl border border-slate-300/50 bg-white/54 p-1">
                 <Button
                   size="sm"
                   variant={settings.usageSourceMode === "automatic" ? "default" : "ghost"}
@@ -62,7 +62,7 @@ export function SettingsView({
         </CardContent>
       </Card>
       <Card className="overflow-hidden">
-        <CardHeader className="h-11">
+        <CardHeader>
           <CardTitle>存储</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-[12px] text-muted-foreground">
@@ -90,10 +90,10 @@ function SettingRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="desktop-pane flex items-center justify-between gap-4 px-3 py-2.5">
+    <div className="desktop-pane flex items-center justify-between gap-4 px-4 py-4">
       <div>
-        <div className="text-[13px] font-medium">{title}</div>
-        <div className="mt-0.5 text-[11px] text-muted-foreground">{description}</div>
+        <div className="text-[15px] font-black tracking-[-0.03em]">{title}</div>
+        <div className="mt-1 text-[12px] font-medium text-slate-500">{description}</div>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>

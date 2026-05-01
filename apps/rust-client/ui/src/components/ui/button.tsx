@@ -3,19 +3,23 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 rounded-md border text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-45",
+  "inline-flex items-center justify-center gap-1.5 rounded-xl border text-[12px] font-semibold transition disabled:pointer-events-none disabled:opacity-45",
   {
     variants: {
       variant: {
-        default: "border-slate-700 bg-slate-800 px-2.5 py-1.5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] hover:bg-slate-700",
-        secondary: "border-border bg-panel px-2.5 py-1.5 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] hover:bg-panelAlt",
-        ghost: "border-transparent bg-transparent px-2 py-1.5 text-muted-foreground hover:bg-panelAlt hover:text-foreground",
-        danger: "border-rose-700 bg-rose-600 px-2.5 py-1.5 text-white hover:bg-rose-700",
+        default:
+          "border-sky-500/40 bg-gradient-to-br from-blue-600 to-cyan-500 px-3 py-1.5 text-white shadow-[0_10px_22px_rgba(37,99,235,0.24),inset_0_1px_0_rgba(255,255,255,0.28)] hover:brightness-105",
+        secondary:
+          "border-slate-300/60 bg-white/66 px-3 py-1.5 text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_8px_18px_rgba(67,88,116,0.10)] hover:bg-white/88",
+        ghost:
+          "border-transparent bg-transparent px-2 py-1.5 text-muted-foreground hover:bg-white/54 hover:text-foreground",
+        danger:
+          "border-rose-400/50 bg-gradient-to-br from-rose-500 to-orange-500 px-3 py-1.5 text-white hover:brightness-105",
       },
       size: {
         default: "h-8",
-        sm: "h-7 px-2 text-[11px]",
-        lg: "h-9 px-3",
+        sm: "h-8 px-2.5 text-[11px]",
+        lg: "h-10 px-4",
       },
     },
     defaultVariants: {

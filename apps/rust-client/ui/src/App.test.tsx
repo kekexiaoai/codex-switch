@@ -56,12 +56,13 @@ describe("App", () => {
     vi.mocked(getAppSnapshot).mockResolvedValue(snapshot);
   });
 
-  it("renders desktop sidebar instead of web navbar", async () => {
+  it("renders a glass desktop shell instead of a web navbar", async () => {
     render(<App />);
-    expect(await screen.findByText("Codex Switch")).toBeInTheDocument();
-    expect(screen.getByText("Menu Bar Utility")).toBeInTheDocument();
+    expect(await screen.findByText("仪表盘")).toBeInTheDocument();
+    expect(screen.getByTestId("glass-shell")).toBeInTheDocument();
+    expect(screen.getByTestId("floating-dock")).toBeInTheDocument();
     expect(screen.getAllByText("Accounts").length).toBeGreaterThan(0);
-    expect(screen.getByText("导入备份")).toBeInTheDocument();
+    expect(screen.getAllByText("导入备份").length).toBeGreaterThan(0);
     expect(screen.queryByText("Welcome")).not.toBeInTheDocument();
   });
 

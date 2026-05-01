@@ -138,25 +138,25 @@ export function App() {
   }
 
   return (
-    <div className="app-window">
+    <div className="app-window" data-testid="glass-shell">
       <Sidebar activeView={view} onChange={setView} />
-      <main className="desktop-frame flex min-w-0 flex-col overflow-hidden rounded-r-lg">
-        <Topbar view={view} />
+      <main className="glass-shell flex min-w-0 flex-col overflow-hidden">
+        <Topbar view={view} onOpenMain={() => void refreshAll()} />
         {feedback ? (
           <div
             className={[
-              "mx-3 mt-3 rounded-md border px-3 py-2 text-[12px]",
+              "relative z-10 mt-4 rounded-2xl border px-4 py-3 text-[12px] shadow-[0_12px_24px_rgba(67,88,116,0.12)]",
               feedback.kind === "error"
-                ? "border-rose-200 bg-rose-50 text-rose-700"
+                ? "border-rose-200/70 bg-rose-50/80 text-rose-700"
                 : feedback.kind === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-slate-300 bg-panelAlt text-slate-700",
+                  ? "border-emerald-200/70 bg-emerald-50/80 text-emerald-700"
+                  : "border-slate-300/60 bg-white/62 text-slate-700",
             ].join(" ")}
           >
             {feedback.message}
           </div>
         ) : null}
-        <div className="min-h-0 flex-1 overflow-hidden p-3">
+        <div className="relative z-10 min-h-0 flex-1 overflow-hidden pt-6">
           {view === "accounts" ? (
             <AccountsView
               accounts={snapshot.accounts}

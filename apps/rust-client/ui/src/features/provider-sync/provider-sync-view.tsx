@@ -35,30 +35,30 @@ export function ProviderSyncView({
   );
 
   return (
-    <div className="grid h-full grid-cols-[minmax(0,1fr)_350px] gap-3 overflow-hidden">
+    <div className="grid h-full grid-cols-[minmax(0,1fr)_380px] gap-5 overflow-hidden">
       <Card className="min-h-0 overflow-hidden">
-        <CardHeader className="h-11">
+        <CardHeader>
           <CardTitle>Provider 状态</CardTitle>
-          <div className="text-[11px] text-muted-foreground">Current: {status?.currentProvider ?? "openai"}</div>
+          <div className="text-[12px] font-semibold text-slate-500">Current: {status?.currentProvider ?? "openai"}</div>
         </CardHeader>
-        <CardContent className="flex h-[calc(100%-44px)] min-h-0 flex-col gap-3 overflow-hidden">
-          <div className="grid grid-cols-3 gap-2">
+        <CardContent className="flex h-[calc(100%-72px)] min-h-0 flex-col gap-5 overflow-hidden">
+          <div className="grid grid-cols-3 gap-4">
             <StatusTile label="当前 Provider" value={status?.currentProvider ?? "openai"} />
             <StatusTile label="Rollout 会话" value={`${rolloutTotal}`} />
             <StatusTile label="SQLite 线程" value={`${sqliteTotal}`} />
           </div>
-          <div className="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-hidden">
+          <div className="grid min-h-0 flex-1 grid-cols-2 gap-4 overflow-hidden">
             <ProviderDistributionPanel title="Rollout Logs" items={status?.rolloutDistribution ?? []} />
             <ProviderDistributionPanel title="SQLite Threads" items={status?.sqliteDistribution ?? []} />
           </div>
         </CardContent>
       </Card>
-      <div className="flex min-h-0 flex-col gap-3">
+      <div className="flex min-h-0 flex-col gap-5">
         <Card>
-          <CardHeader className="h-11">
+          <CardHeader>
             <CardTitle>同步操作</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <div className="desktop-section-title">Target Provider</div>
               <Input
@@ -67,7 +67,7 @@ export function ProviderSyncView({
                 placeholder="openai"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Button variant="secondary" size="sm" onClick={onSync}>
                 同步现有
               </Button>
@@ -83,7 +83,7 @@ export function ProviderSyncView({
           </CardContent>
         </Card>
         <Card className="min-h-0 flex-1 overflow-hidden">
-          <CardHeader className="h-11">
+          <CardHeader>
             <CardTitle>备份</CardTitle>
             <div className="flex gap-1.5">
               <Button
@@ -101,7 +101,7 @@ export function ProviderSyncView({
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="h-[calc(100%-44px)] overflow-auto p-2">
+          <CardContent className="h-[calc(100%-72px)] overflow-auto p-3">
             {status?.backups?.length ? (
               <div className="space-y-1">
                 {status.backups.map((backup) => (
@@ -134,21 +134,21 @@ function ProviderDistributionPanel({
 
   return (
     <div className="desktop-pane flex min-h-0 flex-col overflow-hidden">
-      <div className="border-b border-border px-3 py-2 text-[12px] font-semibold">{title}</div>
+      <div className="border-b border-slate-200/70 px-4 py-3 text-[13px] font-black tracking-[-0.03em]">{title}</div>
       <div className="flex-1 overflow-auto p-2">
         {items.length === 0 ? (
           <div className="grid h-full place-items-center text-[12px] text-muted-foreground">没有检测到数据</div>
         ) : (
           <div className="space-y-1">
             {items.map((item) => (
-              <div key={item.provider} className="desktop-row px-2.5 py-2">
+              <div key={item.provider} className="desktop-row px-3 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <span className="truncate text-[12px] font-medium">{item.provider}</span>
                   <span className="text-[12px] text-muted-foreground">{item.sessionCount}</span>
                 </div>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-sm border border-border bg-panel">
+                <div className="usage-track mt-2">
                   <div
-                    className="h-full rounded-[3px] bg-slate-700"
+                    className="usage-fill"
                     style={{ width: `${Math.max(6, (item.sessionCount / maxCount) * 100)}%` }}
                   />
                 </div>
@@ -165,7 +165,7 @@ function StatusTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="desktop-pane px-3 py-2">
       <div className="desktop-section-title">{label}</div>
-      <div className="mt-1 truncate text-[14px] font-semibold">{value}</div>
+      <div className="mt-1 truncate text-[22px] font-black tracking-[-0.05em]">{value}</div>
     </div>
   );
 }
@@ -184,7 +184,7 @@ function BackupRow({
       type="button"
       onClick={() => onSelect(backup.id)}
       className={[
-        "desktop-row flex w-full items-center justify-between gap-3 px-2.5 py-2 text-left",
+        "desktop-row flex w-full items-center justify-between gap-3 px-3 py-3 text-left",
         selected ? "desktop-row-selected" : "",
       ].join(" ")}
     >

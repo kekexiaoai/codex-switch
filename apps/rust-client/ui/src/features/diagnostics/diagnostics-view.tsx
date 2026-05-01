@@ -4,17 +4,17 @@ import type { DiagnosticsEvent } from "@/lib/tauri";
 export function DiagnosticsView({ diagnostics }: { diagnostics: DiagnosticsEvent[] }) {
   return (
     <Card className="h-full overflow-hidden">
-      <CardHeader className="h-11">
+      <CardHeader>
         <CardTitle>Diagnostics</CardTitle>
-        <div className="text-[11px] text-muted-foreground">{diagnostics.length} events</div>
+        <div className="text-[12px] font-semibold text-slate-500">{diagnostics.length} events</div>
       </CardHeader>
-      <CardContent className="h-[calc(100%-44px)] overflow-auto p-2">
+      <CardContent className="h-[calc(100%-72px)] overflow-auto p-3">
         {diagnostics.length === 0 ? (
-          <div className="desktop-pane p-4 text-[12px] text-muted-foreground">当前没有诊断日志</div>
+          <div className="desktop-pane p-8 text-center text-[13px] text-slate-500">当前没有诊断日志</div>
         ) : (
-          <div className="space-y-1 font-mono">
+          <div className="space-y-2 font-mono">
             {diagnostics.map((event, index) => (
-              <div key={`${event.category}-${index}`} className="desktop-row grid grid-cols-[130px_minmax(0,1fr)] gap-3 px-2.5 py-2">
+              <div key={`${event.category}-${index}`} className="desktop-row grid grid-cols-[150px_minmax(0,1fr)] gap-4 px-4 py-3">
                 <div className="truncate text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
                   {event.category}
                 </div>
