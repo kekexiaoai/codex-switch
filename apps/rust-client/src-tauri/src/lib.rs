@@ -13,14 +13,17 @@ mod store;
 mod usage;
 
 use tauri::{
-    menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, WebviewUrl, WebviewWindowBuilder,
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 #[cfg(desktop)]
 use tauri_plugin_autostart::MacosLauncher;
 
 pub use state::AppState;
+
+const TRAY_ICON: tauri::image::Image<'_> =
+    tauri::include_image!("../../../packaging/icons/AppIcon.iconset/icon_16x16.png");
 
 pub fn run() {
     tauri::Builder::default()
@@ -54,19 +57,43 @@ pub fn run() {
             ))?;
             app.handle().plugin(tauri_plugin_dialog::init())?;
             create_tray_panel_window(app)?;
-            let open_main = MenuItem::with_id(app, "open-main", "打开主窗口", true, None::<&str>)?;
+            let open_main =
+                MenuItem::with_id(app, "open-main", "打开 Codex Switch", true, None::<&str>)?;
+            let open_settings =
+                MenuItem::with_id(app, "open-settings", "设置…", true, None::<&str>)?;
+            let refresh_usage =
+                MenuItem::with_id(app, "refresh-usage", "刷新 Usage", true, None::<&str>)?;
+            let open_panel =
+                MenuItem::with_id(app, "open-tray-panel", "打开快速面板", true, None::<&str>)?;
+            let separator = PredefinedMenuItem::separator(app)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open_main, &quit])?;
-            TrayIconBuilder::with_id("codex-switch-tray")
+            let menu = Menu::with_items(
+                app,
+                &[
+                    &open_main,
+                    &open_settings,
+                    &refresh_usage,
+                    &open_panel,
+                    &separator,
+                    &quit,
+                ],
+            )?;
+            let mut tray = TrayIconBuilder::with_id("codex-switch-tray")
                 .menu(&menu)
-                .show_menu_on_left_click(false)
+                .tooltip("Codex Switch")
+                .show_menu_on_left_click(true)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open-main" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.unminimize();
-                            let _ = window.set_focus();
-                        }
+                        show_main_window(app);
+                    }
+                    "open-settings" => {
+                        show_main_view(app, "settings");
+                    }
+                    "refresh-usage" => {
+                        refresh_usage_from_menu(app);
+                    }
+                    "open-tray-panel" => {
+                        toggle_tray_panel(app);
                     }
                     "quit" => {
                         app.exit(0);
@@ -74,30 +101,58 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
+                    if let TrayIconEvent::DoubleClick {
                         button: MouseButton::Left,
-                        button_state: MouseButtonState::Up,
                         ..
                     } = event
                     {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("tray-panel") {
-                            let visible = window.is_visible().unwrap_or(false);
-                            if visible {
-                                let _ = window.hide();
-                            } else {
-                                let _ = window.center();
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
+                        show_main_window(tray.app_handle());
                     }
-                })
-                .build(app)?;
+                });
+            tray = tray.icon(TRAY_ICON).icon_as_template(true);
+            tray.build(app)?;
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running codex switch tauri app");
+}
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+fn show_main_view(app: &AppHandle, view: &str) {
+    show_main_window(app);
+    let _ = app.emit("shell://navigate", view);
+}
+
+fn toggle_tray_panel(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("tray-panel") {
+        let visible = window.is_visible().unwrap_or(false);
+        if visible {
+            let _ = window.hide();
+        } else {
+            let _ = window.center();
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }
+}
+
+fn refresh_usage_from_menu(app: &AppHandle) {
+    let app_handle = app.clone();
+    let state = app.state::<AppState>().inner().clone();
+    tauri::async_runtime::spawn(async move {
+        if let Ok(settings) = state.settings.load() {
+            if let Ok(snapshot) = state.usage.refresh_active_usage(&settings).await {
+                let _ = app_handle.emit(state::EVENT_USAGE_UPDATED, &snapshot);
+            }
+        }
+    });
 }
 
 fn create_tray_panel_window(app: &mut tauri::App) -> tauri::Result<()> {

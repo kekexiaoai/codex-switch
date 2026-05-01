@@ -22,7 +22,7 @@ export function TrayView({
   onOpenSettings: () => void;
   onQuit: () => void;
 }) {
-  const active = accounts.find((account) => account.isActive) ?? accounts[0];
+  const active = accounts.find((account) => account.isActive);
 
   return (
     <div className="tray-window">
@@ -30,7 +30,7 @@ export function TrayView({
         <div className="desktop-toolbar flex items-center justify-between px-3">
           <div className="min-w-0">
             <div className="truncate text-[13px] font-semibold">
-              {active ? displayEmail(active, showFullEmail) : "No account"}
+              {active ? displayEmail(active, showFullEmail) : "No active account"}
             </div>
             <div className="mt-0.5 text-[11px] text-muted-foreground">
               {usage ? `${usage.fiveHour.percentUsed}% / ${usage.weekly.percentUsed}%` : "Usage 未刷新"}
@@ -43,11 +43,14 @@ export function TrayView({
         <div className="min-h-0 flex-1 overflow-auto p-2">
           <div className="desktop-section-title px-1 pb-1">Accounts</div>
           <div className="space-y-1">
+            {accounts.length === 0 ? (
+              <div className="desktop-pane p-3 text-[12px] text-muted-foreground">暂无归档账号</div>
+            ) : null}
             {accounts.map((account) => (
               <button
                 key={account.id}
                 type="button"
-                onClick={() => onSwitch(account.id)}
+                onClick={() => !account.isActive && onSwitch(account.id)}
                 className={[
                   "desktop-row flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left",
                   account.isActive ? "desktop-row-selected" : "",

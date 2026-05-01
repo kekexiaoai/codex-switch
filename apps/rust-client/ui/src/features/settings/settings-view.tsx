@@ -11,7 +11,7 @@ export function SettingsView({
   onChange: (settings: SettingsDto) => void;
 }) {
   return (
-    <div className="grid h-full grid-cols-[minmax(0,1fr)_280px] gap-3">
+    <div className="grid h-full grid-cols-[minmax(0,1fr)_310px] gap-3 overflow-hidden">
       <Card>
         <CardHeader className="h-11">
           <CardTitle>偏好设置</CardTitle>
@@ -20,8 +20,8 @@ export function SettingsView({
           <div className="desktop-pane p-3">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-[13px] font-medium">Usage Source</div>
-                <div className="mt-0.5 text-[11px] text-muted-foreground">Automatic / Local Only</div>
+                <div className="text-[13px] font-medium">Usage 数据源</div>
+                <div className="mt-0.5 text-[11px] text-muted-foreground">自动优先远端，失败后回退本地日志</div>
               </div>
               <div className="flex rounded-md border border-border bg-panel p-0.5">
                 <Button
@@ -29,14 +29,14 @@ export function SettingsView({
                   variant={settings.usageSourceMode === "automatic" ? "default" : "ghost"}
                   onClick={() => onChange({ ...settings, usageSourceMode: "automatic" })}
                 >
-                  Auto
+                  自动
                 </Button>
                 <Button
                   size="sm"
                   variant={settings.usageSourceMode === "localOnly" ? "default" : "ghost"}
                   onClick={() => onChange({ ...settings, usageSourceMode: "localOnly" })}
                 >
-                  Local
+                  本地
                 </Button>
               </div>
             </div>
@@ -61,11 +61,14 @@ export function SettingsView({
           />
         </CardContent>
       </Card>
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="h-11">
           <CardTitle>存储</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-[12px] text-muted-foreground">
+        <CardContent className="space-y-3 text-[12px] text-muted-foreground">
+          <div className="desktop-pane p-3 text-[12px] leading-5">
+            账号与 Codex 数据继续保存在 ~/.codex，界面偏好保存在 Tauri 应用配置目录。
+          </div>
           <InfoRow label="Codex data" value="~/.codex" />
           <InfoRow label="Settings" value="App config" />
           <InfoRow label="Runtime" value="Tauri" />

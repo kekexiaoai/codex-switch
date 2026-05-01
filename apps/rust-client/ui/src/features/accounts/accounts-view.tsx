@@ -27,7 +27,15 @@ export function AccountsView({
   onRefreshUsage: () => void;
   onLogin: () => void;
 }) {
-  const active = useMemo(() => accounts.find((account) => account.isActive) ?? accounts[0], [accounts]);
+  const active = useMemo(() => accounts.find((account) => account.isActive), [accounts]);
+  const tierCounts = useMemo(
+    () =>
+      accounts.reduce<Record<string, number>>((counts, account) => {
+        counts[account.tier] = (counts[account.tier] ?? 0) + 1;
+        return counts;
+      }, {}),
+    [accounts],
+  );
 
   return (
     <div className="grid h-full grid-cols-[minmax(0,1fr)_340px] gap-3 overflow-hidden">
@@ -51,7 +59,7 @@ export function AccountsView({
         </CardHeader>
         <CardContent className="flex h-[calc(100%-44px)] flex-col gap-1 overflow-auto p-2">
           {accounts.length === 0 ? (
-            <div className="desktop-pane p-4 text-[12px] text-muted-foreground">暂无归档账号</div>
+            <div className="desktop-pane p-4 text-[12px] text-muted-foreground">暂无归档账号，可先导入当前 auth.json。</div>
           ) : null}
           {accounts.map((account) => (
             <button
@@ -59,7 +67,7 @@ export function AccountsView({
               type="button"
               onClick={() => !account.isActive && onSwitch(account.id)}
               className={[
-                "desktop-row flex w-full items-center justify-between px-3 py-2.5 text-left",
+                "desktop-row grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-left",
                 account.isActive ? "desktop-row-selected" : "",
               ].join(" ")}
             >
@@ -70,8 +78,12 @@ export function AccountsView({
                     <Badge className="border-emerald-300 bg-emerald-50 text-emerald-700">Active</Badge>
                   ) : null}
                 </div>
-                <div className="truncate text-[11px] text-muted-foreground">
-                  {account.tier.toUpperCase()} / {account.source} / #{account.manualOrder}
+                <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="shrink-0 uppercase">{account.tier}</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                  <span className="truncate">{sourceLabel(account.source)}</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
+                  <span className="shrink-0">#{account.manualOrder}</span>
                 </div>
               </div>
               <Button variant="secondary" size="sm" disabled={account.isActive}>
@@ -94,10 +106,10 @@ export function AccountsView({
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="truncate text-[16px] font-semibold">
-              {active ? displayEmail(active, showFullEmail) : "未检测到账号"}
+              {active ? displayEmail(active, showFullEmail) : "未检测到 ChatGPT 账号"}
             </div>
             <div className="text-[12px] text-muted-foreground">
-              {active ? `Tier ${active.tier.toUpperCase()}` : "等待账号导入"}
+              {active ? `Tier ${active.tier.toUpperCase()}` : "当前 auth.json 不是可切换账号"}
             </div>
             {usage ? (
               <div className="grid grid-cols-2 gap-2">
@@ -107,6 +119,17 @@ export function AccountsView({
             ) : (
               <div className="desktop-pane p-3 text-[12px] text-muted-foreground">暂无 Usage 快照</div>
             )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="h-11">
+            <CardTitle>归档摘要</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <SummaryRow label="归档账号" value={`${accounts.length}`} />
+            <SummaryRow label="Team" value={`${tierCounts.team ?? 0}`} />
+            <SummaryRow label="Plus" value={`${tierCounts.plus ?? 0}`} />
+            <SummaryRow label="Pro" value={`${tierCounts.pro ?? 0}`} />
           </CardContent>
         </Card>
         <Card>
@@ -128,6 +151,28 @@ function Metric({ label, value, helper }: { label: string; value: string; helper
       <div className="desktop-section-title">{label}</div>
       <div className="mt-1 text-[20px] font-semibold">{value}</div>
       <div className="mt-1 truncate text-[11px] text-muted-foreground">{helper}</div>
+    </div>
+  );
+}
+
+function sourceLabel(source: AccountListItem["source"]) {
+  if (source === "currentAuth") {
+    return "当前导入";
+  }
+  if (source === "backupImport") {
+    return "备份导入";
+  }
+  if (source === "browserLogin") {
+    return "浏览器登录";
+  }
+  return "归档";
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-border pb-2 text-[12px] last:border-b-0 last:pb-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground">{value}</span>
     </div>
   );
 }

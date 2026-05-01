@@ -29,6 +29,7 @@ import { UsageView } from "@/features/usage/usage-view";
 import { ProviderSyncView } from "@/features/provider-sync/provider-sync-view";
 import { DiagnosticsView } from "@/features/diagnostics/diagnostics-view";
 import { SettingsView } from "@/features/settings/settings-view";
+import { settingsFeedbackMessage } from "@/features/settings/settings-feedback";
 import { TrayView } from "@/features/tray/tray-view";
 
 const emptySnapshot: AppSnapshot = {
@@ -231,6 +232,7 @@ export function App() {
             <SettingsView
               settings={snapshot.settings}
               onChange={(settings) => {
+                const successMessage = settingsFeedbackMessage(snapshot.settings, settings);
                 void runAction(
                   "正在保存设置…",
                   async () => {
@@ -239,7 +241,7 @@ export function App() {
                     }
                     return saveSettings(settings);
                   },
-                  settings.launchAtLogin ? "已启用开机启动。" : "已关闭开机启动。",
+                  successMessage,
                 );
               }}
             />

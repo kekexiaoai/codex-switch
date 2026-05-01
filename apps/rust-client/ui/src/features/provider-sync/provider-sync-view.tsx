@@ -25,16 +25,32 @@ export function ProviderSyncView({
   onRestoreBackup: (backupId: string) => void;
   onPruneBackups: () => void;
 }) {
+  const rolloutTotal = (status?.rolloutDistribution ?? []).reduce(
+    (sum, item) => sum + item.sessionCount,
+    0,
+  );
+  const sqliteTotal = (status?.sqliteDistribution ?? []).reduce(
+    (sum, item) => sum + item.sessionCount,
+    0,
+  );
+
   return (
-    <div className="grid h-full grid-cols-[minmax(0,1fr)_340px] gap-3 overflow-hidden">
+    <div className="grid h-full grid-cols-[minmax(0,1fr)_350px] gap-3 overflow-hidden">
       <Card className="min-h-0 overflow-hidden">
         <CardHeader className="h-11">
           <CardTitle>Provider 状态</CardTitle>
           <div className="text-[11px] text-muted-foreground">Current: {status?.currentProvider ?? "openai"}</div>
         </CardHeader>
-        <CardContent className="grid h-[calc(100%-44px)] grid-cols-2 gap-3 overflow-hidden">
-          <ProviderDistributionPanel title="Rollout Logs" items={status?.rolloutDistribution ?? []} />
-          <ProviderDistributionPanel title="SQLite Threads" items={status?.sqliteDistribution ?? []} />
+        <CardContent className="flex h-[calc(100%-44px)] min-h-0 flex-col gap-3 overflow-hidden">
+          <div className="grid grid-cols-3 gap-2">
+            <StatusTile label="当前 Provider" value={status?.currentProvider ?? "openai"} />
+            <StatusTile label="Rollout 会话" value={`${rolloutTotal}`} />
+            <StatusTile label="SQLite 线程" value={`${sqliteTotal}`} />
+          </div>
+          <div className="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-hidden">
+            <ProviderDistributionPanel title="Rollout Logs" items={status?.rolloutDistribution ?? []} />
+            <ProviderDistributionPanel title="SQLite Threads" items={status?.sqliteDistribution ?? []} />
+          </div>
         </CardContent>
       </Card>
       <div className="flex min-h-0 flex-col gap-3">
@@ -114,23 +130,42 @@ function ProviderDistributionPanel({
   title: string;
   items: Array<{ provider: string; sessionCount: number }>;
 }) {
+  const maxCount = Math.max(...items.map((item) => item.sessionCount), 1);
+
   return (
     <div className="desktop-pane flex min-h-0 flex-col overflow-hidden">
       <div className="border-b border-border px-3 py-2 text-[12px] font-semibold">{title}</div>
       <div className="flex-1 overflow-auto p-2">
         {items.length === 0 ? (
-          <div className="p-2 text-[12px] text-muted-foreground">没有检测到数据</div>
+          <div className="grid h-full place-items-center text-[12px] text-muted-foreground">没有检测到数据</div>
         ) : (
           <div className="space-y-1">
             {items.map((item) => (
-              <div key={item.provider} className="desktop-row flex items-center justify-between px-2.5 py-2">
-                <span className="truncate text-[12px]">{item.provider}</span>
-                <span className="text-[12px] text-muted-foreground">{item.sessionCount}</span>
+              <div key={item.provider} className="desktop-row px-2.5 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="truncate text-[12px] font-medium">{item.provider}</span>
+                  <span className="text-[12px] text-muted-foreground">{item.sessionCount}</span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-sm border border-border bg-panel">
+                  <div
+                    className="h-full rounded-[3px] bg-slate-700"
+                    style={{ width: `${Math.max(6, (item.sessionCount / maxCount) * 100)}%` }}
+                  />
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function StatusTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="desktop-pane px-3 py-2">
+      <div className="desktop-section-title">{label}</div>
+      <div className="mt-1 truncate text-[14px] font-semibold">{value}</div>
     </div>
   );
 }
