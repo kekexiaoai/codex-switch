@@ -210,20 +210,6 @@ export function App() {
           usageState={formatUsageState(snapshot.activeUsage)}
           usageSourceLabel={formatUsageSource(snapshot.settings.usageSourceMode)}
         />
-        {feedback ? (
-          <div
-            className={[
-              "relative z-10 mt-4 rounded-2xl border px-4 py-3 text-[12px] shadow-[0_12px_24px_rgba(67,88,116,0.12)]",
-              feedback.kind === "error"
-                ? "border-rose-200/70 bg-rose-50/80 text-rose-700"
-                : feedback.kind === "success"
-                  ? "border-emerald-200/70 bg-emerald-50/80 text-emerald-700"
-                  : "border-slate-300/60 bg-white/62 text-slate-700",
-            ].join(" ")}
-          >
-            {feedback.message}
-          </div>
-        ) : null}
         <div className="relative z-10 min-h-0 flex-1 overflow-hidden pt-4">
           {view === "accounts" ? (
             <AccountsView
@@ -335,7 +321,35 @@ export function App() {
             />
           ) : null}
         </div>
+        {feedback ? <GlobalFeedback kind={feedback.kind} message={feedback.message} /> : null}
       </main>
+    </div>
+  );
+}
+
+function GlobalFeedback({
+  kind,
+  message,
+}: {
+  kind: "info" | "success" | "error";
+  message: string;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-3 z-30 flex justify-center px-4">
+      <div
+        role={kind === "error" ? "alert" : "status"}
+        data-testid="global-feedback"
+        className={[
+          "max-w-[720px] rounded-2xl border px-4 py-2.5 text-[12px] font-semibold shadow-[0_18px_40px_rgba(67,88,116,0.18)] backdrop-blur-xl",
+          kind === "error"
+            ? "border-rose-200/80 bg-rose-50/90 text-rose-700"
+            : kind === "success"
+              ? "border-emerald-200/80 bg-emerald-50/90 text-emerald-700"
+              : "border-slate-300/70 bg-white/82 text-slate-700",
+        ].join(" ")}
+      >
+        {message}
+      </div>
     </div>
   );
 }

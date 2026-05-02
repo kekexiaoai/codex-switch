@@ -114,6 +114,7 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("id_token 缺失")).toBeInTheDocument();
+    expect(screen.getByTestId("global-feedback")).toHaveAttribute("role", "alert");
   });
 
   it("automatically hides successful settings feedback", async () => {
