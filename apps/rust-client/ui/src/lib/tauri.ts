@@ -91,6 +91,28 @@ export interface LoginJobState {
   message: string;
 }
 
+export interface CodexSessionListItem {
+  id: string;
+  display: string;
+  timestamp: string;
+  project: string;
+  projectName: string;
+  filePath?: string | null;
+  messageCount: number;
+}
+
+export interface CodexSessionMessage {
+  role: string;
+  kind: string;
+  text: string;
+  timestamp?: string | null;
+}
+
+export interface CodexSessionDetail {
+  session: CodexSessionListItem;
+  messages: CodexSessionMessage[];
+}
+
 export const events = {
   accountsChanged: "accounts://changed",
   usageUpdated: "usage://updated",
@@ -112,7 +134,7 @@ export function showMainWindow() {
   return invoke("app_show_main_window");
 }
 
-export function openView(view: "accounts" | "usage" | "provider-sync" | "diagnostics" | "settings") {
+export function openView(view: "accounts" | "usage" | "provider-sync" | "sessions" | "diagnostics" | "settings") {
   return invoke("app_open_view", { view });
 }
 
@@ -188,6 +210,18 @@ export function restoreProviderBackup(backupId: string) {
 
 export function pruneProviderBackups(keep = 5) {
   return invoke("provider_sync_prune", { keep });
+}
+
+export function listSessions() {
+  return invoke<CodexSessionListItem[]>("sessions_list");
+}
+
+export function listSessionProjects() {
+  return invoke<string[]>("sessions_projects");
+}
+
+export function getSessionDetail(sessionId: string) {
+  return invoke<CodexSessionDetail>("sessions_get", { sessionId });
 }
 
 export function getSettings() {

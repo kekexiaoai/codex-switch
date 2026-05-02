@@ -3,6 +3,7 @@ use crate::diagnostics::DiagnosticsService;
 use crate::login::LoginService;
 use crate::paths::{AppPaths, CodexPaths};
 use crate::provider_sync::ProviderSyncService;
+use crate::sessions::SessionsService;
 use crate::settings::SettingsStore;
 use crate::usage::UsageService;
 
@@ -15,6 +16,7 @@ pub struct AppState {
     pub accounts: AccountsService,
     pub usage: UsageService,
     pub provider_sync: ProviderSyncService,
+    pub sessions: SessionsService,
     pub settings: SettingsStore,
     pub diagnostics: DiagnosticsService,
     pub login: LoginService,
@@ -42,6 +44,7 @@ impl AppState {
             accounts: AccountsService::new(codex_paths.clone()),
             usage: UsageService::new(codex_paths.clone()),
             provider_sync: ProviderSyncService::new(codex_paths.clone()),
+            sessions: SessionsService::new(codex_paths.clone()),
             settings: SettingsStore::new(app_paths),
             diagnostics: DiagnosticsService::new(codex_paths.clone()),
             login: LoginService::new(codex_paths),
@@ -83,7 +86,9 @@ mod tests {
 
         let state = AppState::from_paths(
             CodexPaths::new(codex_base),
-            AppPaths { config_dir: config_base },
+            AppPaths {
+                config_dir: config_base,
+            },
         );
 
         let imported = state.accounts.import_current().unwrap();

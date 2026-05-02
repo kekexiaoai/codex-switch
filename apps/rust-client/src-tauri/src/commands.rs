@@ -1,6 +1,6 @@
 use crate::models::{
-    AppSnapshot, BackupEntry, DiagnosticsEvent, LoginJobState, ProviderSyncStatus, SettingsDto,
-    SyncResult, UsageSnapshot,
+    AppSnapshot, BackupEntry, CodexSessionDetail, CodexSessionListItem, DiagnosticsEvent,
+    LoginJobState, ProviderSyncStatus, SettingsDto, SyncResult, UsageSnapshot,
 };
 use crate::state::{
     AppState, EVENT_ACCOUNTS_CHANGED, EVENT_DIAGNOSTICS_APPENDED, EVENT_SETTINGS_CHANGED,
@@ -194,6 +194,24 @@ pub fn provider_sync_prune(
         .map_err(|e| e.to_string())?;
     let _ = app.emit(EVENT_DIAGNOSTICS_APPENDED, true);
     Ok(())
+}
+
+#[tauri::command]
+pub fn sessions_list(state: State<'_, AppState>) -> CmdResult<Vec<CodexSessionListItem>> {
+    state.sessions.list().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn sessions_projects(state: State<'_, AppState>) -> CmdResult<Vec<String>> {
+    state.sessions.projects().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn sessions_get(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> CmdResult<CodexSessionDetail> {
+    state.sessions.get(&session_id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

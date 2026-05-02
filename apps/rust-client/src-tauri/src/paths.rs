@@ -30,6 +30,10 @@ impl CodexPaths {
         self.base_directory.join("sessions")
     }
 
+    pub fn history_file(&self) -> PathBuf {
+        self.base_directory.join("history.jsonl")
+    }
+
     pub fn config_file(&self) -> PathBuf {
         self.base_directory.join("config.toml")
     }

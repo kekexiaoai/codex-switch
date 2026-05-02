@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppSnapshot } from "@/lib/tauri";
+import type { AppSnapshot, CodexSessionDetail, CodexSessionListItem } from "@/lib/tauri";
 
 const snapshot: AppSnapshot = {
   accounts: [],
@@ -22,10 +22,35 @@ const snapshot: AppSnapshot = {
   },
 };
 
+const sessionItem: CodexSessionListItem = {
+  id: "11111111-1111-1111-1111-111111111111",
+  display: "实现 Sessions 页面",
+  timestamp: "2026-05-02T10:00:00Z",
+  project: "/repo/codex-switch",
+  projectName: "codex-switch",
+  filePath: "/repo/.codex/sessions/rollout.jsonl",
+  messageCount: 2,
+};
+
+const sessionDetail: CodexSessionDetail = {
+  session: sessionItem,
+  messages: [
+    {
+      role: "user",
+      kind: "message",
+      text: "hello",
+      timestamp: "2026-05-02T10:00:01Z",
+    },
+  ],
+};
+
 vi.mock("@/lib/tauri", () => ({
   getAppSnapshot: vi.fn(),
+  getSessionDetail: vi.fn(),
   accountsImportBackup: vi.fn(),
   importCurrentAccount: vi.fn(),
+  listSessionProjects: vi.fn(),
+  listSessions: vi.fn(),
   pickAuthBackupFile: vi.fn(),
   getAutostartEnabled: vi.fn().mockResolvedValue(false),
   switchAccount: vi.fn(),
@@ -48,13 +73,19 @@ vi.mock("@/lib/tauri", () => ({
 }));
 
 import { App } from "./App";
-import { getAppSnapshot, saveSettings } from "@/lib/tauri";
+import { getAppSnapshot, getSessionDetail, listSessionProjects, listSessions, saveSettings } from "@/lib/tauri";
 
 describe("App", () => {
   beforeEach(() => {
     vi.useRealTimers();
     vi.mocked(getAppSnapshot).mockReset();
     vi.mocked(getAppSnapshot).mockResolvedValue(snapshot);
+    vi.mocked(listSessions).mockReset();
+    vi.mocked(listSessions).mockResolvedValue([sessionItem]);
+    vi.mocked(listSessionProjects).mockReset();
+    vi.mocked(listSessionProjects).mockResolvedValue(["/repo/codex-switch"]);
+    vi.mocked(getSessionDetail).mockReset();
+    vi.mocked(getSessionDetail).mockResolvedValue(sessionDetail);
     vi.mocked(saveSettings).mockReset();
     vi.mocked(saveSettings).mockResolvedValue(snapshot.settings);
   });
@@ -122,5 +153,17 @@ describe("App", () => {
 
     expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ showFullEmail: true }));
     expect(screen.getByText("已显示完整邮箱。")).toBeInTheDocument();
+  });
+
+  it("shows Codex historical sessions in a dedicated workspace", async () => {
+    render(<App />);
+
+    await screen.findByText("仪表盘");
+    fireEvent.click(screen.getByTitle("Sessions"));
+
+    expect(await screen.findByText("会话索引")).toBeInTheDocument();
+    expect(screen.getAllByText("实现 Sessions 页面").length).toBeGreaterThan(0);
+    expect(screen.getByText("hello")).toBeInTheDocument();
+    expect(screen.getByText("来自 ~/.codex/history.jsonl 与 sessions 目录")).toBeInTheDocument();
   });
 });

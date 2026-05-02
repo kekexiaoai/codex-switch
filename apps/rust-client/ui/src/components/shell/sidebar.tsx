@@ -1,12 +1,13 @@
-import { Activity, Gauge, Grid2X2, Rocket, Settings, ShieldEllipsis } from "lucide-react";
+import { Activity, Gauge, Grid2X2, History, Rocket, Settings, ShieldEllipsis } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export type AppView = "accounts" | "usage" | "provider-sync" | "diagnostics" | "settings";
+export type AppView = "accounts" | "usage" | "provider-sync" | "sessions" | "diagnostics" | "settings";
 
 const items: Array<{ id: AppView; label: string; icon: typeof Activity }> = [
   { id: "accounts", label: "Accounts", icon: Rocket },
   { id: "usage", label: "Usage", icon: Gauge },
   { id: "provider-sync", label: "Provider Sync", icon: Grid2X2 },
+  { id: "sessions", label: "Sessions", icon: History },
   { id: "diagnostics", label: "Diagnostics", icon: ShieldEllipsis },
   { id: "settings", label: "Settings", icon: Settings },
 ];

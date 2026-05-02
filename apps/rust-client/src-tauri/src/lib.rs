@@ -7,6 +7,7 @@ mod login;
 mod models;
 mod paths;
 mod provider_sync;
+mod sessions;
 mod settings;
 mod state;
 mod store;
@@ -45,6 +46,9 @@ pub fn run() {
             commands::provider_sync_backups,
             commands::provider_sync_restore,
             commands::provider_sync_prune,
+            commands::sessions_list,
+            commands::sessions_projects,
+            commands::sessions_get,
             commands::settings_get,
             commands::settings_update,
             commands::diagnostics_recent

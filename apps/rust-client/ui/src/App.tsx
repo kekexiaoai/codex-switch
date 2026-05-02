@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   events,
+  getSessionDetail,
   getAppSnapshot,
   getAutostartEnabled,
   accountsImportBackup,
   importCurrentAccount,
+  listSessionProjects,
+  listSessions,
   onEvent,
   openView,
   pickAuthBackupFile,
@@ -20,6 +23,8 @@ import {
   switchAccount,
   switchProvider,
   type AppSnapshot,
+  type CodexSessionDetail,
+  type CodexSessionListItem,
   type LoginJobState,
 } from "@/lib/tauri";
 import { Sidebar, type AppView } from "@/components/shell/sidebar";
@@ -27,6 +32,7 @@ import { Topbar } from "@/components/shell/topbar";
 import { AccountsView } from "@/features/accounts/accounts-view";
 import { UsageView } from "@/features/usage/usage-view";
 import { ProviderSyncView } from "@/features/provider-sync/provider-sync-view";
+import { SessionsView } from "@/features/sessions/sessions-view";
 import { DiagnosticsView } from "@/features/diagnostics/diagnostics-view";
 import { SettingsView } from "@/features/settings/settings-view";
 import { settingsFeedbackMessage } from "@/features/settings/settings-feedback";
@@ -60,6 +66,10 @@ export function App() {
   const [loginState, setLoginState] = useState<LoginJobState | null>(null);
   const [targetProvider, setTargetProvider] = useState("openai");
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<CodexSessionListItem[]>([]);
+  const [sessionProjects, setSessionProjects] = useState<string[]>([]);
+  const [selectedSession, setSelectedSession] = useState<CodexSessionDetail | null>(null);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "info" | "success" | "error"; message: string } | null>(null);
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const isTray = search.get("panel") === "tray";
@@ -106,8 +116,46 @@ export function App() {
     }
   };
 
+  const loadSessionDetail = async (sessionId: string) => {
+    try {
+      const detail = await getSessionDetail(sessionId);
+      setSelectedSession(detail);
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  };
+
+  const refreshSessions = async () => {
+    try {
+      setSessionsLoading(true);
+      const [items, projects] = await Promise.all([listSessions(), listSessionProjects()]);
+      setSessions(items);
+      setSessionProjects(projects);
+
+      const existingId = selectedSession?.session.id;
+      const nextId = existingId && items.some((item) => item.id === existingId) ? existingId : items[0]?.id;
+      if (nextId) {
+        const detail = await getSessionDetail(nextId);
+        setSelectedSession(detail);
+      } else {
+        setSelectedSession(null);
+      }
+    } catch (error) {
+      setFeedback({
+        kind: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     void refreshAll();
+    void refreshSessions();
   }, []);
 
   useEffect(() => {
@@ -255,6 +303,16 @@ export function App() {
               onPruneBackups={() => {
                 void runAction("正在清理旧备份…", () => pruneProviderBackups(5), "旧备份已清理。");
               }}
+            />
+          ) : null}
+          {view === "sessions" ? (
+            <SessionsView
+              sessions={sessions}
+              projects={sessionProjects}
+              selectedSession={selectedSession}
+              loading={sessionsLoading}
+              onRefresh={() => void refreshSessions()}
+              onSelectSession={(sessionId) => void loadSessionDetail(sessionId)}
             />
           ) : null}
           {view === "diagnostics" ? <DiagnosticsView diagnostics={snapshot.diagnostics} /> : null}

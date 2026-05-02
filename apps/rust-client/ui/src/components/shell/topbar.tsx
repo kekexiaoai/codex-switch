@@ -6,6 +6,7 @@ const titles: Record<AppView, { title: string; description: string }> = {
   accounts: { title: "仪表盘", description: "Codex 账号切换、Usage 快照与本地归档" },
   usage: { title: "Usage", description: "配额快照与刷新来源" },
   "provider-sync": { title: "Provider Sync", description: "配置、会话日志与 SQLite 维护" },
+  sessions: { title: "Sessions", description: "Codex 历史会话、项目筛选与本地时间线" },
   diagnostics: { title: "Diagnostics", description: "本地诊断事件与运行状态" },
   settings: { title: "Settings", description: "桌面偏好与启动项" },
 };

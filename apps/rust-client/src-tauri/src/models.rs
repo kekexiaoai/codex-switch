@@ -186,6 +186,34 @@ pub struct LoginJobState {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionListItem {
+    pub id: String,
+    pub display: String,
+    pub timestamp: DateTime<Utc>,
+    pub project: String,
+    pub project_name: String,
+    pub file_path: Option<String>,
+    pub message_count: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionMessage {
+    pub role: String,
+    pub kind: String,
+    pub text: String,
+    pub timestamp: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexSessionDetail {
+    pub session: CodexSessionListItem,
+    pub messages: Vec<CodexSessionMessage>,
+}
+
 pub fn masked_email(email: &str) -> String {
     let email = email.trim().to_lowercase();
     let parts: Vec<&str> = email.splitn(2, '@').collect();
