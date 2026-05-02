@@ -20,11 +20,9 @@ export function Sidebar({
   onChange: (view: AppView) => void;
 }) {
   return (
-    <aside className="flex h-full flex-col items-center justify-between py-5" data-testid="floating-dock">
-      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/70 bg-white/62 text-[14px] font-black tracking-[-0.06em] text-slate-900 shadow-[0_12px_24px_rgba(67,88,116,0.14)]">
-        CS
-      </div>
-      <nav className="floating-dock flex flex-col items-center gap-5 px-3 py-6">
+    <aside className="flex h-full flex-col items-center justify-between py-4" data-testid="floating-dock">
+      <div className="h-8" aria-hidden="true" />
+      <nav className="floating-dock flex flex-col items-center gap-3 px-2 py-4">
         {items.map((item) => {
           const Icon = item.icon;
           return (
@@ -38,13 +36,13 @@ export function Sidebar({
                 activeView === item.id ? "dock-button-active" : "",
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-[18px] w-[18px]" />
               <span className="sr-only">{item.label}</span>
             </button>
           );
         })}
       </nav>
-      <div className="rounded-full border border-emerald-200/70 bg-emerald-50/72 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-[0_10px_20px_rgba(16,185,129,0.12)]">
+      <div className="rounded-full border border-emerald-200/70 bg-emerald-50/72 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-[0_8px_16px_rgba(16,185,129,0.12)]">
         Ready
       </div>
     </aside>
