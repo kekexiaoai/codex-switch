@@ -29,6 +29,7 @@ export function AccountsView({
   onLogin: () => void;
 }) {
   const active = useMemo(() => accounts.find((account) => account.isActive), [accounts]);
+  const usageSummary = usage ? `${usage.fiveHour.percentUsed}% / ${usage.weekly.percentUsed}%` : "--";
   const tierCounts = useMemo(
     () =>
       accounts.reduce<Record<string, number>>((counts, account) => {
@@ -37,14 +38,19 @@ export function AccountsView({
       }, {}),
     [accounts],
   );
-  const recommended = accounts.find((account) => !account.isActive) ?? active ?? accounts[0];
+  const quickSwitchAccount = accounts.find((account) => !account.isActive) ?? active ?? accounts[0];
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
       <div className="grid grid-cols-3 gap-5">
-        <StatCard icon={<UsersRound className="h-7 w-7" />} label="账号总数" value={`${accounts.length}`} />
-        <StatCard icon={<Bot className="h-7 w-7" />} label="Codex 归档" value={`${accounts.length}`} />
-        <StatCard icon={<Clock3 className="h-7 w-7" />} label="当前 Usage" value={usage ? `${usage.fiveHour.percentUsed}%` : "--"} />
+        <StatCard
+          icon={<Bot className="h-7 w-7" />}
+          label="当前 Codex 账号"
+          value={active ? displayEmail(active, showFullEmail) : "未选择"}
+          compact
+        />
+        <StatCard icon={<UsersRound className="h-7 w-7" />} label="本地归档账号" value={`${accounts.length}`} />
+        <StatCard icon={<Clock3 className="h-7 w-7" />} label="Usage 5h / Weekly" value={usageSummary} />
       </div>
 
       <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -54,16 +60,16 @@ export function AccountsView({
               <Bot className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[18px] font-black tracking-[-0.04em]">Codex Account Hub</div>
+              <div className="text-[18px] font-black tracking-[-0.04em]">账号工作台</div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                当前账号 / 推荐切换 / Usage 状态
+                当前 auth.json / 归档账号 / 浏览器登录
               </div>
             </div>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={onRefreshUsage}>
               <RefreshCcw className="h-3.5 w-3.5" />
-              刷新
+              刷新 Usage
             </Button>
             <Button variant="secondary" size="sm" onClick={onImportCurrent}>
               <Import className="h-3.5 w-3.5" />
@@ -82,11 +88,11 @@ export function AccountsView({
             onSwitch={onSwitch}
           />
           <AccountColumn
-            title="推荐切换账号"
-            account={recommended}
+            title="快速切换账号"
+            account={quickSwitchAccount}
             usage={usage}
             showFullEmail={showFullEmail}
-            emptyText="暂无可推荐账号"
+            emptyText="暂无可切换账号"
             onSwitch={onSwitch}
           />
         </div>
@@ -107,6 +113,15 @@ export function AccountsView({
 
       <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-5">
         <Card className="overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-200/70 px-5 py-3">
+            <div>
+              <div className="text-[15px] font-black tracking-[-0.03em]">归档账号</div>
+              <div className="mt-0.5 text-[11px] font-semibold text-slate-400">来自 ~/.codex/accounts 的可切换身份</div>
+            </div>
+            <div className="rounded-full border border-slate-300/50 bg-white/54 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+              {accounts.length} 个账号
+            </div>
+          </div>
           <div className="grid grid-cols-[minmax(0,1fr)_120px_220px_150px] border-b border-slate-200/70 px-5 py-3 text-[12px] font-bold text-slate-500">
             <div>邮箱</div>
             <div>订阅</div>
@@ -130,11 +145,12 @@ export function AccountsView({
         </Card>
 
         <Card className="p-5">
-          <div className="text-[15px] font-black tracking-[-0.03em]">运行摘要</div>
+          <div className="text-[15px] font-black tracking-[-0.03em]">本地状态</div>
           <div className="mt-4 space-y-3">
             <SummaryRow label="Team" value={`${tierCounts.team ?? 0}`} />
             <SummaryRow label="Plus" value={`${tierCounts.plus ?? 0}`} />
             <SummaryRow label="Pro" value={`${tierCounts.pro ?? 0}`} />
+            <SummaryRow label="Usage" value={usage ? "已读取" : "未刷新"} />
             <SummaryRow label="登录任务" value={loginState?.active ? "运行中" : "空闲"} />
           </div>
           <div className="mt-4 rounded-2xl bg-white/58 p-3 text-[12px] leading-5 text-slate-500">
@@ -146,15 +162,32 @@ export function AccountsView({
   );
 }
 
-function StatCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  compact = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  compact?: boolean;
+}) {
   return (
     <Card className="stat-card flex items-center gap-5">
       <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600">
         {icon}
       </div>
-      <div>
+      <div className="min-w-0">
         <div className="text-[13px] font-bold text-slate-500">{label}</div>
-        <div className="mt-1 text-[30px] font-black leading-none tracking-[-0.06em]">{value}</div>
+        <div
+          className={[
+            "mt-1 truncate font-black leading-none tracking-[-0.06em]",
+            compact ? "text-[20px]" : "text-[30px]",
+          ].join(" ")}
+        >
+          {value}
+        </div>
       </div>
     </Card>
   );

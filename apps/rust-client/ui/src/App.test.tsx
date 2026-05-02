@@ -65,8 +65,13 @@ describe("App", () => {
     expect(screen.getByTestId("glass-shell")).toBeInTheDocument();
     expect(screen.getByTestId("floating-dock")).toBeInTheDocument();
     expect(screen.getAllByText("Accounts").length).toBeGreaterThan(0);
+    expect(screen.getByText("账号工作台")).toBeInTheDocument();
     expect(screen.getAllByText("导入备份").length).toBeGreaterThan(0);
     expect(screen.queryByText("Welcome")).not.toBeInTheDocument();
+    expect(screen.queryByText("搜索账号...")).not.toBeInTheDocument();
+    expect(screen.queryByText("Codex Account Hub")).not.toBeInTheDocument();
+    expect(screen.queryByText("Codex 布局")).not.toBeInTheDocument();
+    expect(screen.queryByText("更新")).not.toBeInTheDocument();
   });
 
   it("shows a startup error when the desktop snapshot cannot load", async () => {

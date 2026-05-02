@@ -155,7 +155,12 @@ export function App() {
     <div className="app-window" data-testid="glass-shell">
       <Sidebar activeView={view} onChange={setView} />
       <main className="glass-shell flex min-w-0 flex-col overflow-hidden">
-        <Topbar view={view} onOpenMain={() => void refreshAll()} />
+        <Topbar
+          view={view}
+          accountCount={snapshot.accounts.length}
+          provider={snapshot.providerStatus.currentProvider || "OpenAI"}
+          usageState={formatUsageState(snapshot.activeUsage)}
+        />
         {feedback ? (
           <div
             className={[
@@ -264,4 +269,11 @@ export function App() {
       </main>
     </div>
   );
+}
+
+function formatUsageState(usage: AppSnapshot["activeUsage"]) {
+  if (!usage) {
+    return "未刷新";
+  }
+  return `${usage.fiveHour.percentUsed}% / ${usage.weekly.percentUsed}%`;
 }

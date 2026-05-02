@@ -1,4 +1,4 @@
-import { Activity, ChevronDown, FileText, FolderSync, Gauge, Grid2X2, Rocket, Settings, ShieldEllipsis } from "lucide-react";
+import { Activity, Gauge, Grid2X2, Rocket, Settings, ShieldEllipsis } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export type AppView = "accounts" | "usage" | "provider-sync" | "diagnostics" | "settings";
@@ -20,12 +20,9 @@ export function Sidebar({
 }) {
   return (
     <aside className="flex h-full flex-col items-center justify-between py-5" data-testid="floating-dock">
-      <button
-        type="button"
-        className="rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 px-4 py-3 text-[13px] font-bold text-white shadow-[0_14px_28px_rgba(37,99,235,0.28)]"
-      >
-        更新
-      </button>
+      <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/70 bg-white/62 text-[14px] font-black tracking-[-0.06em] text-slate-900 shadow-[0_12px_24px_rgba(67,88,116,0.14)]">
+        CS
+      </div>
       <nav className="floating-dock flex flex-col items-center gap-5 px-3 py-6">
         {items.map((item) => {
           const Icon = item.icon;
@@ -46,11 +43,8 @@ export function Sidebar({
           );
         })}
       </nav>
-      <div className="flex flex-col items-center gap-5">
-        <button type="button" className="dock-button bg-white/64 shadow-[0_12px_24px_rgba(67,88,116,0.14)]" title="Logs">
-          <FileText className="h-5 w-5" />
-        </button>
-        <ChevronDown className="h-4 w-4 text-slate-400" />
+      <div className="rounded-full border border-emerald-200/70 bg-emerald-50/72 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-[0_10px_20px_rgba(16,185,129,0.12)]">
+        Local
       </div>
     </aside>
   );
