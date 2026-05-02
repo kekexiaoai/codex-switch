@@ -160,6 +160,7 @@ export function App() {
           accountCount={snapshot.accounts.length}
           provider={snapshot.providerStatus.currentProvider || "OpenAI"}
           usageState={formatUsageState(snapshot.activeUsage)}
+          usageSourceLabel={formatUsageSource(snapshot.settings.usageSourceMode)}
         />
         {feedback ? (
           <div
@@ -175,13 +176,23 @@ export function App() {
             {feedback.message}
           </div>
         ) : null}
-        <div className="relative z-10 min-h-0 flex-1 overflow-hidden pt-6">
+        <div className="relative z-10 min-h-0 flex-1 overflow-hidden pt-4">
           {view === "accounts" ? (
             <AccountsView
               accounts={snapshot.accounts}
               usage={snapshot.activeUsage}
               loginState={loginState}
               showFullEmail={snapshot.settings.showFullEmail}
+              usageSourceMode={snapshot.settings.usageSourceMode}
+              onShowFullEmailChange={(showFullEmail) => {
+                const nextSettings = { ...snapshot.settings, showFullEmail };
+                const successMessage = settingsFeedbackMessage(snapshot.settings, nextSettings);
+                void runAction(
+                  "正在保存设置…",
+                  () => saveSettings(nextSettings),
+                  successMessage,
+                );
+              }}
               onImportCurrent={() => {
                 void runAction("正在导入当前账号…", () => importCurrentAccount(), "当前账号已导入。");
               }}
@@ -276,4 +287,8 @@ function formatUsageState(usage: AppSnapshot["activeUsage"]) {
     return "未刷新";
   }
   return `${usage.fiveHour.percentUsed}% / ${usage.weekly.percentUsed}%`;
+}
+
+function formatUsageSource(source: AppSnapshot["settings"]["usageSourceMode"]) {
+  return source === "automatic" ? "自动" : "本地";
 }

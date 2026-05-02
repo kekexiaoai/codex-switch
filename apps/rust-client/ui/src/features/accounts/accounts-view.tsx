@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { ArrowRightLeft, Bot, Clock3, Import, RefreshCcw, UserRoundPlus, UsersRound } from "lucide-react";
+import { ArrowRightLeft, Bot, Clock3, Eye, EyeOff, Import, RefreshCcw, UserRoundPlus, UsersRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { AccountListItem, LoginJobState, UsageSnapshot } from "@/lib/tauri";
+import type { AccountListItem, LoginJobState, UsageSnapshot, UsageSourceMode } from "@/lib/tauri";
 import { displayEmail } from "./display-email";
 
 export function AccountsView({
@@ -12,6 +12,8 @@ export function AccountsView({
   usage,
   loginState,
   showFullEmail,
+  usageSourceMode,
+  onShowFullEmailChange,
   onImportCurrent,
   onImportBackup,
   onSwitch,
@@ -22,6 +24,8 @@ export function AccountsView({
   usage?: UsageSnapshot | null;
   loginState?: LoginJobState | null;
   showFullEmail: boolean;
+  usageSourceMode: UsageSourceMode;
+  onShowFullEmailChange: (showFullEmail: boolean) => void;
   onImportCurrent: () => void;
   onImportBackup: () => void;
   onSwitch: (id: string) => void;
@@ -38,11 +42,12 @@ export function AccountsView({
       }, {}),
     [accounts],
   );
-  const quickSwitchAccount = accounts.find((account) => !account.isActive) ?? active ?? accounts[0];
+  const quickSwitchAccount = accounts.find((account) => !account.isActive) ?? (active ? undefined : accounts[0]);
+  const usageSourceLabel = formatUsageSource(usageSourceMode);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
-      <div className="grid grid-cols-3 gap-5">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
+      <div className="grid grid-cols-3 gap-4">
         <StatCard
           icon={<Bot className="h-7 w-7" />}
           label="当前 Codex 账号"
@@ -53,67 +58,49 @@ export function AccountsView({
         <StatCard icon={<Clock3 className="h-7 w-7" />} label="Usage 5h / Weekly" value={usageSummary} />
       </div>
 
-      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-200/70 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600">
-              <Bot className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-[18px] font-black tracking-[-0.04em]">账号工作台</div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                当前 auth.json / 归档账号 / 浏览器登录
-              </div>
+      <Card className="flex shrink-0 items-center justify-between gap-4 px-5 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600">
+            <Bot className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-[18px] font-black tracking-[-0.04em]">账号工作台</div>
+            <div className="truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+              当前 auth.json / 归档账号 / 浏览器登录
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={onRefreshUsage}>
-              <RefreshCcw className="h-3.5 w-3.5" />
-              刷新 Usage
-            </Button>
-            <Button variant="secondary" size="sm" onClick={onImportCurrent}>
-              <Import className="h-3.5 w-3.5" />
-              导入当前
-            </Button>
-          </div>
         </div>
-
-        <div className="grid min-h-0 flex-1 grid-cols-2 divide-x divide-slate-200/70 overflow-hidden">
-          <AccountColumn
-            title="当前 Codex 账号"
-            account={active}
-            usage={usage}
-            showFullEmail={showFullEmail}
-            emptyText="未检测到 ChatGPT 账号"
-            onSwitch={onSwitch}
-          />
-          <AccountColumn
-            title="快速切换账号"
-            account={quickSwitchAccount}
-            usage={usage}
-            showFullEmail={showFullEmail}
-            emptyText="暂无可切换账号"
-            onSwitch={onSwitch}
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 border-t border-slate-200/70 px-5 py-4">
-          <Button onClick={onLogin}>
-            <UserRoundPlus className="h-4 w-4" />
-            浏览器登录
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onShowFullEmailChange(!showFullEmail)}
+            aria-pressed={showFullEmail}
+          >
+            {showFullEmail ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {showFullEmail ? "隐藏邮箱" : "显示完整邮箱"}
           </Button>
-          <Button variant="secondary" onClick={onImportBackup}>
+          <Button variant="secondary" size="sm" onClick={onRefreshUsage}>
+            <RefreshCcw className="h-3.5 w-3.5" />
+            刷新 Usage
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onImportCurrent}>
+            <Import className="h-3.5 w-3.5" />
+            导入当前
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onImportBackup}>
             导入备份
           </Button>
-          <Button variant="secondary" onClick={onRefreshUsage}>
-            刷新 Usage
+          <Button size="sm" onClick={onLogin}>
+            <UserRoundPlus className="h-3.5 w-3.5" />
+            浏览器登录
           </Button>
         </div>
       </Card>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-5">
-        <Card className="overflow-hidden">
-          <div className="flex items-center justify-between border-b border-slate-200/70 px-5 py-3">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_300px] gap-4">
+        <Card className="flex min-h-0 flex-col overflow-hidden">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-200/70 px-5 py-3">
             <div>
               <div className="text-[15px] font-black tracking-[-0.03em]">归档账号</div>
               <div className="mt-0.5 text-[11px] font-semibold text-slate-400">来自 ~/.codex/accounts 的可切换身份</div>
@@ -122,13 +109,13 @@ export function AccountsView({
               {accounts.length} 个账号
             </div>
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_120px_220px_150px] border-b border-slate-200/70 px-5 py-3 text-[12px] font-bold text-slate-500">
+          <div className="grid shrink-0 grid-cols-[minmax(0,1.4fr)_88px_minmax(220px,0.9fr)_92px] border-b border-slate-200/70 px-5 py-2.5 text-[12px] font-bold text-slate-500">
             <div>邮箱</div>
             <div>订阅</div>
             <div>配额状态</div>
             <div>操作</div>
           </div>
-          <div className="max-h-[240px] overflow-auto">
+          <div className="min-h-0 flex-1 overflow-auto">
             {accounts.length === 0 ? (
               <div className="px-5 py-8 text-[13px] text-slate-500">暂无归档账号，可先导入当前 auth.json。</div>
             ) : null}
@@ -144,16 +131,45 @@ export function AccountsView({
           </div>
         </Card>
 
-        <Card className="p-5">
-          <div className="text-[15px] font-black tracking-[-0.03em]">本地状态</div>
-          <div className="mt-4 space-y-3">
-            <SummaryRow label="Team" value={`${tierCounts.team ?? 0}`} />
-            <SummaryRow label="Plus" value={`${tierCounts.plus ?? 0}`} />
-            <SummaryRow label="Pro" value={`${tierCounts.pro ?? 0}`} />
-            <SummaryRow label="Usage" value={usage ? "已读取" : "未刷新"} />
-            <SummaryRow label="登录任务" value={loginState?.active ? "运行中" : "空闲"} />
+        <Card className="flex min-h-0 flex-col gap-4 p-4">
+          <div className="flex items-center gap-3">
+            <div>
+              <div className="text-[15px] font-black tracking-[-0.03em]">当前账号</div>
+              <div className="text-[11px] font-semibold text-slate-400">auth.json 当前生效身份</div>
+            </div>
           </div>
-          <div className="mt-4 rounded-2xl bg-white/58 p-3 text-[12px] leading-5 text-slate-500">
+          <AccountSummaryCard
+            account={active}
+            usage={usage}
+            showFullEmail={showFullEmail}
+            emptyText="未检测到 ChatGPT 账号"
+          />
+          <div className="desktop-divider" />
+          <div>
+            <div className="text-[15px] font-black tracking-[-0.03em]">快速切换</div>
+            <div className="mt-2">
+              <AccountSummaryCard
+                account={quickSwitchAccount}
+                usage={usage}
+                showFullEmail={showFullEmail}
+                emptyText="暂无备用账号"
+                onSwitch={onSwitch}
+              />
+            </div>
+          </div>
+          <div className="desktop-divider" />
+          <div>
+            <div className="text-[15px] font-black tracking-[-0.03em]">本地状态</div>
+            <div className="mt-3 space-y-2">
+              <SummaryRow label="Team" value={`${tierCounts.team ?? 0}`} />
+              <SummaryRow label="Plus" value={`${tierCounts.plus ?? 0}`} />
+              <SummaryRow label="Pro" value={`${tierCounts.pro ?? 0}`} />
+              <SummaryRow label="数据源" value={usageSourceLabel} />
+              <SummaryRow label="Usage" value={usage ? "已读取" : "未刷新"} />
+              <SummaryRow label="登录任务" value={loginState?.active ? "运行中" : "空闲"} />
+            </div>
+          </div>
+          <div className="min-h-0 rounded-2xl bg-white/58 p-3 text-[12px] leading-5 text-slate-500">
             {loginState?.message ?? "尚未启动登录任务。"}
           </div>
         </Card>
@@ -193,72 +209,52 @@ function StatCard({
   );
 }
 
-function AccountColumn({
-  title,
+function AccountSummaryCard({
   account,
   usage,
   showFullEmail,
   emptyText,
   onSwitch,
 }: {
-  title: string;
   account?: AccountListItem;
   usage?: UsageSnapshot | null;
   showFullEmail: boolean;
   emptyText: string;
-  onSwitch: (id: string) => void;
+  onSwitch?: (id: string) => void;
 }) {
-  return (
-    <div className="min-w-0 p-5">
-      <div className="mb-4 flex items-center gap-2 text-[12px] font-bold text-slate-400">
-        <span className="grid h-4 w-4 place-items-center rounded-full border border-slate-300 text-[10px]">✓</span>
-        {title}
+  if (!account) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300/70 bg-white/42 p-4 text-[13px] text-slate-500">
+        {emptyText}
       </div>
-      {account ? (
-        <AccountCard account={account} usage={usage} showFullEmail={showFullEmail} onSwitch={onSwitch} />
-      ) : (
-        <div className="rounded-2xl border border-dashed border-slate-300/70 bg-white/42 p-5 text-[13px] text-slate-500">
-          {emptyText}
-        </div>
-      )}
-    </div>
-  );
-}
+    );
+  }
 
-function AccountCard({
-  account,
-  usage,
-  showFullEmail,
-  onSwitch,
-}: {
-  account: AccountListItem;
-  usage?: UsageSnapshot | null;
-  showFullEmail: boolean;
-  onSwitch: (id: string) => void;
-}) {
   const five = usage?.fiveHour.percentUsed ?? 0;
   const weekly = usage?.weekly.percentUsed ?? 0;
+  const canSwitch = Boolean(onSwitch && !account.isActive);
 
   return (
     <button
       type="button"
-      onClick={() => !account.isActive && onSwitch(account.id)}
-      className="desktop-row w-full p-4 text-left"
+      disabled={!canSwitch}
+      onClick={() => canSwitch && onSwitch?.(account.id)}
+      className="desktop-row w-full p-3 text-left disabled:cursor-default disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:shadow-none"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-[16px] font-black tracking-[-0.04em]">
+          <div className="truncate text-[14px] font-black tracking-[-0.04em]">
             {displayEmail(account, showFullEmail)}
           </div>
-          <div className="mt-2 text-[12px] font-semibold text-slate-500">{sourceLabel(account.source)}</div>
+          <div className="mt-1 text-[11px] font-semibold text-slate-500">
+            {sourceLabel(account.source)} · #{account.manualOrder}
+          </div>
         </div>
         <TierBadge tier={account.tier} />
       </div>
-      <UsageBar label="5h" value={five} />
-      <UsageBar label="Weekly" value={weekly} />
-      <div className="mt-5 flex items-center justify-end gap-5 border-t border-dashed border-slate-200 pt-3 text-slate-400">
-        <ArrowRightLeft className="h-4 w-4" />
-        <RefreshCcw className="h-4 w-4" />
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <UsageBar label="5h" value={five} compact />
+        <UsageBar label="Weekly" value={weekly} compact />
       </div>
     </button>
   );
@@ -280,7 +276,7 @@ function AccountTableRow({
       type="button"
       onClick={() => !account.isActive && onSwitch(account.id)}
       className={[
-        "grid w-full grid-cols-[minmax(0,1fr)_120px_220px_150px] items-center border-b border-slate-200/70 px-5 py-4 text-left last:border-b-0",
+        "grid w-full grid-cols-[minmax(0,1.4fr)_88px_minmax(220px,0.9fr)_92px] items-center border-b border-slate-200/70 px-5 py-3 text-left last:border-b-0",
         account.isActive ? "bg-white/46" : "hover:bg-white/40",
       ].join(" ")}
     >
@@ -295,7 +291,7 @@ function AccountTableRow({
         <UsageBar label="5h" value={usage?.fiveHour.percentUsed ?? 0} compact />
         <UsageBar label="Weekly" value={usage?.weekly.percentUsed ?? 0} compact />
       </div>
-      <div className="flex items-center gap-4 text-slate-400">
+      <div className="flex items-center gap-3 text-slate-400">
         <ArrowRightLeft className="h-4 w-4" />
         <RefreshCcw className="h-4 w-4" />
       </div>
@@ -327,7 +323,7 @@ function TierBadge({ tier }: { tier: AccountListItem["tier"] }) {
     team: "border-violet-300 bg-violet-50 text-violet-700",
     unknown: "border-slate-300 bg-slate-50 text-slate-600",
   };
-  return <Badge className={styles[tier]}>{tier}</Badge>;
+  return <Badge className={`${styles[tier]} w-fit justify-self-start whitespace-nowrap px-2`}>{tier}</Badge>;
 }
 
 function sourceLabel(source: AccountListItem["source"]) {
@@ -350,4 +346,8 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <span className="font-bold text-slate-800">{value}</span>
     </div>
   );
+}
+
+function formatUsageSource(source: UsageSourceMode) {
+  return source === "automatic" ? "自动" : "本地";
 }

@@ -44,7 +44,7 @@ export function Sidebar({
         })}
       </nav>
       <div className="rounded-full border border-emerald-200/70 bg-emerald-50/72 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-[0_10px_20px_rgba(16,185,129,0.12)]">
-        Local
+        Ready
       </div>
     </aside>
   );

@@ -15,11 +15,13 @@ export function Topbar({
   accountCount,
   provider,
   usageState,
+  usageSourceLabel,
 }: {
   view: AppView;
   accountCount: number;
   provider: string;
   usageState: string;
+  usageSourceLabel: string;
 }) {
   const current = titles[view];
   return (
@@ -28,12 +30,12 @@ export function Topbar({
         <div className="mb-1 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">
           <span>Codex Switch</span>
           <span className="h-1 w-1 rounded-full bg-slate-300" />
-          <span>Local Desktop</span>
+          <span>Desktop App</span>
         </div>
         <div className="flex items-center gap-3">
           <h1 className="m-0 text-[28px] font-black tracking-[-0.05em] text-slate-950">{current.title}</h1>
           <span className="rounded-full border border-slate-300/50 bg-white/54 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-slate-500">
-            本地
+            Usage {usageSourceLabel}
           </span>
         </div>
         <p className="mt-1 text-[12px] font-medium text-slate-500">{current.description}</p>

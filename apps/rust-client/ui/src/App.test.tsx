@@ -66,8 +66,11 @@ describe("App", () => {
     expect(screen.getByTestId("floating-dock")).toBeInTheDocument();
     expect(screen.getAllByText("Accounts").length).toBeGreaterThan(0);
     expect(screen.getByText("账号工作台")).toBeInTheDocument();
+    expect(screen.getByText("Usage 自动")).toBeInTheDocument();
     expect(screen.getAllByText("导入备份").length).toBeGreaterThan(0);
     expect(screen.queryByText("Welcome")).not.toBeInTheDocument();
+    expect(screen.queryByText("Local")).not.toBeInTheDocument();
+    expect(screen.queryByText("Local Desktop")).not.toBeInTheDocument();
     expect(screen.queryByText("搜索账号...")).not.toBeInTheDocument();
     expect(screen.queryByText("Codex Account Hub")).not.toBeInTheDocument();
     expect(screen.queryByText("Codex 布局")).not.toBeInTheDocument();
@@ -103,5 +106,21 @@ describe("App", () => {
     });
 
     expect(screen.queryByText("已暂停 Usage 刷新。")).not.toBeInTheDocument();
+  });
+
+  it("lets the dashboard toggle full email display", async () => {
+    render(<App />);
+
+    await screen.findByText("仪表盘");
+    fireEvent.click(screen.getByRole("button", { name: "显示完整邮箱" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ showFullEmail: true }));
+    expect(screen.getByText("已显示完整邮箱。")).toBeInTheDocument();
   });
 });
