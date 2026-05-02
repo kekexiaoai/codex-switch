@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { ArrowRightLeft, Bot, Import, RefreshCcw, Sparkles, UserRoundPlus, UsersRound } from "lucide-react";
+import { ArrowRightLeft, Bot, Clock3, Import, RefreshCcw, UserRoundPlus, UsersRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -38,87 +38,72 @@ export function AccountsView({
     [accounts],
   );
   const recommended = accounts.find((account) => !account.isActive) ?? active ?? accounts[0];
-  const providerPanels = [
-    {
-      name: "Codex",
-      icon: <Bot className="h-5 w-5" />,
-      accounts,
-    },
-    {
-      name: "Antigravity",
-      icon: <Sparkles className="h-5 w-5" />,
-      accounts: accounts.slice().reverse(),
-    },
-  ];
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
       <div className="grid grid-cols-3 gap-5">
         <StatCard icon={<UsersRound className="h-7 w-7" />} label="账号总数" value={`${accounts.length}`} />
-        <StatCard icon={<Sparkles className="h-7 w-7" />} label="Antigravity" value={`${Math.max(0, Math.ceil(accounts.length / 2))}`} />
-        <StatCard icon={<Bot className="h-7 w-7" />} label="Codex" value={`${accounts.length}`} />
+        <StatCard icon={<Bot className="h-7 w-7" />} label="Codex 归档" value={`${accounts.length}`} />
+        <StatCard icon={<Clock3 className="h-7 w-7" />} label="当前 Usage" value={usage ? `${usage.fiveHour.percentUsed}%` : "--"} />
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-5 overflow-hidden">
-        {providerPanels.map((panel) => (
-          <Card key={panel.name} className="flex min-h-0 flex-col overflow-hidden">
-            <div className="flex items-center justify-between border-b border-slate-200/70 px-5 py-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600">
-                  {panel.icon}
-                </div>
-                <div>
-                  <div className="text-[18px] font-black tracking-[-0.04em]">{panel.name}</div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                    当前账户 / 推荐账号
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="secondary" size="sm" onClick={onRefreshUsage}>
-                  <RefreshCcw className="h-3.5 w-3.5" />
-                  刷新
-                </Button>
-                <Button variant="secondary" size="sm" onClick={onImportCurrent}>
-                  <Import className="h-3.5 w-3.5" />
-                </Button>
+      <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-200/70 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-600">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[18px] font-black tracking-[-0.04em]">Codex Account Hub</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                当前账号 / 推荐切换 / Usage 状态
               </div>
             </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={onRefreshUsage}>
+              <RefreshCcw className="h-3.5 w-3.5" />
+              刷新
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onImportCurrent}>
+              <Import className="h-3.5 w-3.5" />
+              导入当前
+            </Button>
+          </div>
+        </div>
 
-            <div className="grid min-h-0 flex-1 grid-cols-2 divide-x divide-slate-200/70 overflow-hidden">
-              <AccountColumn
-                title="当前账户"
-                account={active}
-                usage={usage}
-                showFullEmail={showFullEmail}
-                emptyText="未检测到 ChatGPT 账号"
-                onSwitch={onSwitch}
-              />
-              <AccountColumn
-                title="推荐账号"
-                account={recommended}
-                usage={usage}
-                showFullEmail={showFullEmail}
-                emptyText="暂无可推荐账号"
-                onSwitch={onSwitch}
-              />
-            </div>
+        <div className="grid min-h-0 flex-1 grid-cols-2 divide-x divide-slate-200/70 overflow-hidden">
+          <AccountColumn
+            title="当前 Codex 账号"
+            account={active}
+            usage={usage}
+            showFullEmail={showFullEmail}
+            emptyText="未检测到 ChatGPT 账号"
+            onSwitch={onSwitch}
+          />
+          <AccountColumn
+            title="推荐切换账号"
+            account={recommended}
+            usage={usage}
+            showFullEmail={showFullEmail}
+            emptyText="暂无可推荐账号"
+            onSwitch={onSwitch}
+          />
+        </div>
 
-            <div className="grid grid-cols-3 gap-3 border-t border-slate-200/70 px-5 py-4">
-              <Button onClick={onLogin}>
-                <UserRoundPlus className="h-4 w-4" />
-                浏览器登录
-              </Button>
-              <Button variant="secondary" onClick={onImportBackup}>
-                导入备份
-              </Button>
-              <Button variant="secondary" onClick={onRefreshUsage}>
-                刷新 Usage
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+        <div className="grid grid-cols-3 gap-3 border-t border-slate-200/70 px-5 py-4">
+          <Button onClick={onLogin}>
+            <UserRoundPlus className="h-4 w-4" />
+            浏览器登录
+          </Button>
+          <Button variant="secondary" onClick={onImportBackup}>
+            导入备份
+          </Button>
+          <Button variant="secondary" onClick={onRefreshUsage}>
+            刷新 Usage
+          </Button>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-[minmax(0,1fr)_320px] gap-5">
         <Card className="overflow-hidden">

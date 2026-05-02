@@ -1,9 +1,9 @@
-import { Bell, Eye, Filter, FolderOpen, LayoutGrid, List, RefreshCcw, Search, Settings, Upload } from "lucide-react";
+import { Eye, Filter, FolderOpen, LayoutGrid, List, RefreshCcw, Search, Settings, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { AppView } from "./sidebar";
 
 const titles: Record<AppView, { title: string; description: string }> = {
-  accounts: { title: "仪表盘", description: "账号、配额与 Provider 一站式管理" },
+  accounts: { title: "仪表盘", description: "Codex 账号、配额与快速切换" },
   usage: { title: "Usage", description: "配额快照与刷新来源" },
   "provider-sync": { title: "Provider Sync", description: "配置、会话日志与 SQLite 维护" },
   diagnostics: { title: "Diagnostics", description: "本地诊断事件与运行状态" },
@@ -33,11 +33,7 @@ export function Topbar({
         </div>
         <div className="flex items-center gap-3">
           <Button variant="secondary" size="lg">
-            平台布局
-          </Button>
-          <Button variant="secondary" size="lg">
-            <Bell className="h-4 w-4" />
-            消息通知
+            Codex 布局
           </Button>
         </div>
       </div>
