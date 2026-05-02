@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppSnapshot } from "@/lib/tauri";
 
@@ -48,12 +48,15 @@ vi.mock("@/lib/tauri", () => ({
 }));
 
 import { App } from "./App";
-import { getAppSnapshot } from "@/lib/tauri";
+import { getAppSnapshot, saveSettings } from "@/lib/tauri";
 
 describe("App", () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.mocked(getAppSnapshot).mockReset();
     vi.mocked(getAppSnapshot).mockResolvedValue(snapshot);
+    vi.mocked(saveSettings).mockReset();
+    vi.mocked(saveSettings).mockResolvedValue(snapshot.settings);
   });
 
   it("renders a glass desktop shell instead of a web navbar", async () => {
@@ -72,5 +75,28 @@ describe("App", () => {
     render(<App />);
 
     expect(await screen.findByText("id_token 缺失")).toBeInTheDocument();
+  });
+
+  it("automatically hides successful settings feedback", async () => {
+    render(<App />);
+
+    await screen.findByText("仪表盘");
+    fireEvent.click(screen.getByTitle("Settings"));
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("switch", { name: "启用 Usage 刷新" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("已暂停 Usage 刷新。")).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(3_500);
+    });
+
+    expect(screen.queryByText("已暂停 Usage 刷新。")).not.toBeInTheDocument();
   });
 });

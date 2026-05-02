@@ -95,7 +95,7 @@ function SettingRow({
         <div className="text-[15px] font-black tracking-[-0.03em]">{title}</div>
         <div className="mt-1 text-[12px] font-medium text-slate-500">{description}</div>
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch aria-label={title} checked={checked} onCheckedChange={onCheckedChange} />
     </div>
   );
 }

@@ -52,6 +52,8 @@ const emptySnapshot: AppSnapshot = {
   },
 };
 
+const SUCCESS_FEEDBACK_TIMEOUT_MS = 3_200;
+
 export function App() {
   const [snapshot, setSnapshot] = useState<AppSnapshot>(emptySnapshot);
   const [view, setView] = useState<AppView>("accounts");
@@ -107,6 +109,18 @@ export function App() {
   useEffect(() => {
     void refreshAll();
   }, []);
+
+  useEffect(() => {
+    if (feedback?.kind !== "success") {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFeedback((current) => (current === feedback ? null : current));
+    }, SUCCESS_FEEDBACK_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [feedback]);
 
   useEffect(() => {
     const cleanups: Array<() => void> = [];
