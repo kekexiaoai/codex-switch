@@ -58,14 +58,9 @@ impl AuthStore {
 
     pub fn replace_active_auth(&self, data: &[u8]) -> AppResult<()> {
         fs::create_dir_all(&self.paths.base_directory)?;
-        let temp = self.paths.base_directory.join(".auth.json.tmp");
         let formatted = format_auth_data(data)?;
-        atomic_write(&temp, &formatted).map_err(|_| AppError::ActiveAuthReplacementFailed)?;
         let target = self.paths.auth_file();
-        if target.exists() {
-            fs::remove_file(&target).map_err(|_| AppError::ActiveAuthReplacementFailed)?;
-        }
-        fs::rename(temp, target).map_err(|_| AppError::ActiveAuthReplacementFailed)
+        atomic_write(&target, &formatted).map_err(|_| AppError::ActiveAuthReplacementFailed)
     }
 
     pub fn load_metadata_cache(&self) -> AppResult<AccountMetadataCache> {

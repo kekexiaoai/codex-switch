@@ -53,9 +53,9 @@ impl SessionsService {
                     .or_else(|| file.and_then(|meta| meta.timestamp))
                     .or_else(|| file.and_then(|meta| file_modified_at(&meta.file_path)))
                     .unwrap_or_else(|| Utc.timestamp_opt(0, 0).single().unwrap());
-                let display = file
-                    .and_then(|meta| meta.display.clone())
-                    .or_else(|| history_entry.map(|entry| normalize_display_text(&entry.text)))
+                let display = history_entry
+                    .map(|entry| normalize_display_text(&entry.text))
+                    .or_else(|| file.and_then(|meta| meta.display.clone()))
                     .unwrap_or_else(|| DEFAULT_DISPLAY.to_string());
                 let project = file.map(|meta| meta.cwd.clone()).unwrap_or_default();
                 CodexSessionListItem {
@@ -388,9 +388,33 @@ mod tests {
         let items = service.list().unwrap();
 
         assert_eq!(items.len(), 1);
-        assert_eq!(items[0].display, "实现 Sessions 页面");
+        assert_eq!(items[0].display, "history title");
         assert_eq!(items[0].project_name, "codex-switch");
         assert_eq!(items[0].message_count, 2);
+    }
+
+    #[test]
+    fn prefers_history_text_over_bootstrap_prompt_for_title() {
+        let temp = tempdir().unwrap();
+        let codex = temp.path().join(".codex");
+        let sessions = codex.join("sessions/2026/05/02");
+        fs::create_dir_all(&sessions).unwrap();
+        fs::write(
+            codex.join("history.jsonl"),
+            r#"{"session_id":"33333333-3333-3333-3333-333333333333","ts":1777651200,"text":"真正的用户问题标题"}"#,
+        )
+        .unwrap();
+        fs::write(
+            sessions.join("rollout-2026-05-02T10-00-00-33333333-3333-3333-3333-333333333333.jsonl"),
+            r##"{"timestamp":"2026-05-02T10:00:00Z","type":"session_meta","payload":{"id":"33333333-3333-3333-3333-333333333333","timestamp":"2026-05-02T10:00:00Z","cwd":"/repo/codex-switch"}}
+{"timestamp":"2026-05-02T10:00:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"# AGENTS.md instructions for /repo/codex-switch\n\n<INSTRUCTIONS>..."}]}}"##,
+        )
+        .unwrap();
+
+        let service = SessionsService::new(CodexPaths::new(codex));
+        let items = service.list().unwrap();
+
+        assert_eq!(items[0].display, "真正的用户问题标题");
     }
 
     #[test]

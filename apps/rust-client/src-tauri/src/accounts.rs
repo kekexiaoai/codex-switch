@@ -226,4 +226,37 @@ mod tests {
         );
         assert!(!accounts[0].is_active);
     }
+
+    #[test]
+    fn switches_archived_account_into_active_auth_file() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        fs::create_dir_all(&base).unwrap();
+        fs::write(
+            base.join("auth.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwic3ViIjoiYWNjdC0xIiwicGxhbiI6InRlYW0ifQ.sig"}}"#,
+        )
+        .unwrap();
+
+        let service = AccountsService::new(CodexPaths::new(base.clone()));
+        service.import_current().unwrap();
+        fs::write(
+            base.join("auth.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImJvYkBleGFtcGxlLmNvbSIsInN1YiI6ImFjY3QtMiIsInBsYW4iOiJwbHVzIn0.sig"}}"#,
+        )
+        .unwrap();
+        service.import_current().unwrap();
+
+        let archived = service
+            .list()
+            .unwrap()
+            .into_iter()
+            .find(|account| account.record.email.as_deref() == Some("alice@example.com"))
+            .unwrap();
+
+        service.switch(&archived.record.id).unwrap();
+
+        let active = service.current_claims().unwrap();
+        assert_eq!(active.email, "alice@example.com");
+    }
 }

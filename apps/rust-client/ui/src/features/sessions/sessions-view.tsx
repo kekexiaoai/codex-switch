@@ -78,21 +78,24 @@ export function SessionsView({
             />
           </label>
 
-          <div className="flex max-h-24 flex-wrap gap-2 overflow-auto pr-1">
-            <ProjectChip
-              active={project === ALL_PROJECTS}
-              label={`全部 ${sessions.length}`}
-              onClick={() => setProject(ALL_PROJECTS)}
-            />
-            {projects.map((item) => (
-              <ProjectChip
-                key={item}
-                active={project === item}
-                label={projectName(item)}
-                title={item}
-                onClick={() => setProject(item)}
-              />
-            ))}
+          <div className="flex items-center gap-2">
+            <span className="shrink-0 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">项目</span>
+            <select
+              value={project}
+              onChange={(event) => setProject(event.target.value)}
+              className="h-8 min-w-0 flex-1 rounded-2xl border border-slate-300/60 bg-white/66 px-3 text-[12px] font-semibold text-slate-700 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]"
+              title={project === ALL_PROJECTS ? "全部项目" : project}
+            >
+              <option value={ALL_PROJECTS}>全部项目</option>
+              {projects.map((item) => (
+                <option key={item} value={item}>
+                  {projectName(item)}
+                </option>
+              ))}
+            </select>
+            <Badge className="shrink-0 whitespace-nowrap border-blue-200 bg-blue-50 px-2 text-blue-700">
+              {filteredSessions.length} / {sessions.length}
+            </Badge>
           </div>
         </div>
 
@@ -187,53 +190,26 @@ export function SessionsView({
   );
 }
 
-function ProjectChip({
-  active,
-  label,
-  title,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  title?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-2.5 py-1 text-[11px] font-bold transition",
-        active
-          ? "border-blue-300 bg-blue-50 text-blue-700 shadow-[0_8px_16px_rgba(37,99,235,0.12)]"
-          : "border-slate-300/60 bg-white/56 text-slate-500 hover:bg-white/82",
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
 function MessageBubble({ message }: { message: CodexSessionDetail["messages"][number] }) {
   const roleLabel = roleName(message.role);
   const isTool = message.role === "tool" || message.kind !== "message";
+  const isUser = message.role === "user";
   return (
     <article
       className={cn(
-        "rounded-2xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]",
-        message.role === "user"
-          ? "border-blue-200/70 bg-blue-50/58"
+        "max-w-[86%] rounded-2xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.74)]",
+        isUser
+          ? "ml-auto border-blue-200/80 bg-blue-50/70"
           : isTool
-            ? "border-slate-300/70 bg-slate-50/74"
-            : "border-white/70 bg-white/66",
+            ? "mr-auto border-slate-300/70 bg-slate-50/74"
+            : "mr-auto border-emerald-100/80 bg-white/66",
       )}
     >
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className={cn("mb-2 flex items-center justify-between gap-3", isUser ? "flex-row-reverse" : "")}>
         <Badge
           className={cn(
             "whitespace-nowrap px-2",
-            message.role === "user"
+            isUser
               ? "border-blue-300 bg-blue-50 text-blue-700"
               : isTool
                 ? "border-slate-300 bg-slate-100 text-slate-600"
