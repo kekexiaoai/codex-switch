@@ -2,6 +2,7 @@ use crate::error::{AppError, AppResult};
 use crate::models::{CodexSessionDetail, CodexSessionListItem, CodexSessionMessage};
 use crate::paths::CodexPaths;
 use chrono::{DateTime, TimeZone, Utc};
+use rusqlite::{Connection, OpenFlags};
 use serde_json::Value;
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
@@ -32,39 +33,60 @@ struct HistoryEntry {
     text: String,
 }
 
+#[derive(Debug, Clone)]
+struct ThreadEntry {
+    title: String,
+    cwd: String,
+    timestamp: DateTime<Utc>,
+    file_path: Option<PathBuf>,
+}
+
 impl SessionsService {
     pub fn new(paths: CodexPaths) -> Self {
         Self { paths }
     }
 
     pub fn list(&self) -> AppResult<Vec<CodexSessionListItem>> {
+        let threads = self.load_threads();
         let history = self.load_history();
         let files = self.collect_session_file_meta();
-        let mut ids: BTreeSet<String> = history.keys().cloned().collect();
+        let mut ids: BTreeSet<String> = threads.keys().cloned().collect();
+        ids.extend(history.keys().cloned());
         ids.extend(files.keys().cloned());
 
         let mut sessions = ids
             .into_iter()
             .map(|id| {
+                let thread = threads.get(&id);
                 let file = files.get(&id);
                 let history_entry = history.get(&id);
-                let timestamp = history_entry
+                let timestamp = thread
                     .map(|entry| entry.timestamp)
+                    .or_else(|| history_entry.map(|entry| entry.timestamp))
                     .or_else(|| file.and_then(|meta| meta.timestamp))
                     .or_else(|| file.and_then(|meta| file_modified_at(&meta.file_path)))
                     .unwrap_or_else(|| Utc.timestamp_opt(0, 0).single().unwrap());
-                let display = history_entry
-                    .map(|entry| normalize_display_text(&entry.text))
+                let display = thread
+                    .map(|entry| normalize_display_text(&entry.title))
+                    .filter(|title| title != DEFAULT_DISPLAY)
+                    .or_else(|| history_entry.map(|entry| normalize_display_text(&entry.text)))
                     .or_else(|| file.and_then(|meta| meta.display.clone()))
                     .unwrap_or_else(|| DEFAULT_DISPLAY.to_string());
-                let project = file.map(|meta| meta.cwd.clone()).unwrap_or_default();
+                let project = thread
+                    .map(|entry| entry.cwd.clone())
+                    .filter(|cwd| !cwd.is_empty())
+                    .or_else(|| file.map(|meta| meta.cwd.clone()))
+                    .unwrap_or_default();
+                let file_path = file
+                    .map(|meta| meta.file_path.clone())
+                    .or_else(|| thread.and_then(|entry| entry.file_path.clone()));
                 CodexSessionListItem {
                     id,
                     display,
                     timestamp,
                     project_name: project_name(&project),
                     project,
-                    file_path: file.map(|meta| meta.file_path.to_string_lossy().to_string()),
+                    file_path: file_path.map(|path| path.to_string_lossy().to_string()),
                     message_count: file.map(|meta| meta.message_count).unwrap_or_default(),
                 }
             })
@@ -72,6 +94,58 @@ impl SessionsService {
 
         sessions.sort_by(|left, right| right.timestamp.cmp(&left.timestamp));
         Ok(sessions)
+    }
+
+    fn load_threads(&self) -> HashMap<String, ThreadEntry> {
+        let path = self.paths.sqlite_database();
+        if !path.exists() {
+            return HashMap::new();
+        }
+
+        let Ok(connection) = Connection::open_with_flags(
+            path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        ) else {
+            return HashMap::new();
+        };
+
+        let Ok(mut statement) = connection.prepare(
+            r#"
+            SELECT id,
+                   title,
+                   cwd,
+                   rollout_path,
+                   COALESCE(updated_at_ms, updated_at * 1000, created_at_ms, created_at * 1000) AS sort_at_ms
+            FROM threads
+            WHERE archived = 0
+            "#,
+        ) else {
+            return HashMap::new();
+        };
+
+        let Ok(rows) = statement.query_map([], |row| {
+            let id = row.get::<_, String>(0).unwrap_or_default();
+            let rollout_path = row
+                .get::<_, String>(3)
+                .ok()
+                .filter(|value| !value.is_empty());
+            let timestamp_ms = row.get::<_, i64>(4).unwrap_or_default();
+            Ok((
+                id,
+                ThreadEntry {
+                    title: row.get::<_, String>(1).unwrap_or_default(),
+                    cwd: row.get::<_, String>(2).unwrap_or_default(),
+                    timestamp: datetime_from_millis(timestamp_ms),
+                    file_path: rollout_path.map(PathBuf::from).filter(|path| path.exists()),
+                },
+            ))
+        }) else {
+            return HashMap::new();
+        };
+
+        rows.filter_map(Result::ok)
+            .filter(|(id, _)| !id.is_empty())
+            .collect()
     }
 
     pub fn projects(&self) -> AppResult<Vec<String>> {
@@ -337,6 +411,12 @@ fn parse_timestamp(value: &Value) -> Option<DateTime<Utc>> {
         .ok()
 }
 
+fn datetime_from_millis(milliseconds: i64) -> DateTime<Utc> {
+    Utc.timestamp_millis_opt(milliseconds)
+        .single()
+        .unwrap_or_else(|| Utc.timestamp_opt(0, 0).single().unwrap())
+}
+
 fn file_modified_at(path: &Path) -> Option<DateTime<Utc>> {
     fs::metadata(path)
         .ok()
@@ -362,6 +442,7 @@ fn extract_session_id_from_path(path: &Path) -> Option<String> {
 mod tests {
     use super::SessionsService;
     use crate::paths::CodexPaths;
+    use rusqlite::Connection;
     use std::fs;
     use tempfile::tempdir;
 
@@ -415,6 +496,65 @@ mod tests {
         let items = service.list().unwrap();
 
         assert_eq!(items[0].display, "真正的用户问题标题");
+    }
+
+    #[test]
+    fn prefers_sqlite_thread_title_over_history_and_rollout_text() {
+        let temp = tempdir().unwrap();
+        let codex = temp.path().join(".codex");
+        let sessions = codex.join("sessions/2026/05/02");
+        fs::create_dir_all(&sessions).unwrap();
+        fs::write(
+            codex.join("history.jsonl"),
+            r#"{"session_id":"44444444-4444-4444-4444-444444444444","ts":1777651200,"text":"history title"}"#,
+        )
+        .unwrap();
+        let rollout_path =
+            sessions.join("rollout-2026-05-02T10-00-00-44444444-4444-4444-4444-444444444444.jsonl");
+        fs::write(
+            &rollout_path,
+            r##"{"timestamp":"2026-05-02T10:00:00Z","type":"session_meta","payload":{"id":"44444444-4444-4444-4444-444444444444","timestamp":"2026-05-02T10:00:00Z","cwd":"/repo/from-rollout"}}
+{"timestamp":"2026-05-02T10:00:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"# AGENTS.md instructions for /repo/from-rollout"}]}}"##,
+        )
+        .unwrap();
+
+        let connection = Connection::open(codex.join("state_5.sqlite")).unwrap();
+        connection
+            .execute(
+                "CREATE TABLE threads (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    cwd TEXT NOT NULL,
+                    rollout_path TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    archived INTEGER NOT NULL,
+                    created_at_ms INTEGER,
+                    updated_at_ms INTEGER
+                )",
+                [],
+            )
+            .unwrap();
+        connection
+            .execute(
+                "INSERT INTO threads
+                 (id, title, cwd, rollout_path, created_at, updated_at, archived, created_at_ms, updated_at_ms)
+                 VALUES (?1, ?2, ?3, ?4, 1777651200, 1777651300, 0, 1777651200000, 1777651300000)",
+                (
+                    "44444444-4444-4444-4444-444444444444",
+                    "SQLite 里的会话标题",
+                    "/repo/from-sqlite",
+                    rollout_path.to_string_lossy().to_string(),
+                ),
+            )
+            .unwrap();
+
+        let service = SessionsService::new(CodexPaths::new(codex));
+        let items = service.list().unwrap();
+
+        assert_eq!(items[0].display, "SQLite 里的会话标题");
+        assert_eq!(items[0].project, "/repo/from-sqlite");
+        assert!(items[0].file_path.as_deref().is_some());
     }
 
     #[test]
