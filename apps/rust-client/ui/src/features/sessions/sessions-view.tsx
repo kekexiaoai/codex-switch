@@ -194,6 +194,7 @@ function MessageBubble({ message }: { message: CodexSessionDetail["messages"][nu
   const roleLabel = roleName(message.role);
   const isTool = message.role === "tool" || message.kind !== "message";
   const isUser = message.role === "user";
+  const isBootstrapContext = isCodexBootstrapContext(message.text);
   return (
     <article
       className={cn(
@@ -220,14 +221,32 @@ function MessageBubble({ message }: { message: CodexSessionDetail["messages"][nu
         </Badge>
         <span className="text-[11px] text-slate-400">{message.timestamp ? formatDateTime(message.timestamp) : ""}</span>
       </div>
-      <pre
-        className={cn(
-          "m-0 whitespace-pre-wrap break-words text-[12px] leading-6 text-slate-700",
-          isTool ? "font-mono text-[11px] leading-5" : "font-sans",
-        )}
-      >
-        {message.text}
-      </pre>
+      {isBootstrapContext ? (
+        <details
+          data-testid="codex-bootstrap-context"
+          className="group rounded-xl border border-slate-200/80 bg-white/48 px-3 py-2"
+        >
+          <summary className="cursor-pointer list-none text-[12px] font-bold text-slate-500">
+            <span className="inline-flex items-center gap-2">
+              <span className="text-slate-400 group-open:rotate-90">›</span>
+              <span>Codex 内置上下文</span>
+              <span className="text-[11px] font-semibold text-slate-400">点击展开</span>
+            </span>
+          </summary>
+          <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5 text-slate-600">
+            {message.text}
+          </pre>
+        </details>
+      ) : (
+        <pre
+          className={cn(
+            "m-0 whitespace-pre-wrap break-words text-[12px] leading-6 text-slate-700",
+            isTool ? "font-mono text-[11px] leading-5" : "font-sans",
+          )}
+        >
+          {message.text}
+        </pre>
+      )}
     </article>
   );
 }
@@ -257,6 +276,19 @@ function roleName(role: string) {
     return "工具";
   }
   return role;
+}
+
+function isCodexBootstrapContext(text: string) {
+  const trimmed = text.trimStart();
+  return [
+    "<permissions instructions>",
+    "<environment_context>",
+    "<collaboration_mode>",
+    "<personality_spec>",
+    "<skills_instructions>",
+    "<plugins_instructions>",
+    "# AGENTS.md instructions",
+  ].some((prefix) => trimmed.startsWith(prefix));
 }
 
 function formatDateTime(value: string) {

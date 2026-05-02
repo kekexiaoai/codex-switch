@@ -166,4 +166,27 @@ describe("App", () => {
     expect(screen.getByText("hello")).toBeInTheDocument();
     expect(screen.getByText("来自 ~/.codex/history.jsonl 与 sessions 目录")).toBeInTheDocument();
   });
+
+  it("collapses Codex bootstrap context blocks by default", async () => {
+    vi.mocked(getSessionDetail).mockResolvedValueOnce({
+      session: sessionItem,
+      messages: [
+        {
+          role: "user",
+          kind: "message",
+          text: "<permissions instructions>\nFilesystem sandboxing...\n</permissions instructions>",
+          timestamp: "2026-05-02T10:00:01Z",
+        },
+      ],
+    });
+
+    render(<App />);
+
+    await screen.findByText("仪表盘");
+    fireEvent.click(screen.getByTitle("Sessions"));
+
+    const bootstrapBlock = await screen.findByTestId("codex-bootstrap-context");
+    expect(bootstrapBlock).not.toHaveAttribute("open");
+    expect(screen.getByText("Codex 内置上下文")).toBeInTheDocument();
+  });
 });
