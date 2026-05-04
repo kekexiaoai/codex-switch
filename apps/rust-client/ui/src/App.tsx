@@ -202,7 +202,7 @@ export function App() {
   return (
     <div className="app-window" data-testid="glass-shell">
       <Sidebar activeView={view} onChange={setView} />
-      <main className="glass-shell flex min-w-0 flex-col overflow-hidden">
+      <main className="glass-shell flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar
           view={view}
           accountCount={snapshot.accounts.length}

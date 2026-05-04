@@ -94,6 +94,7 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("仪表盘")).toBeInTheDocument();
     expect(screen.getByTestId("glass-shell")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toHaveClass("flex-1");
     expect(screen.getByTestId("desktop-sidebar")).toBeInTheDocument();
     expect(screen.getByText("Codex Switch")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "折叠侧栏" })).toBeInTheDocument();
