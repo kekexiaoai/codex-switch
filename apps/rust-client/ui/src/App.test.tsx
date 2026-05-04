@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppSnapshot, CodexSessionDetail, CodexSessionListItem } from "@/lib/tauri";
+import type { AccountListItem, AppSnapshot, CodexSessionDetail, CodexSessionListItem } from "@/lib/tauri";
 
 const snapshot: AppSnapshot = {
   accounts: [],
@@ -73,7 +73,39 @@ vi.mock("@/lib/tauri", () => ({
 }));
 
 import { App } from "./App";
-import { getAppSnapshot, getSessionDetail, listSessionProjects, listSessions, saveSettings } from "@/lib/tauri";
+import {
+  getAppSnapshot,
+  getSessionDetail,
+  listSessionProjects,
+  listSessions,
+  saveSettings,
+  switchAccount,
+} from "@/lib/tauri";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((innerResolve, innerReject) => {
+    resolve = innerResolve;
+    reject = innerReject;
+  });
+  return { promise, resolve, reject };
+}
+
+function account(overrides: Partial<AccountListItem>): AccountListItem {
+  return {
+    id: "account-1",
+    emailMask: "one@example.com",
+    email: "one@example.com",
+    tier: "team",
+    manualOrder: 0,
+    archiveFilename: "one.json",
+    source: "fixture",
+    lastImportedAt: "2026-05-02T10:00:00Z",
+    isActive: false,
+    ...overrides,
+  };
+}
 
 describe("App", () => {
   beforeEach(() => {
@@ -173,6 +205,61 @@ describe("App", () => {
 
     expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ showFullEmail: true }));
     expect(screen.getByText("已显示完整邮箱。")).toBeInTheDocument();
+  });
+
+  it("updates settings switches optimistically while saving", async () => {
+    const pendingSave = deferred<typeof snapshot.settings>();
+    vi.mocked(saveSettings).mockReturnValueOnce(pendingSave.promise);
+
+    render(<App />);
+
+    await screen.findByText("仪表盘");
+    fireEvent.click(screen.getByTitle("Settings"));
+
+    const usageSwitch = screen.getByRole("switch", { name: "启用 Usage 刷新" });
+    expect(usageSwitch).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(usageSwitch);
+
+    expect(usageSwitch).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText("正在保存设置…")).toBeInTheDocument();
+
+    await act(async () => {
+      pendingSave.resolve({ ...snapshot.settings, usageRefreshEnabled: false });
+      await pendingSave.promise;
+    });
+  });
+
+  it("marks the selected account active while switching", async () => {
+    const accounts = [
+      account({ id: "account-1", emailMask: "one@example.com", isActive: true }),
+      account({
+        id: "account-2",
+        emailMask: "two@example.com",
+        email: "two@example.com",
+        archiveFilename: "two.json",
+        manualOrder: 1,
+      }),
+    ];
+    vi.mocked(getAppSnapshot).mockResolvedValueOnce({ ...snapshot, accounts });
+    const pendingSwitch = deferred<AccountListItem>();
+    vi.mocked(switchAccount).mockReturnValueOnce(pendingSwitch.promise);
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    const targetRow = screen.getAllByText("two@example.com")[0].closest("button");
+    expect(targetRow).not.toBeNull();
+
+    fireEvent.click(targetRow!);
+
+    expect(targetRow).toHaveClass("bg-white/46");
+    expect(screen.getByText("正在切换账号…")).toBeInTheDocument();
+
+    await act(async () => {
+      pendingSwitch.resolve({ ...accounts[1], isActive: true });
+      await pendingSwitch.promise;
+    });
   });
 
   it("shows Codex historical sessions in a dedicated workspace", async () => {

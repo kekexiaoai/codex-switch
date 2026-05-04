@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   events,
   getSessionDetail,
@@ -71,28 +71,40 @@ export function App() {
   const [selectedSession, setSelectedSession] = useState<CodexSessionDetail | null>(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "info" | "success" | "error"; message: string } | null>(null);
+  const refreshInFlight = useRef<Promise<boolean> | null>(null);
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const isTray = search.get("panel") === "tray";
 
-  const refreshAll = async () => {
-    try {
-      const [next, autostartEnabled] = await Promise.all([
-        getAppSnapshot(),
-        getAutostartEnabled().catch(() => false),
-      ]);
-      next.settings.launchAtLogin = autostartEnabled;
-      setSnapshot(next);
-      setTargetProvider(next.providerStatus.currentProvider || "openai");
-      setSelectedBackupId(next.providerStatus.backups[0]?.id ?? null);
-      return true;
-    } catch (error) {
-      setFeedback({
-        kind: "error",
-        message: error instanceof Error ? error.message : String(error),
-      });
-      return false;
+  const refreshAll = useCallback(() => {
+    if (refreshInFlight.current) {
+      return refreshInFlight.current;
     }
-  };
+
+    const request = (async () => {
+      try {
+        const [next, autostartEnabled] = await Promise.all([
+          getAppSnapshot(),
+          getAutostartEnabled().catch(() => false),
+        ]);
+        next.settings.launchAtLogin = autostartEnabled;
+        setSnapshot(next);
+        setTargetProvider(next.providerStatus.currentProvider || "openai");
+        setSelectedBackupId(next.providerStatus.backups[0]?.id ?? null);
+        return true;
+      } catch (error) {
+        setFeedback({
+          kind: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
+        return false;
+      } finally {
+        refreshInFlight.current = null;
+      }
+    })();
+
+    refreshInFlight.current = request;
+    return request;
+  }, []);
 
   const runAction = async <T,>(
     pendingMessage: string,
@@ -102,10 +114,8 @@ export function App() {
     try {
       setFeedback({ kind: "info", message: pendingMessage });
       const result = await action();
-      const refreshed = await refreshAll();
-      if (refreshed) {
-        setFeedback({ kind: "success", message: successMessage });
-      }
+      setFeedback({ kind: "success", message: successMessage });
+      void refreshAll();
       return result;
     } catch (error) {
       setFeedback({
@@ -114,6 +124,22 @@ export function App() {
       });
       throw error;
     }
+  };
+
+  const setSettingsOptimistically = (settings: AppSnapshot["settings"]) => {
+    setSnapshot((current) => ({ ...current, settings }));
+  };
+
+  const setActiveAccountOptimistically = (accountId: string) => {
+    setSnapshot((current) => ({
+      ...current,
+      activeAccountId: accountId,
+      activeUsage: current.activeUsage?.accountId === accountId ? current.activeUsage : null,
+      accounts: current.accounts.map((account) => ({
+        ...account,
+        isActive: account.id === accountId,
+      })),
+    }));
   };
 
   const loadSessionDetail = async (sessionId: string) => {
@@ -156,7 +182,7 @@ export function App() {
   useEffect(() => {
     void refreshAll();
     void refreshSessions();
-  }, []);
+  }, [refreshAll]);
 
   useEffect(() => {
     if (feedback?.kind !== "success") {
@@ -173,16 +199,16 @@ export function App() {
   useEffect(() => {
     const cleanups: Array<() => void> = [];
     const bind = async () => {
-      cleanups.push(await onEvent(events.accountsChanged, refreshAll));
-      cleanups.push(await onEvent(events.settingsChanged, refreshAll));
-      cleanups.push(await onEvent(events.diagnosticsAppended, refreshAll));
-      cleanups.push(await onEvent(events.usageUpdated, refreshAll));
+      cleanups.push(await onEvent(events.accountsChanged, () => void refreshAll()));
+      cleanups.push(await onEvent(events.settingsChanged, () => void refreshAll()));
+      cleanups.push(await onEvent(events.diagnosticsAppended, () => void refreshAll()));
+      cleanups.push(await onEvent(events.usageUpdated, () => void refreshAll()));
       cleanups.push(await onEvent(events.jobsChanged, (payload: LoginJobState) => setLoginState(payload)));
       cleanups.push(await onEvent(events.shellNavigate, (payload: AppView) => setView(payload)));
     };
     void bind();
     return () => cleanups.forEach((cleanup) => cleanup());
-  }, []);
+  }, [refreshAll]);
 
   if (isTray) {
     return (
@@ -219,13 +245,15 @@ export function App() {
               showFullEmail={snapshot.settings.showFullEmail}
               usageSourceMode={snapshot.settings.usageSourceMode}
               onShowFullEmailChange={(showFullEmail) => {
+                const previousSettings = snapshot.settings;
                 const nextSettings = { ...snapshot.settings, showFullEmail };
                 const successMessage = settingsFeedbackMessage(snapshot.settings, nextSettings);
+                setSettingsOptimistically(nextSettings);
                 void runAction(
                   "正在保存设置…",
                   () => saveSettings(nextSettings),
                   successMessage,
-                );
+                ).catch(() => setSettingsOptimistically(previousSettings));
               }}
               onImportCurrent={() => {
                 void runAction("正在导入当前账号…", () => importCurrentAccount(), "当前账号已导入。");
@@ -245,7 +273,11 @@ export function App() {
                 });
               }}
               onSwitch={(id) => {
-                void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。");
+                const previousSnapshot = snapshot;
+                setActiveAccountOptimistically(id);
+                void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。").catch(() =>
+                  setSnapshot(previousSnapshot),
+                );
               }}
               onRefreshUsage={() => {
                 void runAction("正在刷新 Usage…", () => refreshUsage(), "Usage 已刷新。");
@@ -306,7 +338,9 @@ export function App() {
             <SettingsView
               settings={snapshot.settings}
               onChange={(settings) => {
+                const previousSettings = snapshot.settings;
                 const successMessage = settingsFeedbackMessage(snapshot.settings, settings);
+                setSettingsOptimistically(settings);
                 void runAction(
                   "正在保存设置…",
                   async () => {
@@ -316,7 +350,7 @@ export function App() {
                     return saveSettings(settings);
                   },
                   successMessage,
-                );
+                ).catch(() => setSettingsOptimistically(previousSettings));
               }}
             />
           ) : null}
