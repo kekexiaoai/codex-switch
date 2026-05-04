@@ -8,6 +8,9 @@ on:
         required: false
         default: main
 
+permissions:
+  contents: read
+
 concurrency:
   group: package-${{ github.event.inputs.ref || github.ref }}
   cancel-in-progress: true
@@ -16,17 +19,35 @@ jobs:
   package:
     name: Build Package Artifact (${{ matrix.label }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - label: arm64 / macOS 14
+          - label: macOS arm64
             runner: macos-14
+            platform: macos
             arch: arm64
-          - label: x86_64 / macOS 15 Intel
+            bundle_args: "--bundles app"
+            artifact: codex-switch-macos-arm64
+          - label: macOS x86_64
             runner: macos-15-intel
+            platform: macos
             arch: x86_64
+            bundle_args: "--bundles app"
+            artifact: codex-switch-macos-x86_64
+          - label: Windows x64
+            runner: windows-2022
+            platform: windows
+            arch: x86_64
+            bundle_args: "--bundles nsis"
+            artifact: codex-switch-windows-x64
+          - label: Linux x64
+            runner: ubuntu-22.04
+            platform: linux
+            arch: x86_64
+            bundle_args: "--bundles deb,appimage"
+            artifact: codex-switch-linux-x64
 
     steps:
       - name: Checkout
@@ -42,34 +63,81 @@ jobs:
           cache-dependency-path: apps/rust-client/ui/package-lock.json
 
       - name: Select Xcode
+        if: runner.os == 'macOS'
         run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Install Linux Tauri Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            wget
+
+      - name: Show Toolchain Versions
+        shell: bash
+        run: |
+          echo "Platform: ${{ matrix.platform }}"
+          echo "Expected architecture: ${{ matrix.arch }}"
+          rustc --version
+          cargo --version
+          node --version
+          npm --version
 
       - name: Install Frontend Dependencies
         working-directory: apps/rust-client/ui
         run: npm ci
 
-      - name: Build Tauri App Bundle
+      - name: Build Tauri Bundle
         working-directory: apps/rust-client/ui
-        run: npm run tauri build -- --bundles app
+        run: npm run tauri build -- ${{ matrix.bundle_args }}
 
-      - name: Inspect Binary Architecture
+      - name: Inspect macOS Binary Architecture
+        if: runner.os == 'macOS'
         run: |
           file "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app/Contents/MacOS/codex-switch" | tee /tmp/codex-switch-app-arch.txt
           grep -q "${{ matrix.arch }}" /tmp/codex-switch-app-arch.txt
 
-      - name: Create Zip Archive
+      - name: Collect Bundle Outputs
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app" "dist/Codex-Switch-${{ matrix.arch }}-${{ github.run_number }}.zip"
+          bundle_dir="apps/rust-client/src-tauri/target/release/bundle"
 
-      - name: Upload App Bundle
-        uses: actions/upload-artifact@v6
-        with:
-          name: Codex-Switch-app-${{ matrix.arch }}-${{ github.run_number }}
-          path: apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app
+          case "${{ matrix.platform }}" in
+            macos)
+              ditto -c -k --sequesterRsrc --keepParent \
+                "$bundle_dir/macos/Codex Switch.app" \
+                "dist/${{ matrix.artifact }}-${{ github.run_number }}.zip"
+              ;;
+            windows)
+              find "$bundle_dir/nsis" -maxdepth 2 -type f -name "*.exe" -print -exec cp {} dist/ \;
+              ;;
+            linux)
+              find "$bundle_dir/deb" -maxdepth 2 -type f -name "*.deb" -print -exec cp {} dist/ \;
+              find "$bundle_dir/appimage" -maxdepth 2 -type f -name "*.AppImage" -print -exec cp {} dist/ \;
+              ;;
+            *)
+              echo "Unsupported platform: ${{ matrix.platform }}" >&2
+              exit 1
+              ;;
+          esac
 
-      - name: Upload Zip Archive
-        uses: actions/upload-artifact@v6
+          test "$(find dist -type f | wc -l)" -gt 0
+          find dist -maxdepth 1 -type f -print
+
+      - name: Upload Package Artifact
+        uses: actions/upload-artifact@v7
         with:
-          name: Codex-Switch-zip-${{ matrix.arch }}-${{ github.run_number }}
-          path: dist/Codex-Switch-${{ matrix.arch }}-${{ github.run_number }}.zip
+          name: ${{ matrix.artifact }}-${{ github.run_number }}
+          path: dist/*
+          if-no-files-found: error

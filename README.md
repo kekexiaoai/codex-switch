@@ -74,6 +74,13 @@ npm run tauri build -- --bundles app
 
 - `apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app`
 
+GitHub Actions 打包：
+
+- 手动运行 `Package` workflow，可以选择 `ref`。
+- 产物会作为 GitHub Artifacts 上传。
+- 当前矩阵覆盖 `macOS arm64`、`macOS x86_64`、`Windows x64`、`Linux x64`。
+- Windows 产物使用 NSIS 安装包；Linux 产物使用 Deb 和 AppImage。
+
 ### Fixture Overrides
 
 为了做本地回归或端到端验收，可以用环境变量把桌面端指向临时目录：
