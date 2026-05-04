@@ -90,12 +90,14 @@ describe("App", () => {
     vi.mocked(saveSettings).mockResolvedValue(snapshot.settings);
   });
 
-  it("renders a glass desktop shell instead of a web navbar", async () => {
+  it("renders a devtools-style desktop shell instead of a floating dock", async () => {
     render(<App />);
     expect(await screen.findByText("仪表盘")).toBeInTheDocument();
     expect(screen.getByTestId("glass-shell")).toBeInTheDocument();
-    expect(screen.getByTestId("floating-dock")).toBeInTheDocument();
-    expect(screen.getAllByText("Accounts").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("desktop-sidebar")).toBeInTheDocument();
+    expect(screen.getByText("Codex Switch")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "折叠侧栏" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accounts" })).toBeInTheDocument();
     expect(screen.getByText("账号工作台")).toBeInTheDocument();
     expect(screen.getByText("Usage 自动")).toBeInTheDocument();
     expect(screen.getAllByText("导入备份").length).toBeGreaterThan(0);
@@ -106,6 +108,21 @@ describe("App", () => {
     expect(screen.queryByText("Codex Account Hub")).not.toBeInTheDocument();
     expect(screen.queryByText("Codex 布局")).not.toBeInTheDocument();
     expect(screen.queryByText("更新")).not.toBeInTheDocument();
+  });
+
+  it("collapses and expands the desktop sidebar", async () => {
+    render(<App />);
+
+    await screen.findByText("仪表盘");
+    fireEvent.click(screen.getByRole("button", { name: "折叠侧栏" }));
+
+    expect(screen.getByTestId("desktop-sidebar")).toHaveAttribute("data-collapsed", "true");
+    expect(screen.getByRole("button", { name: "展开侧栏" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "展开侧栏" }));
+
+    expect(screen.getByTestId("desktop-sidebar")).toHaveAttribute("data-collapsed", "false");
+    expect(screen.getByRole("button", { name: "折叠侧栏" })).toBeInTheDocument();
   });
 
   it("shows a startup error when the desktop snapshot cannot load", async () => {
