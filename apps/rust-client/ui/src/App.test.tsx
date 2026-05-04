@@ -99,6 +99,7 @@ describe("App", () => {
     expect(screen.getByText("Codex Switch")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "折叠侧栏" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Accounts" })).toBeInTheDocument();
+    expect(screen.queryByText("Ready")).not.toBeInTheDocument();
     expect(screen.getByText("账号工作台")).toBeInTheDocument();
     expect(screen.getByText("Usage 自动")).toBeInTheDocument();
     expect(screen.getAllByText("导入备份").length).toBeGreaterThan(0);

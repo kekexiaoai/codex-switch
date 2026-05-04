@@ -23,8 +23,9 @@ use tauri_plugin_autostart::MacosLauncher;
 
 pub use state::AppState;
 
-const TRAY_ICON: tauri::image::Image<'_> =
-    tauri::include_image!("../../../packaging/icons/AppIcon.iconset/icon_16x16.png");
+const TRAY_ICON: tauri::image::Image<'_> = tauri::include_image!(
+    "../../../apps/mac-client/CodexSwitch/Resources/StatusBarIconLightHighContrastBold.png"
+);
 
 pub fn run() {
     tauri::Builder::default()

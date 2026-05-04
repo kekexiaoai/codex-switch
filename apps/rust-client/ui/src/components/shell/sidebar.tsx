@@ -87,15 +87,6 @@ export function Sidebar({ activeView, onChange }: SidebarProps) {
       </nav>
 
       <div className="mt-3 flex shrink-0 flex-col gap-2 border-t border-slate-200/80 pt-3">
-        <div
-          className={cn(
-            "flex min-h-9 items-center rounded-md border border-emerald-200/80 bg-emerald-50 px-3 text-emerald-700",
-            collapsed ? "justify-center px-0" : "justify-between gap-2",
-          )}
-        >
-          <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.14)]" />
-          {!collapsed ? <span className="text-[11px] font-black uppercase">Ready</span> : null}
-        </div>
         <button
           type="button"
           className={cn("sidebar-button text-slate-500", itemLayout)}
