@@ -19,13 +19,19 @@ use tauri::{
     AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 #[cfg(desktop)]
+use tauri_plugin_autostart::Builder as AutostartBuilder;
+#[cfg(target_os = "macos")]
 use tauri_plugin_autostart::MacosLauncher;
 
 pub use state::AppState;
 
+#[cfg(target_os = "macos")]
 const TRAY_ICON: tauri::image::Image<'_> = tauri::include_image!(
     "../../../apps/mac-client/CodexSwitch/Resources/StatusBarIconLightHighContrastBold.png"
 );
+#[cfg(not(target_os = "macos"))]
+const TRAY_ICON: tauri::image::Image<'_> =
+    tauri::include_image!("../../../packaging/icons/AppIcon.iconset/icon_32x32.png");
 
 pub fn run() {
     tauri::Builder::default()
@@ -56,10 +62,7 @@ pub fn run() {
         ])
         .setup(|app| {
             #[cfg(desktop)]
-            app.handle().plugin(tauri_plugin_autostart::init(
-                MacosLauncher::LaunchAgent,
-                None::<Vec<&str>>,
-            ))?;
+            app.handle().plugin(autostart_plugin())?;
             app.handle().plugin(tauri_plugin_dialog::init())?;
             create_tray_panel_window(app)?;
             let open_main =
@@ -83,7 +86,7 @@ pub fn run() {
                     &quit,
                 ],
             )?;
-            let mut tray = TrayIconBuilder::with_id("codex-switch-tray")
+            let tray = TrayIconBuilder::with_id("codex-switch-tray")
                 .menu(&menu)
                 .tooltip("Codex Switch")
                 .show_menu_on_left_click(true)
@@ -114,12 +117,23 @@ pub fn run() {
                         show_main_window(tray.app_handle());
                     }
                 });
-            tray = tray.icon(TRAY_ICON).icon_as_template(true);
+            #[cfg(target_os = "macos")]
+            let tray = tray.icon(TRAY_ICON).icon_as_template(true);
+            #[cfg(not(target_os = "macos"))]
+            let tray = tray.icon(TRAY_ICON);
             tray.build(app)?;
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running codex switch tauri app");
+}
+
+#[cfg(desktop)]
+fn autostart_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
+    let builder = AutostartBuilder::new().app_name("Codex Switch");
+    #[cfg(target_os = "macos")]
+    let builder = builder.macos_launcher(MacosLauncher::LaunchAgent);
+    builder.build()
 }
 
 fn show_main_window(app: &AppHandle) {

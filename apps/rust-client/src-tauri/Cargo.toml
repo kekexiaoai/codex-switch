@@ -2,7 +2,7 @@
 name = "codex-switch"
 version = "0.1.0"
 edition = "2021"
-description = "A native macOS menu bar client for managing multiple Codex-style accounts"
+description = "A native desktop client for managing multiple Codex-style accounts"
 authors = ["Codex Switch Team"]
 license = "MIT"
 rust-version = "1.70"

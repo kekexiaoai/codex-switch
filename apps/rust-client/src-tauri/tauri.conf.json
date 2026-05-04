@@ -33,6 +33,7 @@
     "targets": "all",
     "icon": [
       "../../../packaging/icons/AppIcon.icns",
+      "../../../packaging/icons/icon.ico",
       "../../../packaging/icons/icon.png"
     ]
   }

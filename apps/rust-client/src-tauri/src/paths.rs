@@ -68,9 +68,13 @@ impl CodexPaths {
         self.diagnostics_dir().join("account-reorder.log")
     }
 
+    pub fn from_home(home: PathBuf) -> Self {
+        Self::new(home.join(".codex"))
+    }
+
     pub fn default() -> Self {
         let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        Self::new(home.join(".codex"))
+        Self::from_home(home)
     }
 }
 
@@ -110,6 +114,19 @@ mod tests {
         assert_eq!(
             paths.sqlite_database(),
             PathBuf::from("/tmp/.codex/state_5.sqlite")
+        );
+    }
+
+    #[test]
+    fn derives_codex_paths_from_user_home_on_windows_style_paths() {
+        let paths = CodexPaths::from_home(PathBuf::from(r"C:\Users\alice"));
+        assert_eq!(
+            paths.base_directory,
+            PathBuf::from(r"C:\Users\alice").join(".codex")
+        );
+        assert_eq!(
+            paths.auth_file(),
+            PathBuf::from(r"C:\Users\alice").join(".codex").join("auth.json")
         );
     }
 }
