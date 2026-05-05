@@ -1,6 +1,17 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { ArrowRightLeft, Bot, Clock3, Eye, EyeOff, Import, RefreshCcw, UserRoundPlus, UsersRound } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Bot,
+  Clock3,
+  Eye,
+  EyeOff,
+  FolderOpen,
+  Import,
+  RefreshCcw,
+  UserRoundPlus,
+  UsersRound,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +28,7 @@ export function AccountsView({
   onShowFullEmailChange,
   onImportCurrent,
   onImportBackup,
+  onImportBackupDirectory,
   onSwitch,
   onRefreshUsage,
   onLogin,
@@ -30,6 +42,7 @@ export function AccountsView({
   onShowFullEmailChange: (showFullEmail: boolean) => void;
   onImportCurrent: () => void;
   onImportBackup: () => void;
+  onImportBackupDirectory: () => void;
   onSwitch: (id: string) => void;
   onRefreshUsage: () => void;
   onLogin: () => void;
@@ -93,6 +106,10 @@ export function AccountsView({
           </Button>
           <Button variant="secondary" size="sm" onClick={onImportBackup}>
             导入备份
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onImportBackupDirectory}>
+            <FolderOpen className="h-3.5 w-3.5" />
+            导入文件夹
           </Button>
           <Button size="sm" onClick={onLogin}>
             <UserRoundPlus className="h-3.5 w-3.5" />

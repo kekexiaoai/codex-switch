@@ -4,13 +4,14 @@ import {
   getSessionDetail,
   getAppSnapshot,
   getAutostartEnabled,
-  accountsImportBackup,
+  accountsImportBackups,
   importCurrentAccount,
   listSessionProjects,
   listSessions,
   onEvent,
   openView,
-  pickAuthBackupFile,
+  pickAuthBackupDirectory,
+  pickAuthBackupFiles,
   pruneProviderBackups,
   quitApp,
   refreshUsage,
@@ -23,6 +24,7 @@ import {
   switchAccount,
   switchProvider,
   type AppSnapshot,
+  type BackupImportResult,
   type CodexSessionDetail,
   type CodexSessionListItem,
   type LoginJobState,
@@ -60,6 +62,11 @@ const emptySnapshot: AppSnapshot = {
 };
 
 const SUCCESS_FEEDBACK_TIMEOUT_MS = 3_200;
+
+function backupImportSuccessMessage(result: BackupImportResult) {
+  const skipped = result.skippedCount > 0 ? `，跳过 ${result.skippedCount} 个不可导入项` : "";
+  return `已导入 ${result.accounts.length} 个备份账号${skipped}。`;
+}
 
 export function App() {
   const [snapshot, setSnapshot] = useState<AppSnapshot>(emptySnapshot);
@@ -110,12 +117,15 @@ export function App() {
   const runAction = async <T,>(
     pendingMessage: string,
     action: () => Promise<T>,
-    successMessage: string,
+    successMessage: string | ((result: T) => string),
   ) => {
     try {
       setFeedback({ kind: "info", message: pendingMessage });
       const result = await action();
-      setFeedback({ kind: "success", message: successMessage });
+      setFeedback({
+        kind: "success",
+        message: typeof successMessage === "function" ? successMessage(result) : successMessage,
+      });
       void refreshAll();
       return result;
     } catch (error) {
@@ -262,15 +272,29 @@ export function App() {
               }}
               onImportBackup={() => {
                 setFeedback({ kind: "info", message: "正在选择备份文件…" });
-                void pickAuthBackupFile().then((selected) => {
-                  if (!selected) {
+                void pickAuthBackupFiles().then((selected) => {
+                  if (selected.length === 0) {
                     setFeedback(null);
                     return;
                   }
                   void runAction(
                     "正在导入备份账号…",
-                    () => accountsImportBackup(selected),
-                    "备份账号已导入。",
+                    () => accountsImportBackups(selected),
+                    backupImportSuccessMessage,
+                  );
+                });
+              }}
+              onImportBackupDirectory={() => {
+                setFeedback({ kind: "info", message: "正在选择备份文件夹…" });
+                void pickAuthBackupDirectory().then((selected) => {
+                  if (!selected) {
+                    setFeedback(null);
+                    return;
+                  }
+                  void runAction(
+                    "正在导入文件夹内的备份账号…",
+                    () => accountsImportBackups([selected]),
+                    backupImportSuccessMessage,
                   );
                 });
               }}

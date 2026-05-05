@@ -48,11 +48,12 @@ const sessionDetail: CodexSessionDetail = {
 vi.mock("@/lib/tauri", () => ({
   getAppSnapshot: vi.fn(),
   getSessionDetail: vi.fn(),
-  accountsImportBackup: vi.fn(),
+  accountsImportBackups: vi.fn(),
   importCurrentAccount: vi.fn(),
   listSessionProjects: vi.fn(),
   listSessions: vi.fn(),
-  pickAuthBackupFile: vi.fn(),
+  pickAuthBackupDirectory: vi.fn(),
+  pickAuthBackupFiles: vi.fn(),
   getAutostartEnabled: vi.fn().mockResolvedValue(false),
   switchAccount: vi.fn(),
   refreshUsage: vi.fn(),
@@ -75,10 +76,13 @@ vi.mock("@/lib/tauri", () => ({
 
 import { App } from "./App";
 import {
+  accountsImportBackups,
   getAppSnapshot,
   getSessionDetail,
   listSessionProjects,
   listSessions,
+  pickAuthBackupDirectory,
+  pickAuthBackupFiles,
   saveSettings,
   switchAccount,
 } from "@/lib/tauri";
@@ -122,6 +126,12 @@ describe("App", () => {
     vi.mocked(getSessionDetail).mockResolvedValue(sessionDetail);
     vi.mocked(saveSettings).mockReset();
     vi.mocked(saveSettings).mockResolvedValue(snapshot.settings);
+    vi.mocked(accountsImportBackups).mockReset();
+    vi.mocked(accountsImportBackups).mockResolvedValue({ accounts: [account({})], skippedCount: 0 });
+    vi.mocked(pickAuthBackupFiles).mockReset();
+    vi.mocked(pickAuthBackupFiles).mockResolvedValue([]);
+    vi.mocked(pickAuthBackupDirectory).mockReset();
+    vi.mocked(pickAuthBackupDirectory).mockResolvedValue(null);
     vi.mocked(switchAccount).mockReset();
     vi.mocked(switchAccount).mockResolvedValue(account({ isActive: true }));
   });
@@ -232,6 +242,29 @@ describe("App", () => {
       pendingSave.resolve({ ...snapshot.settings, usageRefreshEnabled: false });
       await pendingSave.promise;
     });
+  });
+
+  it("imports every backup in a selected folder", async () => {
+    vi.mocked(pickAuthBackupDirectory).mockResolvedValueOnce("/repo/backups");
+    vi.mocked(accountsImportBackups).mockResolvedValueOnce({
+      accounts: [account({ id: "account-1" }), account({ id: "account-2", email: "two@example.com" })],
+      skippedCount: 1,
+    });
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    fireEvent.click(screen.getByRole("button", { name: "导入文件夹" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(pickAuthBackupDirectory).toHaveBeenCalled();
+    expect(accountsImportBackups).toHaveBeenCalledWith(["/repo/backups"]);
+    expect(screen.getByText("已导入 2 个备份账号，跳过 1 个不可导入项。")).toBeInTheDocument();
   });
 
   it("marks the selected account active while switching", async () => {

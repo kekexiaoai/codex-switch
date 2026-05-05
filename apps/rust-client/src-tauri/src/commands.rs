@@ -94,6 +94,20 @@ pub fn accounts_import_backup(
 }
 
 #[tauri::command]
+pub fn accounts_import_backups(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    paths: Vec<String>,
+) -> CmdResult<crate::models::BackupImportResult> {
+    let result = state
+        .accounts
+        .import_backup_paths(&paths)
+        .map_err(|e| e.to_string())?;
+    let _ = app.emit(EVENT_ACCOUNTS_CHANGED, true);
+    Ok(result)
+}
+
+#[tauri::command]
 pub fn accounts_switch(
     app: AppHandle,
     state: State<'_, AppState>,

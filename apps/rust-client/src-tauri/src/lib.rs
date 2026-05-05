@@ -44,6 +44,7 @@ pub fn run() {
             commands::accounts_list,
             commands::accounts_import_current,
             commands::accounts_import_backup,
+            commands::accounts_import_backups,
             commands::accounts_switch,
             commands::accounts_login_start,
             commands::usage_refresh,

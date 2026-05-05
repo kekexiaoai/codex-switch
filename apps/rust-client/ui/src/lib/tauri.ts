@@ -83,6 +83,11 @@ export interface AppSnapshot {
   providerStatus: ProviderSyncStatus;
 }
 
+export interface BackupImportResult {
+  accounts: AccountListItem[];
+  skippedCount: number;
+}
+
 export interface SyncResult {
   targetProvider: string;
   filesChanged: number;
@@ -166,9 +171,13 @@ export function accountsImportBackup(path: string) {
   return invoke<AccountListItem>("accounts_import_backup", { path });
 }
 
-export async function pickAuthBackupFile() {
+export function accountsImportBackups(paths: string[]) {
+  return invoke<BackupImportResult>("accounts_import_backups", { paths });
+}
+
+export async function pickAuthBackupFiles() {
   const selected = await open({
-    multiple: false,
+    multiple: true,
     directory: false,
     filters: [
       {
@@ -176,6 +185,17 @@ export async function pickAuthBackupFile() {
         extensions: ["json"],
       },
     ],
+  });
+  if (!selected) {
+    return [];
+  }
+  return Array.isArray(selected) ? selected : [selected];
+}
+
+export async function pickAuthBackupDirectory() {
+  const selected = await open({
+    multiple: false,
+    directory: true,
   });
   return typeof selected === "string" ? selected : null;
 }

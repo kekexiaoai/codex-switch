@@ -1,8 +1,8 @@
 use crate::error::{AppError, AppResult};
 use crate::jwt::JwtDecoder;
 use crate::models::{
-    AccountListItem, AccountMetadataEntry, AccountRecord, AccountSource, CurrentAuthMode,
-    JwtClaims,
+    AccountListItem, AccountMetadataEntry, AccountRecord, AccountSource, BackupImportResult,
+    CurrentAuthMode, JwtClaims,
 };
 use crate::paths::CodexPaths;
 use crate::store::AuthStore;
@@ -108,7 +108,53 @@ impl AccountsService {
     }
 
     pub fn import_backup(&self, backup_path: &str) -> AppResult<AccountListItem> {
-        let data = self.store.read_auth_data(Path::new(backup_path))?;
+        self.import_backup_file(Path::new(backup_path))
+    }
+
+    pub fn import_backup_paths(&self, backup_paths: &[String]) -> AppResult<BackupImportResult> {
+        let mut accounts = Vec::new();
+        let mut skipped_count = 0;
+        for backup_path in backup_paths {
+            let path = Path::new(backup_path);
+            if path.is_dir() {
+                let mut entries = fs::read_dir(path)?
+                    .filter_map(Result::ok)
+                    .map(|entry| entry.path())
+                    .collect::<Vec<_>>();
+                entries.sort();
+                for entry in entries {
+                    if !is_json_path(&entry) {
+                        skipped_count += 1;
+                        continue;
+                    }
+                    match self.import_backup_file(&entry) {
+                        Ok(account) => accounts.push(account),
+                        Err(_) => skipped_count += 1,
+                    }
+                }
+            } else {
+                match self.import_backup_file(path) {
+                    Ok(account) => accounts.push(account),
+                    Err(error) if backup_paths.len() == 1 => return Err(error),
+                    Err(_) => skipped_count += 1,
+                }
+            }
+        }
+
+        if accounts.is_empty() {
+            return Err(AppError::Message(
+                "未导入任何可用的 OAuth auth.json 备份".to_string(),
+            ));
+        }
+
+        Ok(BackupImportResult {
+            accounts,
+            skipped_count,
+        })
+    }
+
+    fn import_backup_file(&self, backup_path: &Path) -> AppResult<AccountListItem> {
+        let data = self.store.read_auth_data(backup_path)?;
         self.import_auth_data(&data, AccountSource::BackupImport)
     }
 
@@ -257,6 +303,14 @@ fn archive_filename_for_email(email: &str) -> String {
     format!("{encoded}.json")
 }
 
+fn is_json_path(path: &Path) -> bool {
+    path.is_file()
+        && path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{AccountsService, API_KEY_ACCOUNT_ID, API_KEY_ARCHIVE_FILENAME};
@@ -380,7 +434,11 @@ mod tests {
             r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwic3ViIjoiYWNjdC0xIiwicGxhbiI6InRlYW0ifQ.sig"}}"#,
         )
         .unwrap();
-        fs::write(accounts_dir.join(API_KEY_ARCHIVE_FILENAME), r#"{"OPENAI_API_KEY":"sk-test"}"#).unwrap();
+        fs::write(
+            accounts_dir.join(API_KEY_ARCHIVE_FILENAME),
+            r#"{"OPENAI_API_KEY":"sk-test"}"#,
+        )
+        .unwrap();
 
         let service = AccountsService::new(CodexPaths::new(base.clone()));
         service.switch(API_KEY_ACCOUNT_ID).unwrap();
@@ -390,5 +448,40 @@ mod tests {
             "{\n  \"OPENAI_API_KEY\": \"sk-test\"\n}"
         );
         assert_eq!(service.current_auth_mode(), CurrentAuthMode::OpenAIApiKey);
+    }
+
+    #[test]
+    fn imports_all_auth_json_files_from_backup_directory() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        let backup_dir = temp.path().join("backups");
+        fs::create_dir_all(&backup_dir).unwrap();
+        fs::write(
+            backup_dir.join("alice.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwic3ViIjoiYWNjdC0xIiwicGxhbiI6InRlYW0ifQ.sig"}}"#,
+        )
+        .unwrap();
+        fs::write(
+            backup_dir.join("bob.JSON"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImJvYkBleGFtcGxlLmNvbSIsInN1YiI6ImFjY3QtMiIsInBsYW4iOiJwbHVzIn0.sig"}}"#,
+        )
+        .unwrap();
+        fs::write(backup_dir.join("broken.json"), r#"{"tokens":{}}"#).unwrap();
+        fs::write(backup_dir.join("readme.txt"), "not an auth backup").unwrap();
+
+        let service = AccountsService::new(CodexPaths::new(base));
+        let result = service
+            .import_backup_paths(&[backup_dir.to_string_lossy().to_string()])
+            .unwrap();
+
+        assert_eq!(result.accounts.len(), 2);
+        assert_eq!(result.skipped_count, 2);
+        let accounts = service.list().unwrap();
+        let emails = accounts
+            .iter()
+            .filter_map(|account| account.record.email.as_deref())
+            .collect::<Vec<_>>();
+        assert!(emails.contains(&"alice@example.com"));
+        assert!(emails.contains(&"bob@example.com"));
     }
 }

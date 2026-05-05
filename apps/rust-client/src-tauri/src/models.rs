@@ -48,6 +48,13 @@ pub struct AccountListItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupImportResult {
+    pub accounts: Vec<AccountListItem>,
+    pub skipped_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum CurrentAuthMode {
     #[serde(rename = "missing")]
     Missing,
