@@ -60,6 +60,13 @@ pub fn run() {
             commands::settings_update,
             commands::diagnostics_recent
         ])
+        .on_page_load(|webview, payload| {
+            if webview.label() == "main"
+                && matches!(payload.event(), tauri::webview::PageLoadEvent::Finished)
+            {
+                show_main_window(webview.app_handle());
+            }
+        })
         .setup(|app| {
             #[cfg(desktop)]
             app.handle().plugin(autostart_plugin())?;

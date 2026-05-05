@@ -5,6 +5,9 @@
   "windows": ["main", "tray-panel"],
   "permissions": [
     "core:default",
+    "core:window:allow-set-focus",
+    "core:window:allow-show",
+    "core:window:allow-unminimize",
     "dialog:allow-open",
     "autostart:allow-enable",
     "autostart:allow-disable",

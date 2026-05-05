@@ -20,6 +20,7 @@
         "minHeight": 720,
         "center": true,
         "resizable": true,
+        "visible": false,
         "titleBarStyle": "Transparent",
         "hiddenTitle": true
       }
