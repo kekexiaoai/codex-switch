@@ -13,6 +13,9 @@ use serde_json::Value;
 use std::fs;
 use std::path::Path;
 
+const API_KEY_ACCOUNT_ID: &str = "openai-api-key";
+const API_KEY_ARCHIVE_FILENAME: &str = "openai-api-key.json";
+
 #[derive(Debug, Clone)]
 pub struct AccountsService {
     pub store: AuthStore,
@@ -30,12 +33,10 @@ impl AccountsService {
     pub fn list(&self) -> AppResult<Vec<AccountListItem>> {
         let metadata = self.store.load_metadata_cache()?;
         let active = self.current_claims().ok().map(|claims| claims.account_id);
+        let active_mode = self.current_auth_mode();
         let mut accounts = vec![];
         for path in self.store.list_archived_auth_files()? {
             let Ok(data) = fs::read(&path) else {
-                continue;
-            };
-            let Ok(claims) = self.claims_from_auth(&data) else {
                 continue;
             };
             let filename = path
@@ -52,12 +53,38 @@ impl AccountsService {
                     last_imported_at: Utc::now(),
                     manual_order: 0,
                 });
+
+            let Ok(value) = serde_json::from_slice::<Value>(&data) else {
+                continue;
+            };
+            if auth_value_has_api_key(&value) {
+                accounts.push(AccountListItem {
+                    record: AccountRecord {
+                        id: API_KEY_ACCOUNT_ID.to_string(),
+                        email_mask: "OPENAI_API_KEY 模式".to_string(),
+                        email: None,
+                        tier: crate::models::AccountTier::Unknown,
+                        auth_mode: CurrentAuthMode::OpenAIApiKey,
+                        manual_order: meta.manual_order,
+                        archive_filename: filename,
+                        source: meta.source,
+                        last_imported_at: meta.last_imported_at,
+                    },
+                    is_active: active_mode == CurrentAuthMode::OpenAIApiKey,
+                });
+                continue;
+            }
+
+            let Ok(claims) = self.claims_from_value(&value) else {
+                continue;
+            };
             accounts.push(AccountListItem {
                 record: AccountRecord {
                     id: claims.account_id.clone(),
                     email_mask: claims.email_mask,
                     email: Some(claims.email),
                     tier: claims.tier,
+                    auth_mode: CurrentAuthMode::OAuth,
                     manual_order: meta.manual_order,
                     archive_filename: filename,
                     source: meta.source,
@@ -86,15 +113,18 @@ impl AccountsService {
     }
 
     pub fn switch(&self, account_id: &str) -> AppResult<AccountListItem> {
-        if self.current_auth_mode() == CurrentAuthMode::OpenAIApiKey {
-            return Err(AppError::ApiKeyModeBlocksSwitch);
-        }
-
         let target = self
             .list()?
             .into_iter()
             .find(|account| account.record.id == account_id)
             .ok_or_else(|| AppError::NotFound(format!("account {account_id}")))?;
+
+        if self.current_auth_mode() == CurrentAuthMode::OpenAIApiKey
+            && target.record.auth_mode != CurrentAuthMode::OpenAIApiKey
+        {
+            self.backup_current_api_key_auth()?;
+        }
+
         let path = self
             .store
             .paths
@@ -131,6 +161,27 @@ impl AccountsService {
         CurrentAuthMode::Invalid
     }
 
+    fn backup_current_api_key_auth(&self) -> AppResult<()> {
+        let data = self.store.read_current_auth_data()?;
+        let value: Value = serde_json::from_slice(&data).map_err(|_| AppError::AuthJsonInvalid)?;
+        if !auth_value_has_api_key(&value) {
+            return Ok(());
+        }
+        self.store.write_archive(&data, API_KEY_ARCHIVE_FILENAME)?;
+
+        let mut cache = self.store.load_metadata_cache()?;
+        let imported_at = Utc::now();
+        cache.entries.insert(
+            API_KEY_ARCHIVE_FILENAME.to_string(),
+            AccountMetadataEntry {
+                source: AccountSource::CurrentAuth,
+                last_imported_at: imported_at,
+                manual_order: -1,
+            },
+        );
+        self.store.save_metadata_cache(&cache)
+    }
+
     fn import_auth_data(&self, data: &[u8], source: AccountSource) -> AppResult<AccountListItem> {
         let claims = self.claims_from_auth(data)?;
         let archive_filename = archive_filename_for_email(&claims.email);
@@ -159,6 +210,7 @@ impl AccountsService {
                 email_mask: claims.email_mask,
                 email: Some(claims.email),
                 tier: claims.tier,
+                auth_mode: CurrentAuthMode::OAuth,
                 manual_order: next_manual_order,
                 archive_filename,
                 source,
@@ -207,7 +259,8 @@ fn archive_filename_for_email(email: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::AccountsService;
+    use super::{AccountsService, API_KEY_ACCOUNT_ID, API_KEY_ARCHIVE_FILENAME};
+    use crate::models::CurrentAuthMode;
     use crate::paths::CodexPaths;
     use std::fs;
     use tempfile::tempdir;
@@ -291,7 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn refuses_to_overwrite_current_api_key_auth_when_switching_accounts() {
+    fn backs_up_current_api_key_auth_before_switching_accounts() {
         let temp = tempdir().unwrap();
         let base = temp.path().join(".codex");
         let accounts_dir = base.join("accounts");
@@ -306,12 +359,36 @@ mod tests {
         let service = AccountsService::new(CodexPaths::new(base.clone()));
         let archived = service.list().unwrap().remove(0);
 
-        let error = service.switch(&archived.record.id).unwrap_err().to_string();
+        service.switch(&archived.record.id).unwrap();
 
-        assert!(error.contains("OPENAI_API_KEY 模式"));
+        assert_eq!(
+            fs::read_to_string(accounts_dir.join(API_KEY_ARCHIVE_FILENAME)).unwrap(),
+            "{\n  \"OPENAI_API_KEY\": \"sk-test\"\n}"
+        );
+        let active = service.current_claims().unwrap();
+        assert_eq!(active.email, "alice@example.com");
+    }
+
+    #[test]
+    fn restores_archived_api_key_auth() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        let accounts_dir = base.join("accounts");
+        fs::create_dir_all(&accounts_dir).unwrap();
+        fs::write(
+            base.join("auth.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwic3ViIjoiYWNjdC0xIiwicGxhbiI6InRlYW0ifQ.sig"}}"#,
+        )
+        .unwrap();
+        fs::write(accounts_dir.join(API_KEY_ARCHIVE_FILENAME), r#"{"OPENAI_API_KEY":"sk-test"}"#).unwrap();
+
+        let service = AccountsService::new(CodexPaths::new(base.clone()));
+        service.switch(API_KEY_ACCOUNT_ID).unwrap();
+
         assert_eq!(
             fs::read_to_string(base.join("auth.json")).unwrap(),
-            r#"{"OPENAI_API_KEY":"sk-test"}"#
+            "{\n  \"OPENAI_API_KEY\": \"sk-test\"\n}"
         );
+        assert_eq!(service.current_auth_mode(), CurrentAuthMode::OpenAIApiKey);
     }
 }

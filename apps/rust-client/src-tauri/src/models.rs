@@ -32,6 +32,7 @@ pub struct AccountRecord {
     pub email_mask: String,
     pub email: Option<String>,
     pub tier: AccountTier,
+    pub auth_mode: CurrentAuthMode,
     pub manual_order: i32,
     pub archive_filename: String,
     pub source: AccountSource,

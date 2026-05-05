@@ -99,6 +99,7 @@ function account(overrides: Partial<AccountListItem>): AccountListItem {
     emailMask: "one@example.com",
     email: "one@example.com",
     tier: "team",
+    authMode: "oauth",
     manualOrder: 0,
     archiveFilename: "one.json",
     source: "fixture",
@@ -265,7 +266,7 @@ describe("App", () => {
     });
   });
 
-  it("shows OPENAI_API_KEY mode and disables account switching", async () => {
+  it("shows OPENAI_API_KEY mode and allows switching after backup", async () => {
     const accounts = [
       account({ id: "account-1", emailMask: "one@example.com", isActive: false }),
     ];
@@ -280,11 +281,16 @@ describe("App", () => {
     await screen.findByText("账号工作台");
 
     expect(screen.getAllByText("OPENAI_API_KEY 模式").length).toBeGreaterThan(0);
-    expect(screen.getByText("当前 Codex auth.json 使用 API Key 配置，已禁止覆盖。")).toBeInTheDocument();
+    expect(screen.getByText("当前 Codex auth.json 使用 API Key 配置，切换账号前会自动备份，之后可从列表切回。")).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByText("one@example.com")[0].closest("button")!);
+    await act(async () => {
+      fireEvent.click(screen.getAllByText("one@example.com")[0].closest("button")!);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
-    expect(switchAccount).not.toHaveBeenCalled();
+    expect(switchAccount).toHaveBeenCalledWith("account-1");
   });
 
   it("shows Codex historical sessions in a dedicated workspace", async () => {

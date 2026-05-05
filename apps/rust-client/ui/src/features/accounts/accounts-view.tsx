@@ -46,7 +46,6 @@ export function AccountsView({
   );
   const quickSwitchAccount = accounts.find((account) => !account.isActive) ?? (active ? undefined : accounts[0]);
   const usageSourceLabel = formatUsageSource(usageSourceMode);
-  const canSwitchAccounts = currentAuthMode !== "openaiApiKey";
   const currentModeLabel = formatCurrentAuthMode(currentAuthMode);
 
   return (
@@ -129,7 +128,6 @@ export function AccountsView({
                 account={account}
                 usage={usage}
                 showFullEmail={showFullEmail}
-                canSwitchAccounts={canSwitchAccounts}
                 onSwitch={onSwitch}
               />
             ))}
@@ -158,7 +156,7 @@ export function AccountsView({
             </div>
             {currentAuthMode === "openaiApiKey" ? (
               <div className="mt-2 text-[12px] font-medium leading-5 text-amber-700">
-                当前 Codex auth.json 使用 API Key 配置，已禁止覆盖。
+                当前 Codex auth.json 使用 API Key 配置，切换账号前会自动备份，之后可从列表切回。
               </div>
             ) : null}
           </div>
@@ -171,7 +169,6 @@ export function AccountsView({
                 usage={usage}
                 showFullEmail={showFullEmail}
                 emptyText="暂无备用账号"
-                canSwitchAccounts={canSwitchAccounts}
                 onSwitch={onSwitch}
               />
             </div>
@@ -235,14 +232,12 @@ function AccountSummaryCard({
   showFullEmail,
   emptyText,
   onSwitch,
-  canSwitchAccounts = true,
 }: {
   account?: AccountListItem;
   usage?: UsageSnapshot | null;
   showFullEmail: boolean;
   emptyText: string;
   onSwitch?: (id: string) => void;
-  canSwitchAccounts?: boolean;
 }) {
   if (!account) {
     return (
@@ -254,7 +249,7 @@ function AccountSummaryCard({
 
   const five = usage?.fiveHour.percentUsed ?? 0;
   const weekly = usage?.weekly.percentUsed ?? 0;
-  const canSwitch = Boolean(onSwitch && !account.isActive && canSwitchAccounts);
+  const canSwitch = Boolean(onSwitch && !account.isActive);
 
   return (
     <button
@@ -287,15 +282,13 @@ function AccountTableRow({
   usage,
   showFullEmail,
   onSwitch,
-  canSwitchAccounts,
 }: {
   account: AccountListItem;
   usage?: UsageSnapshot | null;
   showFullEmail: boolean;
   onSwitch: (id: string) => void;
-  canSwitchAccounts: boolean;
 }) {
-  const canSwitch = !account.isActive && canSwitchAccounts;
+  const canSwitch = !account.isActive;
   return (
     <button
       type="button"

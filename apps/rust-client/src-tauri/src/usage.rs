@@ -36,6 +36,7 @@ impl UsageService {
             email_mask: active.email_mask,
             email: Some(active.email),
             tier: active.tier,
+            auth_mode: crate::models::CurrentAuthMode::OAuth,
             manual_order: 0,
             archive_filename: String::new(),
             source: crate::models::AccountSource::CurrentAuth,

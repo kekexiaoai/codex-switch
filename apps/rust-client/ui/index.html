@@ -4,9 +4,118 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Codex Switch</title>
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        height: 100%;
+        background: #ffffff;
+        color: #0f172a;
+        font-family: "SF Pro Text", "Segoe UI", sans-serif;
+      }
+
+      .boot-shell {
+        display: flex;
+        height: 100%;
+        background: #ffffff;
+      }
+
+      .boot-sidebar {
+        width: 224px;
+        border-right: 1px solid rgba(226, 232, 240, 0.95);
+        padding: 10px;
+      }
+
+      .boot-logo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 48px;
+        padding: 0 8px;
+      }
+
+      .boot-mark {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border-radius: 6px;
+        background: #020617;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .boot-content {
+        flex: 1;
+        min-width: 0;
+        padding: 16px 20px 18px;
+      }
+
+      .boot-topbar,
+      .boot-card,
+      .boot-line {
+        overflow: hidden;
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        background: #ffffff;
+      }
+
+      .boot-topbar {
+        height: 68px;
+        border-radius: 8px;
+      }
+
+      .boot-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      .boot-card {
+        height: 92px;
+        border-radius: 8px;
+      }
+
+      .boot-main {
+        height: calc(100% - 198px);
+        min-height: 360px;
+        margin-top: 18px;
+        border-radius: 8px;
+      }
+
+      .boot-line {
+        height: 40px;
+        margin: 12px;
+        border-radius: 6px;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-shell">
+        <aside class="boot-sidebar">
+          <div class="boot-logo">
+            <div class="boot-mark">CS</div>
+            <strong>Codex Switch</strong>
+          </div>
+        </aside>
+        <main class="boot-content">
+          <div class="boot-topbar"></div>
+          <div class="boot-grid">
+            <div class="boot-card"></div>
+            <div class="boot-card"></div>
+            <div class="boot-card"></div>
+          </div>
+          <div class="boot-card boot-main">
+            <div class="boot-line"></div>
+            <div class="boot-line"></div>
+            <div class="boot-line"></div>
+          </div>
+        </main>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
   </html>

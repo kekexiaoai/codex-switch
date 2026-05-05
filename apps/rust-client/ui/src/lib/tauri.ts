@@ -14,6 +14,7 @@ export interface AccountListItem {
   emailMask: string;
   email?: string | null;
   tier: "plus" | "pro" | "team" | "unknown";
+  authMode: CurrentAuthMode;
   manualOrder: number;
   archiveFilename: string;
   source: "currentAuth" | "backupImport" | "browserLogin" | "fixture";

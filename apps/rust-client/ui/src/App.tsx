@@ -275,13 +275,6 @@ export function App() {
                 });
               }}
               onSwitch={(id) => {
-                if (snapshot.currentAuthMode === "openaiApiKey") {
-                  setFeedback({
-                    kind: "error",
-                    message: "当前 Codex auth.json 是 OPENAI_API_KEY 模式，不能覆盖。",
-                  });
-                  return;
-                }
                 const previousSnapshot = snapshot;
                 setActiveAccountOptimistically(id);
                 void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。").catch(() =>

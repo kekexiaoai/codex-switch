@@ -10,8 +10,6 @@ pub enum AppError {
     AuthJsonInvalid,
     #[error("检测到 API Key 模式，无法作为 ChatGPT 账号导入")]
     ApiKeyModeDetected,
-    #[error("当前 auth.json 是 OPENAI_API_KEY 模式，不能覆盖 Codex API Key 配置")]
-    ApiKeyModeBlocksSwitch,
     #[error("id_token 缺失")]
     IdTokenMissing,
     #[error("JWT 载荷非法")]
