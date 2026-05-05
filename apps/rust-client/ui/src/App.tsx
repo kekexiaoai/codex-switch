@@ -126,6 +126,7 @@ export function App() {
     pendingMessage: string,
     action: () => Promise<T>,
     successMessage: string | ((result: T) => string),
+    options?: { showErrorFeedback?: boolean },
   ) => {
     try {
       setFeedback({ kind: "info", message: pendingMessage });
@@ -137,10 +138,14 @@ export function App() {
       void refreshAll({ reportErrors: false });
       return result;
     } catch (error) {
-      setFeedback({
-        kind: "error",
-        message: error instanceof Error ? error.message : String(error),
-      });
+      if (options?.showErrorFeedback === false) {
+        setFeedback(null);
+      } else {
+        setFeedback({
+          kind: "error",
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
       throw error;
     }
   };
@@ -316,10 +321,15 @@ export function App() {
                 );
               }}
               onRefreshUsage={() => {
-                void runAction("正在刷新 Usage…", () => refreshUsage(), (snapshot) => {
-                  const source = snapshot.sourceLabel ?? "未知来源";
-                  return `Usage 已刷新，来源：${source}。`;
-                })
+                void runAction(
+                  "正在刷新 Usage…",
+                  () => refreshUsage(),
+                  (snapshot) => {
+                    const source = snapshot.sourceLabel ?? "未知来源";
+                    return `Usage 已刷新，来源：${source}。`;
+                  },
+                  { showErrorFeedback: false },
+                )
                   .then((snapshot) => {
                     setUsageRefreshStatus({
                       kind: "success",

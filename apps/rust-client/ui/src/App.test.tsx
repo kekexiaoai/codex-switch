@@ -217,6 +217,7 @@ describe("App", () => {
 
     expect(await screen.findByText("无法刷新 Usage。远程 API：HTTP 401，登录态已过期")).toBeInTheDocument();
     expect(screen.getByText("异常")).toBeInTheDocument();
+    expect(screen.queryByTestId("global-feedback")).not.toBeInTheDocument();
   });
 
   it("lets the dashboard toggle full email display", async () => {
