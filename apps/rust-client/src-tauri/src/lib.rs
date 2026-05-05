@@ -124,8 +124,14 @@ pub fn run() {
             tray.build(app)?;
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running codex switch tauri app");
+        .build(tauri::generate_context!())
+        .expect("error while building codex switch tauri app")
+        .run(|app, event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = event {
+                show_main_window(app);
+            }
+        });
 }
 
 #[cfg(desktop)]

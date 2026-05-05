@@ -40,6 +40,7 @@ import { TrayView } from "@/features/tray/tray-view";
 
 const emptySnapshot: AppSnapshot = {
   accounts: [],
+  currentAuthMode: "missing",
   settings: {
     usageRefreshEnabled: true,
     usageSourceMode: "automatic",
@@ -242,6 +243,7 @@ export function App() {
               accounts={snapshot.accounts}
               usage={snapshot.activeUsage}
               loginState={loginState}
+              currentAuthMode={snapshot.currentAuthMode}
               showFullEmail={snapshot.settings.showFullEmail}
               usageSourceMode={snapshot.settings.usageSourceMode}
               onShowFullEmailChange={(showFullEmail) => {
@@ -273,6 +275,13 @@ export function App() {
                 });
               }}
               onSwitch={(id) => {
+                if (snapshot.currentAuthMode === "openaiApiKey") {
+                  setFeedback({
+                    kind: "error",
+                    message: "当前 Codex auth.json 是 OPENAI_API_KEY 模式，不能覆盖。",
+                  });
+                  return;
+                }
                 const previousSnapshot = snapshot;
                 setActiveAccountOptimistically(id);
                 void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。").catch(() =>

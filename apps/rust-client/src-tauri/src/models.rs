@@ -47,6 +47,18 @@ pub struct AccountListItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CurrentAuthMode {
+    #[serde(rename = "missing")]
+    Missing,
+    #[serde(rename = "oauth")]
+    OAuth,
+    #[serde(rename = "openaiApiKey")]
+    OpenAIApiKey,
+    #[serde(rename = "invalid")]
+    Invalid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct JwtClaims {
     pub account_id: String,
@@ -173,6 +185,7 @@ impl Default for SettingsDto {
 pub struct AppSnapshot {
     pub accounts: Vec<AccountListItem>,
     pub active_account_id: Option<String>,
+    pub current_auth_mode: CurrentAuthMode,
     pub active_usage: Option<UsageSnapshot>,
     pub settings: SettingsDto,
     pub diagnostics: Vec<DiagnosticsEvent>,

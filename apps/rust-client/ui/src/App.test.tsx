@@ -4,6 +4,7 @@ import type { AccountListItem, AppSnapshot, CodexSessionDetail, CodexSessionList
 
 const snapshot: AppSnapshot = {
   accounts: [],
+  currentAuthMode: "missing",
   settings: {
     usageRefreshEnabled: true,
     usageSourceMode: "automatic",
@@ -120,6 +121,8 @@ describe("App", () => {
     vi.mocked(getSessionDetail).mockResolvedValue(sessionDetail);
     vi.mocked(saveSettings).mockReset();
     vi.mocked(saveSettings).mockResolvedValue(snapshot.settings);
+    vi.mocked(switchAccount).mockReset();
+    vi.mocked(switchAccount).mockResolvedValue(account({ isActive: true }));
   });
 
   it("renders a devtools-style desktop shell instead of a floating dock", async () => {
@@ -260,6 +263,28 @@ describe("App", () => {
       pendingSwitch.resolve({ ...accounts[1], isActive: true });
       await pendingSwitch.promise;
     });
+  });
+
+  it("shows OPENAI_API_KEY mode and disables account switching", async () => {
+    const accounts = [
+      account({ id: "account-1", emailMask: "one@example.com", isActive: false }),
+    ];
+    vi.mocked(getAppSnapshot).mockResolvedValueOnce({
+      ...snapshot,
+      accounts,
+      currentAuthMode: "openaiApiKey",
+    });
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+
+    expect(screen.getAllByText("OPENAI_API_KEY 模式").length).toBeGreaterThan(0);
+    expect(screen.getByText("当前 Codex auth.json 使用 API Key 配置，已禁止覆盖。")).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByText("one@example.com")[0].closest("button")!);
+
+    expect(switchAccount).not.toHaveBeenCalled();
   });
 
   it("shows Codex historical sessions in a dedicated workspace", async () => {

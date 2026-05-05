@@ -21,6 +21,8 @@ export interface AccountListItem {
   isActive: boolean;
 }
 
+export type CurrentAuthMode = "missing" | "oauth" | "openaiApiKey" | "invalid";
+
 export interface UsageWindow {
   percentUsed: number;
   resetsAt: string;
@@ -73,6 +75,7 @@ export interface DiagnosticsEvent {
 export interface AppSnapshot {
   accounts: AccountListItem[];
   activeAccountId?: string | null;
+  currentAuthMode: CurrentAuthMode;
   activeUsage?: UsageSnapshot | null;
   settings: SettingsDto;
   diagnostics: DiagnosticsEvent[];

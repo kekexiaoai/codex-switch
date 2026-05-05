@@ -1,7 +1,8 @@
 use crate::error::{AppError, AppResult};
 use crate::jwt::JwtDecoder;
 use crate::models::{
-    AccountListItem, AccountMetadataEntry, AccountRecord, AccountSource, JwtClaims,
+    AccountListItem, AccountMetadataEntry, AccountRecord, AccountSource, CurrentAuthMode,
+    JwtClaims,
 };
 use crate::paths::CodexPaths;
 use crate::store::AuthStore;
@@ -85,6 +86,10 @@ impl AccountsService {
     }
 
     pub fn switch(&self, account_id: &str) -> AppResult<AccountListItem> {
+        if self.current_auth_mode() == CurrentAuthMode::OpenAIApiKey {
+            return Err(AppError::ApiKeyModeBlocksSwitch);
+        }
+
         let target = self
             .list()?
             .into_iter()
@@ -106,6 +111,24 @@ impl AccountsService {
     pub fn current_claims(&self) -> AppResult<JwtClaims> {
         let data = self.store.read_current_auth_data()?;
         self.claims_from_auth(&data)
+    }
+
+    pub fn current_auth_mode(&self) -> CurrentAuthMode {
+        let data = match self.store.read_current_auth_data() {
+            Ok(data) => data,
+            Err(AppError::CurrentAuthMissing) => return CurrentAuthMode::Missing,
+            Err(_) => return CurrentAuthMode::Invalid,
+        };
+        let Ok(value) = serde_json::from_slice::<Value>(&data) else {
+            return CurrentAuthMode::Invalid;
+        };
+        if auth_value_has_api_key(&value) {
+            return CurrentAuthMode::OpenAIApiKey;
+        }
+        if self.claims_from_value(&value).is_ok() {
+            return CurrentAuthMode::OAuth;
+        }
+        CurrentAuthMode::Invalid
     }
 
     fn import_auth_data(&self, data: &[u8], source: AccountSource) -> AppResult<AccountListItem> {
@@ -147,19 +170,13 @@ impl AccountsService {
 
     fn claims_from_auth(&self, data: &[u8]) -> AppResult<JwtClaims> {
         let value: Value = serde_json::from_slice(data).map_err(|_| AppError::AuthJsonInvalid)?;
-        if value
-            .get("OPENAI_API_KEY")
-            .and_then(|v| v.as_str())
-            .filter(|v| !v.is_empty())
-            .is_some()
-            || value
-                .get("api_key")
-                .and_then(|v| v.as_str())
-                .filter(|v| !v.is_empty())
-                .is_some()
-        {
+        if auth_value_has_api_key(&value) {
             return Err(AppError::ApiKeyModeDetected);
         }
+        self.claims_from_value(&value)
+    }
+
+    fn claims_from_value(&self, value: &Value) -> AppResult<JwtClaims> {
         let id_token = value
             .get("tokens")
             .and_then(|tokens| tokens.get("id_token"))
@@ -168,6 +185,19 @@ impl AccountsService {
             .ok_or(AppError::IdTokenMissing)?;
         self.jwt.decode(id_token)
     }
+}
+
+fn auth_value_has_api_key(value: &Value) -> bool {
+    value
+        .get("OPENAI_API_KEY")
+        .and_then(|v| v.as_str())
+        .filter(|v| !v.is_empty())
+        .is_some()
+        || value
+            .get("api_key")
+            .and_then(|v| v.as_str())
+            .filter(|v| !v.is_empty())
+            .is_some()
 }
 
 fn archive_filename_for_email(email: &str) -> String {
@@ -258,5 +288,30 @@ mod tests {
 
         let active = service.current_claims().unwrap();
         assert_eq!(active.email, "alice@example.com");
+    }
+
+    #[test]
+    fn refuses_to_overwrite_current_api_key_auth_when_switching_accounts() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        let accounts_dir = base.join("accounts");
+        fs::create_dir_all(&accounts_dir).unwrap();
+        fs::write(base.join("auth.json"), r#"{"OPENAI_API_KEY":"sk-test"}"#).unwrap();
+        fs::write(
+            accounts_dir.join("alice.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwic3ViIjoiYWNjdC0xIiwicGxhbiI6InRlYW0ifQ.sig"}}"#,
+        )
+        .unwrap();
+
+        let service = AccountsService::new(CodexPaths::new(base.clone()));
+        let archived = service.list().unwrap().remove(0);
+
+        let error = service.switch(&archived.record.id).unwrap_err().to_string();
+
+        assert!(error.contains("OPENAI_API_KEY 模式"));
+        assert_eq!(
+            fs::read_to_string(base.join("auth.json")).unwrap(),
+            r#"{"OPENAI_API_KEY":"sk-test"}"#
+        );
     }
 }

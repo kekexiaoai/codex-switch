@@ -4,13 +4,14 @@ import { ArrowRightLeft, Bot, Clock3, Eye, EyeOff, Import, RefreshCcw, UserRound
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import type { AccountListItem, LoginJobState, UsageSnapshot, UsageSourceMode } from "@/lib/tauri";
+import type { AccountListItem, CurrentAuthMode, LoginJobState, UsageSnapshot, UsageSourceMode } from "@/lib/tauri";
 import { displayEmail } from "./display-email";
 
 export function AccountsView({
   accounts,
   usage,
   loginState,
+  currentAuthMode,
   showFullEmail,
   usageSourceMode,
   onShowFullEmailChange,
@@ -23,6 +24,7 @@ export function AccountsView({
   accounts: AccountListItem[];
   usage?: UsageSnapshot | null;
   loginState?: LoginJobState | null;
+  currentAuthMode: CurrentAuthMode;
   showFullEmail: boolean;
   usageSourceMode: UsageSourceMode;
   onShowFullEmailChange: (showFullEmail: boolean) => void;
@@ -44,6 +46,8 @@ export function AccountsView({
   );
   const quickSwitchAccount = accounts.find((account) => !account.isActive) ?? (active ? undefined : accounts[0]);
   const usageSourceLabel = formatUsageSource(usageSourceMode);
+  const canSwitchAccounts = currentAuthMode !== "openaiApiKey";
+  const currentModeLabel = formatCurrentAuthMode(currentAuthMode);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
@@ -51,7 +55,7 @@ export function AccountsView({
         <StatCard
           icon={<Bot className="h-7 w-7" />}
           label="当前 Codex 账号"
-          value={active ? displayEmail(active, showFullEmail) : "未选择"}
+          value={active ? displayEmail(active, showFullEmail) : currentModeLabel}
           compact
         />
         <StatCard icon={<UsersRound className="h-7 w-7" />} label="本地归档账号" value={`${accounts.length}`} />
@@ -125,6 +129,7 @@ export function AccountsView({
                 account={account}
                 usage={usage}
                 showFullEmail={showFullEmail}
+                canSwitchAccounts={canSwitchAccounts}
                 onSwitch={onSwitch}
               />
             ))}
@@ -144,6 +149,19 @@ export function AccountsView({
             showFullEmail={showFullEmail}
             emptyText="未检测到 ChatGPT 账号"
           />
+          <div className="rounded-2xl border border-slate-200/80 bg-white/56 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[12px] font-semibold text-slate-500">配置模式</span>
+              <Badge className={currentAuthMode === "openaiApiKey" ? "border-amber-300 bg-amber-50 text-amber-700" : ""}>
+                {currentModeLabel}
+              </Badge>
+            </div>
+            {currentAuthMode === "openaiApiKey" ? (
+              <div className="mt-2 text-[12px] font-medium leading-5 text-amber-700">
+                当前 Codex auth.json 使用 API Key 配置，已禁止覆盖。
+              </div>
+            ) : null}
+          </div>
           <div className="desktop-divider" />
           <div>
             <div className="text-[15px] font-black tracking-[-0.03em]">快速切换</div>
@@ -153,6 +171,7 @@ export function AccountsView({
                 usage={usage}
                 showFullEmail={showFullEmail}
                 emptyText="暂无备用账号"
+                canSwitchAccounts={canSwitchAccounts}
                 onSwitch={onSwitch}
               />
             </div>
@@ -165,6 +184,7 @@ export function AccountsView({
               <SummaryRow label="Plus" value={`${tierCounts.plus ?? 0}`} />
               <SummaryRow label="Pro" value={`${tierCounts.pro ?? 0}`} />
               <SummaryRow label="数据源" value={usageSourceLabel} />
+              <SummaryRow label="Auth 模式" value={currentModeLabel} />
               <SummaryRow label="Usage" value={usage ? "已读取" : "未刷新"} />
               <SummaryRow label="登录任务" value={loginState?.active ? "运行中" : "空闲"} />
             </div>
@@ -215,12 +235,14 @@ function AccountSummaryCard({
   showFullEmail,
   emptyText,
   onSwitch,
+  canSwitchAccounts = true,
 }: {
   account?: AccountListItem;
   usage?: UsageSnapshot | null;
   showFullEmail: boolean;
   emptyText: string;
   onSwitch?: (id: string) => void;
+  canSwitchAccounts?: boolean;
 }) {
   if (!account) {
     return (
@@ -232,7 +254,7 @@ function AccountSummaryCard({
 
   const five = usage?.fiveHour.percentUsed ?? 0;
   const weekly = usage?.weekly.percentUsed ?? 0;
-  const canSwitch = Boolean(onSwitch && !account.isActive);
+  const canSwitch = Boolean(onSwitch && !account.isActive && canSwitchAccounts);
 
   return (
     <button
@@ -265,19 +287,24 @@ function AccountTableRow({
   usage,
   showFullEmail,
   onSwitch,
+  canSwitchAccounts,
 }: {
   account: AccountListItem;
   usage?: UsageSnapshot | null;
   showFullEmail: boolean;
   onSwitch: (id: string) => void;
+  canSwitchAccounts: boolean;
 }) {
+  const canSwitch = !account.isActive && canSwitchAccounts;
   return (
     <button
       type="button"
-      onClick={() => !account.isActive && onSwitch(account.id)}
+      disabled={!canSwitch}
+      onClick={() => canSwitch && onSwitch(account.id)}
       className={[
         "grid w-full grid-cols-[minmax(0,1.4fr)_88px_minmax(220px,0.9fr)_92px] items-center border-b border-slate-200/70 px-5 py-3 text-left last:border-b-0",
         account.isActive ? "bg-white/46" : "hover:bg-white/40",
+        !canSwitch ? "cursor-default opacity-75" : "",
       ].join(" ")}
     >
       <div className="min-w-0">
@@ -337,6 +364,19 @@ function sourceLabel(source: AccountListItem["source"]) {
     return "浏览器登录";
   }
   return "归档";
+}
+
+function formatCurrentAuthMode(mode: CurrentAuthMode) {
+  if (mode === "openaiApiKey") {
+    return "OPENAI_API_KEY 模式";
+  }
+  if (mode === "oauth") {
+    return "OAuth 模式";
+  }
+  if (mode === "invalid") {
+    return "无法识别";
+  }
+  return "未检测";
 }
 
 function SummaryRow({ label, value }: { label: string; value: string }) {

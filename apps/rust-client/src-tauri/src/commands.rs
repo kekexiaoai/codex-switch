@@ -55,6 +55,7 @@ pub fn app_snapshot(state: State<'_, AppState>) -> CmdResult<AppSnapshot> {
             .iter()
             .find(|account| account.is_active)
             .map(|account| account.record.id.clone()),
+        current_auth_mode: state.accounts.current_auth_mode(),
         accounts,
         active_usage,
         settings,
