@@ -63,6 +63,11 @@ const emptySnapshot: AppSnapshot = {
 
 const SUCCESS_FEEDBACK_TIMEOUT_MS = 3_200;
 
+type UsageRefreshStatus = {
+  kind: "success" | "error";
+  message: string;
+};
+
 function backupImportSuccessMessage(result: BackupImportResult) {
   const skipped = result.skippedCount > 0 ? `，跳过 ${result.skippedCount} 个不可导入项` : "";
   return `已导入 ${result.accounts.length} 个备份账号${skipped}。`;
@@ -79,6 +84,7 @@ export function App() {
   const [selectedSession, setSelectedSession] = useState<CodexSessionDetail | null>(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "info" | "success" | "error"; message: string } | null>(null);
+  const [usageRefreshStatus, setUsageRefreshStatus] = useState<UsageRefreshStatus | null>(null);
   const refreshInFlight = useRef<Promise<boolean> | null>(null);
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const isTray = search.get("panel") === "tray";
@@ -258,6 +264,7 @@ export function App() {
               currentAuthMode={snapshot.currentAuthMode}
               showFullEmail={snapshot.settings.showFullEmail}
               usageSourceMode={snapshot.settings.usageSourceMode}
+              usageRefreshStatus={usageRefreshStatus}
               onShowFullEmailChange={(showFullEmail) => {
                 const previousSettings = snapshot.settings;
                 const nextSettings = { ...snapshot.settings, showFullEmail };
@@ -303,12 +310,28 @@ export function App() {
               onSwitch={(id) => {
                 const previousSnapshot = snapshot;
                 setActiveAccountOptimistically(id);
+                setUsageRefreshStatus(null);
                 void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。").catch(() =>
                   setSnapshot(previousSnapshot),
                 );
               }}
               onRefreshUsage={() => {
-                void runAction("正在刷新 Usage…", () => refreshUsage(), "Usage 已刷新。");
+                void runAction("正在刷新 Usage…", () => refreshUsage(), (snapshot) => {
+                  const source = snapshot.sourceLabel ?? "未知来源";
+                  return `Usage 已刷新，来源：${source}。`;
+                })
+                  .then((snapshot) => {
+                    setUsageRefreshStatus({
+                      kind: "success",
+                      message: `已刷新，来源：${snapshot.sourceLabel ?? "未知来源"}`,
+                    });
+                  })
+                  .catch((error) => {
+                    setUsageRefreshStatus({
+                      kind: "error",
+                      message: error instanceof Error ? error.message : String(error),
+                    });
+                  });
               }}
               onLogin={() => {
                 void runAction("正在启动浏览器登录…", () => startBrowserLogin(), "浏览器登录已启动。")

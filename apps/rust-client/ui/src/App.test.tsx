@@ -83,6 +83,7 @@ import {
   listSessions,
   pickAuthBackupDirectory,
   pickAuthBackupFiles,
+  refreshUsage,
   saveSettings,
   switchAccount,
 } from "@/lib/tauri";
@@ -132,6 +133,8 @@ describe("App", () => {
     vi.mocked(pickAuthBackupFiles).mockResolvedValue([]);
     vi.mocked(pickAuthBackupDirectory).mockReset();
     vi.mocked(pickAuthBackupDirectory).mockResolvedValue(null);
+    vi.mocked(refreshUsage).mockReset();
+    vi.mocked(refreshUsage).mockRejectedValue(new Error("无法刷新 Usage。远程 API：HTTP 401，登录态已过期"));
     vi.mocked(switchAccount).mockReset();
     vi.mocked(switchAccount).mockResolvedValue(account({ isActive: true }));
   });
@@ -204,6 +207,16 @@ describe("App", () => {
     });
 
     expect(screen.queryByText("已暂停 Usage 刷新。")).not.toBeInTheDocument();
+  });
+
+  it("shows detailed Usage refresh errors on the current account panel", async () => {
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    fireEvent.click(screen.getByRole("button", { name: "刷新 Usage" }));
+
+    expect(await screen.findByText("无法刷新 Usage。远程 API：HTTP 401，登录态已过期")).toBeInTheDocument();
+    expect(screen.getByText("异常")).toBeInTheDocument();
   });
 
   it("lets the dashboard toggle full email display", async () => {

@@ -30,7 +30,15 @@ impl UsageService {
     }
 
     pub async fn refresh_active_usage(&self, settings: &SettingsDto) -> AppResult<UsageSnapshot> {
-        let active = self.accounts.current_claims()?;
+        let active = self.accounts.current_claims().map_err(|error| match error {
+            AppError::ApiKeyModeDetected => AppError::Message(
+                "当前账号是 OPENAI_API_KEY 模式，Usage 刷新需要 OAuth ChatGPT 账号；请切换到浏览器登录账号后再刷新。".into(),
+            ),
+            AppError::IdTokenMissing | AppError::JwtPayloadInvalid => AppError::Message(
+                "当前 auth.json 不是有效的 OAuth 登录态，可能账号已失效；请重新浏览器登录或切换账号。".into(),
+            ),
+            other => other,
+        })?;
         let account = AccountRecord {
             id: active.account_id.clone(),
             email_mask: active.email_mask,
@@ -42,17 +50,33 @@ impl UsageService {
             source: crate::models::AccountSource::CurrentAuth,
             last_imported_at: Utc::now(),
         };
+        let mut reasons = Vec::new();
         if matches!(settings.usage_source_mode, UsageSourceMode::Automatic) {
-            if let Ok(snapshot) = self.fetch_remote(&account).await {
+            match self.fetch_remote(&account).await {
+                Ok(snapshot) => {
+                    self.save_cache(snapshot.clone())?;
+                    return Ok(snapshot);
+                }
+                Err(error) => reasons.push(format!("远程 API：{error}")),
+            }
+        }
+        match self.scan_local(&account) {
+            Ok(snapshot) => {
                 self.save_cache(snapshot.clone())?;
                 return Ok(snapshot);
             }
+            Err(error) => reasons.push(format!("本地日志：{error}")),
         }
-        if let Ok(snapshot) = self.scan_local(&account) {
-            self.save_cache(snapshot.clone())?;
-            return Ok(snapshot);
+        match self.load_cached(&account.id)? {
+            Some(snapshot) => Ok(snapshot),
+            None => {
+                reasons.push("缓存：当前账号没有历史 Usage 快照".into());
+                Err(AppError::Message(format!(
+                    "无法刷新 Usage。{}",
+                    reasons.join("；")
+                )))
+            }
         }
-        self.load_cached(&account.id)?.ok_or(AppError::NoUsageData)
     }
 
     fn scan_local(&self, account: &AccountRecord) -> AppResult<UsageSnapshot> {
@@ -97,23 +121,42 @@ impl UsageService {
         if let Some(account_header) = account_header {
             request = request.header("ChatGPT-Account-Id", account_header);
         }
-        let response = request.send().await?;
-        let response = response.error_for_status()?;
+        let response = request.send().await.map_err(|error| {
+            AppError::Message(format!(
+                "网络请求失败，无法连接 ChatGPT Usage 服务：{error}"
+            ))
+        })?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(AppError::Message(http_usage_error_message(
+                status.as_u16(),
+                &body,
+            )));
+        }
         let value: Value = response.json().await?;
         let rate_limit = value
             .get("rate_limit")
             .or_else(|| value.get("rate_limits"))
-            .ok_or(AppError::NoUsageData)?;
+            .ok_or_else(|| {
+                AppError::Message(
+                    "响应里没有 rate_limit/rate_limits 字段，可能接口格式已变化".into(),
+                )
+            })?;
         let primary = rate_limit
             .get("primary_window")
             .or_else(|| rate_limit.get("primary"))
             .or_else(|| rate_limit.get("five_hour"))
-            .ok_or(AppError::NoUsageData)?;
+            .ok_or_else(|| {
+                AppError::Message("响应里没有 5 小时 Usage 窗口，可能接口格式已变化".into())
+            })?;
         let secondary = rate_limit
             .get("secondary_window")
             .or_else(|| rate_limit.get("secondary"))
             .or_else(|| rate_limit.get("weekly"))
-            .ok_or(AppError::NoUsageData)?;
+            .ok_or_else(|| {
+                AppError::Message("响应里没有 weekly Usage 窗口，可能接口格式已变化".into())
+            })?;
         Ok(UsageSnapshot {
             account_id: account.id.clone(),
             updated_at: value
@@ -136,6 +179,24 @@ impl UsageService {
     pub fn load_cached(&self, account_id: &str) -> AppResult<Option<UsageSnapshot>> {
         let UsageCache { entries } = self.store.load_usage_cache()?;
         Ok(entries.get(account_id).cloned())
+    }
+}
+
+fn http_usage_error_message(status: u16, body: &str) -> String {
+    let reason = match status {
+        401 => "登录态已过期或 access_token 无效，请重新浏览器登录",
+        403 => "当前账号无权访问 Usage 接口，可能账号已失效、权限不足或需要重新登录",
+        404 => "ChatGPT Usage 接口不可用，可能接口地址已变化",
+        429 => "ChatGPT Usage 接口请求过于频繁，请稍后再试",
+        500..=599 => "ChatGPT Usage 服务暂时异常，请稍后再试",
+        _ => "ChatGPT Usage 接口返回异常状态",
+    };
+    let detail = body.trim();
+    if detail.is_empty() {
+        format!("HTTP {status}，{reason}")
+    } else {
+        let snippet = detail.chars().take(180).collect::<String>();
+        format!("HTTP {status}，{reason}。返回：{snippet}")
     }
 }
 
@@ -276,5 +337,23 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(snapshot.five_hour.percent_used, 42);
+    }
+
+    #[tokio::test]
+    async fn explains_api_key_mode_when_refreshing_usage() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        fs::create_dir_all(&base).unwrap();
+        fs::write(base.join("auth.json"), r#"{"OPENAI_API_KEY":"sk-test"}"#).unwrap();
+        let service = UsageService::new(CodexPaths::new(base));
+
+        let error = service
+            .refresh_active_usage(&crate::models::SettingsDto::default())
+            .await
+            .unwrap_err()
+            .to_string();
+
+        assert!(error.contains("OPENAI_API_KEY 模式"));
+        assert!(error.contains("OAuth ChatGPT 账号"));
     }
 }

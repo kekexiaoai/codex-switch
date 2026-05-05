@@ -25,6 +25,7 @@ export function AccountsView({
   currentAuthMode,
   showFullEmail,
   usageSourceMode,
+  usageRefreshStatus,
   onShowFullEmailChange,
   onImportCurrent,
   onImportBackup,
@@ -39,6 +40,7 @@ export function AccountsView({
   currentAuthMode: CurrentAuthMode;
   showFullEmail: boolean;
   usageSourceMode: UsageSourceMode;
+  usageRefreshStatus?: { kind: "success" | "error"; message: string } | null;
   onShowFullEmailChange: (showFullEmail: boolean) => void;
   onImportCurrent: () => void;
   onImportBackup: () => void;
@@ -177,6 +179,7 @@ export function AccountsView({
               </div>
             ) : null}
           </div>
+          <UsageStatusCard usage={usage} status={usageRefreshStatus} />
           <div className="desktop-divider" />
           <div>
             <div className="text-[15px] font-black tracking-[-0.03em]">快速切换</div>
@@ -240,6 +243,43 @@ function StatCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+function UsageStatusCard({
+  usage,
+  status,
+}: {
+  usage?: UsageSnapshot | null;
+  status?: { kind: "success" | "error"; message: string } | null;
+}) {
+  const tone = status?.kind === "error" ? "error" : usage || status?.kind === "success" ? "success" : "idle";
+  const badgeClass =
+    tone === "error"
+      ? "border-rose-300 bg-rose-50 text-rose-700"
+      : tone === "success"
+        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+        : "border-slate-300 bg-slate-50 text-slate-600";
+  const label = tone === "error" ? "异常" : tone === "success" ? "正常" : "未刷新";
+  const message =
+    status?.message ??
+    (usage ? `已读取，来源：${usage.sourceLabel ?? "未知来源"}` : "尚未刷新 Usage，点击刷新后会显示账号状态。");
+
+  return (
+    <div
+      className={[
+        "rounded-2xl border p-3",
+        tone === "error" ? "border-rose-200 bg-rose-50/70" : "border-slate-200/80 bg-white/56",
+      ].join(" ")}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[12px] font-semibold text-slate-500">Usage 状态</span>
+        <Badge className={badgeClass}>{label}</Badge>
+      </div>
+      <div className={tone === "error" ? "mt-2 text-[12px] font-medium leading-5 text-rose-700" : "mt-2 text-[12px] font-medium leading-5 text-slate-500"}>
+        {message}
+      </div>
+    </div>
   );
 }
 

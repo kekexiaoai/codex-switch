@@ -13,10 +13,11 @@ mod state;
 mod store;
 mod usage;
 
+use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
+    AppHandle, Emitter, Manager, TitleBarStyle, WebviewUrl, WebviewWindowBuilder,
 };
 #[cfg(desktop)]
 use tauri_plugin_autostart::Builder as AutostartBuilder;
@@ -134,6 +135,14 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building codex switch tauri app")
         .run(|app, event| {
+            if let tauri::RunEvent::Ready = event {
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+                    show_main_window(&app);
+                });
+            }
+
             if let tauri::RunEvent::WindowEvent {
                 label,
                 event: tauri::WindowEvent::CloseRequested { api, .. },
@@ -164,11 +173,29 @@ fn autostart_plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
 }
 
 fn show_main_window(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("main") {
+    if let Ok(window) = main_window(app) {
+        #[cfg(target_os = "macos")]
+        let _ = app.show();
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();
     }
+}
+
+fn main_window(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
+    if let Some(window) = app.get_webview_window("main") {
+        return Ok(window);
+    }
+
+    WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+        .title("Codex Switch")
+        .inner_size(1240.0, 840.0)
+        .min_inner_size(1080.0, 720.0)
+        .center()
+        .resizable(true)
+        .title_bar_style(TitleBarStyle::Transparent)
+        .hidden_title(true)
+        .build()
 }
 
 fn show_main_view(app: &AppHandle, view: &str) {
