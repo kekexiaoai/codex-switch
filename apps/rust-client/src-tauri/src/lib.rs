@@ -64,7 +64,6 @@ pub fn run() {
             #[cfg(desktop)]
             app.handle().plugin(autostart_plugin())?;
             app.handle().plugin(tauri_plugin_dialog::init())?;
-            create_tray_panel_window(app)?;
             let open_main =
                 MenuItem::with_id(app, "open-main", "打开 Codex Switch", true, None::<&str>)?;
             let open_settings =
@@ -127,6 +126,20 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building codex switch tauri app")
         .run(|app, event| {
+            if let tauri::RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::CloseRequested { api, .. },
+                ..
+            } = &event
+            {
+                if label == "main" {
+                    api.prevent_close();
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.hide();
+                    }
+                }
+            }
+
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = event {
                 show_main_window(app);
@@ -156,15 +169,16 @@ fn show_main_view(app: &AppHandle, view: &str) {
 }
 
 fn toggle_tray_panel(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window("tray-panel") {
-        let visible = window.is_visible().unwrap_or(false);
-        if visible {
-            let _ = window.hide();
-        } else {
-            let _ = window.center();
-            let _ = window.show();
-            let _ = window.set_focus();
-        }
+    let Ok(window) = tray_panel_window(app) else {
+        return;
+    };
+    let visible = window.is_visible().unwrap_or(false);
+    if visible {
+        let _ = window.hide();
+    } else {
+        let _ = window.center();
+        let _ = window.show();
+        let _ = window.set_focus();
     }
 }
 
@@ -180,21 +194,22 @@ fn refresh_usage_from_menu(app: &AppHandle) {
     });
 }
 
-fn create_tray_panel_window(app: &mut tauri::App) -> tauri::Result<()> {
-    if app.get_webview_window("tray-panel").is_none() {
-        WebviewWindowBuilder::new(
-            app,
-            "tray-panel",
-            WebviewUrl::App("index.html?panel=tray".into()),
-        )
-        .title("Codex Switch Tray")
-        .inner_size(420.0, 620.0)
-        .decorations(false)
-        .always_on_top(true)
-        .visible(false)
-        .skip_taskbar(true)
-        .resizable(false)
-        .build()?;
+fn tray_panel_window(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
+    if let Some(window) = app.get_webview_window("tray-panel") {
+        return Ok(window);
     }
-    Ok(())
+
+    WebviewWindowBuilder::new(
+        app,
+        "tray-panel",
+        WebviewUrl::App("index.html?panel=tray".into()),
+    )
+    .title("Codex Switch Tray")
+    .inner_size(420.0, 620.0)
+    .decorations(false)
+    .always_on_top(true)
+    .visible(false)
+    .skip_taskbar(true)
+    .resizable(false)
+    .build()
 }
