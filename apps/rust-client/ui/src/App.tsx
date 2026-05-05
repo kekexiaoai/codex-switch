@@ -83,7 +83,7 @@ export function App() {
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const isTray = search.get("panel") === "tray";
 
-  const refreshAll = useCallback(() => {
+  const refreshAll = useCallback((options?: { reportErrors?: boolean }) => {
     if (refreshInFlight.current) {
       return refreshInFlight.current;
     }
@@ -100,10 +100,12 @@ export function App() {
         setSelectedBackupId(next.providerStatus.backups[0]?.id ?? null);
         return true;
       } catch (error) {
-        setFeedback({
-          kind: "error",
-          message: error instanceof Error ? error.message : String(error),
-        });
+        if (options?.reportErrors !== false) {
+          setFeedback({
+            kind: "error",
+            message: error instanceof Error ? error.message : String(error),
+          });
+        }
         return false;
       } finally {
         refreshInFlight.current = null;
@@ -126,7 +128,7 @@ export function App() {
         kind: "success",
         message: typeof successMessage === "function" ? successMessage(result) : successMessage,
       });
-      void refreshAll();
+      void refreshAll({ reportErrors: false });
       return result;
     } catch (error) {
       setFeedback({
@@ -227,8 +229,8 @@ export function App() {
         accounts={snapshot.accounts}
         usage={snapshot.activeUsage}
         showFullEmail={snapshot.settings.showFullEmail}
-        onSwitch={(id) => void switchAccount(id).then(refreshAll)}
-        onRefresh={() => void refreshUsage().then(refreshAll)}
+        onSwitch={(id) => void switchAccount(id).then(() => refreshAll())}
+        onRefresh={() => void refreshUsage().then(() => refreshAll())}
         onOpenMain={() => void showMainWindow()}
         onOpenSettings={() => void openView("settings")}
         onQuit={() => void quitApp()}

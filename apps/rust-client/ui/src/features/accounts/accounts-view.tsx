@@ -328,9 +328,9 @@ function AccountTableRow({
         <UsageBar label="5h" value={usage?.fiveHour.percentUsed ?? 0} compact />
         <UsageBar label="Weekly" value={usage?.weekly.percentUsed ?? 0} compact />
       </div>
-      <div className="flex items-center gap-3 text-slate-400">
-        <ArrowRightLeft className="h-4 w-4" />
-        <RefreshCcw className="h-4 w-4" />
+      <div className="flex items-center gap-1.5 text-slate-400">
+        {canSwitch ? <ArrowRightLeft className="h-4 w-4" /> : null}
+        <span className="text-[11px] font-bold">{canSwitch ? "切换" : "当前"}</span>
       </div>
     </button>
   );

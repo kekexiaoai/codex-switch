@@ -109,10 +109,56 @@ pub struct UsageSnapshot {
     pub weekly: UsageWindow,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageCache {
     pub entries: BTreeMap<String, UsageSnapshot>,
+}
+
+impl<'de> Deserialize<'de> for UsageCache {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(rename_all = "camelCase")]
+        struct RawUsageCache {
+            #[serde(default)]
+            entries: BTreeMap<String, RawUsageSnapshot>,
+        }
+
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct RawUsageSnapshot {
+            #[serde(default)]
+            account_id: Option<String>,
+            #[serde(deserialize_with = "deserialize_cache_datetime")]
+            updated_at: DateTime<Utc>,
+            source_label: Option<String>,
+            five_hour: UsageWindow,
+            weekly: UsageWindow,
+        }
+
+        let raw = RawUsageCache::deserialize(deserializer)?;
+        let entries = raw
+            .entries
+            .into_iter()
+            .map(|(key, snapshot)| {
+                let account_id = snapshot.account_id.unwrap_or_else(|| key.clone());
+                (
+                    key,
+                    UsageSnapshot {
+                        account_id,
+                        updated_at: snapshot.updated_at,
+                        source_label: snapshot.source_label,
+                        five_hour: snapshot.five_hour,
+                        weekly: snapshot.weekly,
+                    },
+                )
+            })
+            .collect();
+        Ok(Self { entries })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -346,5 +392,18 @@ mod tests {
         assert_eq!(snapshot.updated_at.timestamp(), 1775459488);
         assert_eq!(snapshot.updated_at.timestamp_subsec_nanos(), 379534000);
         assert_eq!(snapshot.five_hour.resets_at.timestamp(), 1775459500);
+    }
+
+    #[test]
+    fn decodes_usage_cache_entries_without_account_id() {
+        let cache: UsageCache = serde_json::from_str(
+            r#"{"entries":{"acct-1":{"updatedAt":797152288.379534,"sourceLabel":"Cache","fiveHour":{"percentUsed":42,"resetsAt":797152300},"weekly":{"percentUsed":18,"resetsAt":798705787}}}}"#,
+        )
+        .unwrap();
+
+        let snapshot = cache.entries.get("acct-1").unwrap();
+
+        assert_eq!(snapshot.account_id, "acct-1");
+        assert_eq!(snapshot.five_hour.percent_used, 42);
     }
 }

@@ -149,6 +149,7 @@ describe("App", () => {
     expect(screen.getByText("账号工作台")).toBeInTheDocument();
     expect(screen.getByText("Usage 自动")).toBeInTheDocument();
     expect(screen.getAllByText("导入备份").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "导入文件夹" })).toBeInTheDocument();
     expect(screen.queryByText("Welcome")).not.toBeInTheDocument();
     expect(screen.queryByText("Local")).not.toBeInTheDocument();
     expect(screen.queryByText("Local Desktop")).not.toBeInTheDocument();
@@ -245,6 +246,8 @@ describe("App", () => {
   });
 
   it("imports every backup in a selected folder", async () => {
+    vi.mocked(getAppSnapshot).mockReset();
+    vi.mocked(getAppSnapshot).mockResolvedValueOnce(snapshot).mockRejectedValue(new Error("refresh failed"));
     vi.mocked(pickAuthBackupDirectory).mockResolvedValueOnce("/repo/backups");
     vi.mocked(accountsImportBackups).mockResolvedValueOnce({
       accounts: [account({ id: "account-1" }), account({ id: "account-2", email: "two@example.com" })],
@@ -265,6 +268,7 @@ describe("App", () => {
     expect(pickAuthBackupDirectory).toHaveBeenCalled();
     expect(accountsImportBackups).toHaveBeenCalledWith(["/repo/backups"]);
     expect(screen.getByText("已导入 2 个备份账号，跳过 1 个不可导入项。")).toBeInTheDocument();
+    expect(screen.queryByText("refresh failed")).not.toBeInTheDocument();
   });
 
   it("marks the selected account active while switching", async () => {
