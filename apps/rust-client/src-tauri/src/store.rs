@@ -34,6 +34,14 @@ impl AuthStore {
         atomic_write(&output, &formatted).map_err(|_| AppError::ArchiveWriteFailed)
     }
 
+    pub fn remove_archive(&self, filename: &str) -> AppResult<()> {
+        let output = self.paths.accounts_dir().join(filename);
+        if output.exists() {
+            fs::remove_file(output)?;
+        }
+        Ok(())
+    }
+
     pub fn list_archived_auth_files(&self) -> AppResult<Vec<PathBuf>> {
         let dir = self.paths.accounts_dir();
         if !dir.exists() {

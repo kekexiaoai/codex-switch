@@ -9,6 +9,7 @@ import {
   FolderOpen,
   Import,
   RefreshCcw,
+  Trash2,
   UserRoundPlus,
   UsersRound,
 } from "lucide-react";
@@ -31,6 +32,7 @@ export function AccountsView({
   onImportBackup,
   onImportBackupDirectory,
   onSwitch,
+  onRemove,
   onRefreshUsage,
   onLogin,
 }: {
@@ -46,6 +48,7 @@ export function AccountsView({
   onImportBackup: () => void;
   onImportBackupDirectory: () => void;
   onSwitch: (id: string) => void;
+  onRemove: (id: string) => void;
   onRefreshUsage: () => void;
   onLogin: () => void;
 }) {
@@ -131,7 +134,7 @@ export function AccountsView({
               {accounts.length} 个账号
             </div>
           </div>
-          <div className="grid shrink-0 grid-cols-[minmax(0,1.4fr)_88px_minmax(220px,0.9fr)_92px] border-b border-slate-200/70 px-5 py-2.5 text-[12px] font-bold text-slate-500">
+          <div className="grid shrink-0 grid-cols-[minmax(0,1.4fr)_88px_minmax(220px,0.9fr)_144px] border-b border-slate-200/70 px-5 py-2.5 text-[12px] font-bold text-slate-500">
             <div>邮箱</div>
             <div>订阅</div>
             <div>配额状态</div>
@@ -148,6 +151,7 @@ export function AccountsView({
                 usage={usage}
                 showFullEmail={showFullEmail}
                 onSwitch={onSwitch}
+                onRemove={onRemove}
               />
             ))}
           </div>
@@ -339,26 +343,25 @@ function AccountTableRow({
   usage,
   showFullEmail,
   onSwitch,
+  onRemove,
 }: {
   account: AccountListItem;
   usage?: UsageSnapshot | null;
   showFullEmail: boolean;
   onSwitch: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   const canSwitch = !account.isActive;
+  const email = displayEmail(account, showFullEmail);
   return (
-    <button
-      type="button"
-      disabled={!canSwitch}
-      onClick={() => canSwitch && onSwitch(account.id)}
+    <div
       className={[
-        "grid w-full grid-cols-[minmax(0,1.4fr)_88px_minmax(220px,0.9fr)_92px] items-center border-b border-slate-200/70 px-5 py-3 text-left last:border-b-0",
+        "grid w-full grid-cols-[minmax(0,1.4fr)_88px_minmax(220px,0.9fr)_144px] items-center border-b border-slate-200/70 px-5 py-3 text-left last:border-b-0",
         account.isActive ? "bg-white/46" : "hover:bg-white/40",
-        !canSwitch ? "cursor-default opacity-75" : "",
       ].join(" ")}
     >
       <div className="min-w-0">
-        <div className="truncate text-[14px] font-bold">{displayEmail(account, showFullEmail)}</div>
+        <div className="truncate text-[14px] font-bold">{email}</div>
         <div className="truncate text-[11px] text-slate-500">
           {sourceLabel(account.source)} · #{account.manualOrder}
         </div>
@@ -368,11 +371,34 @@ function AccountTableRow({
         <UsageBar label="5h" value={usage?.fiveHour.percentUsed ?? 0} compact />
         <UsageBar label="Weekly" value={usage?.weekly.percentUsed ?? 0} compact />
       </div>
-      <div className="flex items-center gap-1.5 text-slate-400">
-        {canSwitch ? <ArrowRightLeft className="h-4 w-4" /> : null}
-        <span className="text-[11px] font-bold">{canSwitch ? "切换" : "当前"}</span>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!canSwitch}
+          onClick={() => onSwitch(account.id)}
+          aria-label={canSwitch ? `切换到 ${email}` : `当前账号 ${email}`}
+          className="h-8 px-2 text-slate-500 disabled:opacity-55"
+        >
+          {canSwitch ? <ArrowRightLeft className="h-3.5 w-3.5" /> : null}
+          {canSwitch ? "切换" : "当前"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={account.isActive}
+          onClick={() => onRemove(account.id)}
+          aria-label={`清除 ${email}`}
+          title={account.isActive ? "当前账号不能清除，请先切换到其他账号" : "清除本地归档账号"}
+          className="h-8 px-2 text-rose-600 hover:border-rose-200 hover:bg-rose-50 disabled:text-slate-400 disabled:opacity-55"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          清除
+        </Button>
       </div>
-    </button>
+    </div>
   );
 }
 

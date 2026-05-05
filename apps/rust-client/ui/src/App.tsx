@@ -15,6 +15,7 @@ import {
   pruneProviderBackups,
   quitApp,
   refreshUsage,
+  removeAccount,
   restoreProviderBackup,
   runProviderSync,
   saveSettings,
@@ -319,6 +320,24 @@ export function App() {
                 void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。").catch(() =>
                   setSnapshot(previousSnapshot),
                 );
+              }}
+              onRemove={(id) => {
+                const target = snapshot.accounts.find((account) => account.id === id);
+                if (!target) {
+                  return;
+                }
+                if (target.isActive) {
+                  setFeedback({
+                    kind: "error",
+                    message: "当前正在使用的账号不能清除，请先切换到其他账号。",
+                  });
+                  return;
+                }
+                const label = target.email ?? target.emailMask;
+                if (!window.confirm(`确定清除 ${label} 的本地归档账号吗？这不会注销远程账号，也不会删除当前 auth.json。`)) {
+                  return;
+                }
+                void runAction("正在清除账号…", () => removeAccount(id), "账号已清除。");
               }}
               onRefreshUsage={() => {
                 void runAction(

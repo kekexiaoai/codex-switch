@@ -122,6 +122,20 @@ pub fn accounts_switch(
 }
 
 #[tauri::command]
+pub fn accounts_remove(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    account_id: String,
+) -> CmdResult<crate::models::AccountListItem> {
+    let account = state
+        .accounts
+        .remove(&account_id)
+        .map_err(|e| e.to_string())?;
+    let _ = app.emit(EVENT_ACCOUNTS_CHANGED, true);
+    Ok(account)
+}
+
+#[tauri::command]
 pub fn accounts_login_start(
     app: AppHandle,
     state: State<'_, AppState>,

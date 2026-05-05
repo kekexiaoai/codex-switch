@@ -204,6 +204,10 @@ export function switchAccount(accountId: string) {
   return invoke<AccountListItem>("accounts_switch", { accountId });
 }
 
+export function removeAccount(accountId: string) {
+  return invoke<AccountListItem>("accounts_remove", { accountId });
+}
+
 export function startBrowserLogin() {
   return invoke<LoginJobState>("accounts_login_start");
 }

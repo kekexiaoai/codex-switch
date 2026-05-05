@@ -47,6 +47,7 @@ pub fn run() {
             commands::accounts_import_backup,
             commands::accounts_import_backups,
             commands::accounts_switch,
+            commands::accounts_remove,
             commands::accounts_login_start,
             commands::usage_refresh,
             commands::provider_sync_status,

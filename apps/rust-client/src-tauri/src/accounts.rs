@@ -184,6 +184,31 @@ impl AccountsService {
         })
     }
 
+    pub fn remove(&self, account_id: &str) -> AppResult<AccountListItem> {
+        let target = self
+            .list()?
+            .into_iter()
+            .find(|account| account.record.id == account_id)
+            .ok_or_else(|| AppError::NotFound(format!("account {account_id}")))?;
+        if target.is_active {
+            return Err(AppError::Message(
+                "当前正在使用的账号不能清除，请先切换到其他账号。".to_string(),
+            ));
+        }
+
+        self.store.remove_archive(&target.record.archive_filename)?;
+
+        let mut metadata = self.store.load_metadata_cache()?;
+        metadata.entries.remove(&target.record.archive_filename);
+        self.store.save_metadata_cache(&metadata)?;
+
+        let mut usage_cache = self.store.load_usage_cache()?;
+        usage_cache.entries.remove(&target.record.id);
+        self.store.save_usage_cache(&usage_cache)?;
+
+        Ok(target)
+    }
+
     pub fn current_claims(&self) -> AppResult<JwtClaims> {
         let data = self.store.read_current_auth_data()?;
         self.claims_from_auth(&data)
@@ -395,6 +420,79 @@ mod tests {
 
         let active = service.current_claims().unwrap();
         assert_eq!(active.email, "alice@example.com");
+    }
+
+    #[test]
+    fn removes_inactive_archived_account_and_related_cache() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        let accounts_dir = base.join("accounts");
+        fs::create_dir_all(&base).unwrap();
+        fs::write(
+            base.join("auth.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwic3ViIjoiYWNjdC0xIiwicGxhbiI6InRlYW0ifQ.sig"}}"#,
+        )
+        .unwrap();
+
+        let service = AccountsService::new(CodexPaths::new(base.clone()));
+        service.import_current().unwrap();
+        fs::write(
+            base.join("auth.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImJvYkBleGFtcGxlLmNvbSIsInN1YiI6ImFjY3QtMiIsInBsYW4iOiJwbHVzIn0.sig"}}"#,
+        )
+        .unwrap();
+        service.import_current().unwrap();
+
+        let archived = service
+            .list()
+            .unwrap()
+            .into_iter()
+            .find(|account| account.record.email.as_deref() == Some("alice@example.com"))
+            .unwrap();
+        let account_id = archived.record.id.clone();
+        let archive_filename = archived.record.archive_filename.clone();
+        fs::write(
+            accounts_dir.join("usage-cache.json"),
+            r#"{"entries":{"acct-1":{"accountId":"acct-1","updatedAt":"2026-05-02T10:00:00Z","sourceLabel":"测试","fiveHour":{"percentUsed":12,"resetsAt":"2026-05-02T15:00:00Z"},"weekly":{"percentUsed":34,"resetsAt":"2026-05-09T10:00:00Z"}}}}"#,
+        )
+        .unwrap();
+
+        let removed = service.remove(&account_id).unwrap();
+
+        assert_eq!(removed.record.email.as_deref(), Some("alice@example.com"));
+        assert!(!accounts_dir.join(&archive_filename).exists());
+        let metadata = service.store.load_metadata_cache().unwrap();
+        assert!(!metadata.entries.contains_key(&archive_filename));
+        let usage_cache = service.store.load_usage_cache().unwrap();
+        assert!(!usage_cache.entries.contains_key(&account_id));
+        let remaining_emails = service
+            .list()
+            .unwrap()
+            .into_iter()
+            .filter_map(|account| account.record.email)
+            .collect::<Vec<_>>();
+        assert_eq!(remaining_emails, vec!["bob@example.com"]);
+    }
+
+    #[test]
+    fn refuses_to_remove_current_active_account() {
+        let temp = tempdir().unwrap();
+        let base = temp.path().join(".codex");
+        fs::create_dir_all(&base).unwrap();
+        fs::write(
+            base.join("auth.json"),
+            r#"{"tokens":{"id_token":"header.eyJlbWFpbCI6ImFsaWNlQGV4YW1wbGUuY29tIiwic3ViIjoiYWNjdC0xIiwicGxhbiI6InRlYW0ifQ.sig"}}"#,
+        )
+        .unwrap();
+
+        let service = AccountsService::new(CodexPaths::new(base));
+        service.import_current().unwrap();
+        let active = service.list().unwrap().remove(0);
+
+        let error = service.remove(&active.record.id).unwrap_err();
+
+        assert!(error.to_string().contains("当前正在使用的账号不能清除"));
+        assert_eq!(service.list().unwrap().len(), 1);
     }
 
     #[test]

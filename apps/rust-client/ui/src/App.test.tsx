@@ -56,6 +56,7 @@ vi.mock("@/lib/tauri", () => ({
   pickAuthBackupFiles: vi.fn(),
   getAutostartEnabled: vi.fn().mockResolvedValue(false),
   switchAccount: vi.fn(),
+  removeAccount: vi.fn(),
   refreshUsage: vi.fn(),
   runProviderSync: vi.fn(),
   switchProvider: vi.fn(),
@@ -84,6 +85,7 @@ import {
   pickAuthBackupDirectory,
   pickAuthBackupFiles,
   refreshUsage,
+  removeAccount,
   saveSettings,
   switchAccount,
 } from "@/lib/tauri";
@@ -137,6 +139,8 @@ describe("App", () => {
     vi.mocked(refreshUsage).mockRejectedValue(new Error("无法刷新 Usage。远程 API：HTTP 401，登录态已过期"));
     vi.mocked(switchAccount).mockReset();
     vi.mocked(switchAccount).mockResolvedValue(account({ isActive: true }));
+    vi.mocked(removeAccount).mockReset();
+    vi.mocked(removeAccount).mockResolvedValue(account({}));
   });
 
   it("renders a devtools-style desktop shell instead of a floating dock", async () => {
@@ -303,12 +307,11 @@ describe("App", () => {
     render(<App />);
 
     await screen.findByText("账号工作台");
-    const targetRow = screen.getAllByText("two@example.com")[0].closest("button");
-    expect(targetRow).not.toBeNull();
+    const switchButton = screen.getByRole("button", { name: "切换到 two@example.com" });
 
-    fireEvent.click(targetRow!);
+    fireEvent.click(switchButton);
 
-    expect(targetRow).toHaveClass("bg-white/46");
+    expect(screen.getByRole("button", { name: "当前账号 two@example.com" })).toBeDisabled();
     expect(screen.getByText("正在切换账号…")).toBeInTheDocument();
 
     await act(async () => {
@@ -335,13 +338,46 @@ describe("App", () => {
     expect(screen.getByText("当前 Codex auth.json 使用 API Key 配置，切换账号前会自动备份，之后可从列表切回。")).toBeInTheDocument();
 
     await act(async () => {
-      fireEvent.click(screen.getAllByText("one@example.com")[0].closest("button")!);
+      fireEvent.click(screen.getByRole("button", { name: "切换到 one@example.com" }));
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
     });
 
     expect(switchAccount).toHaveBeenCalledWith("account-1");
+  });
+
+  it("clears an inactive archived account after confirmation", async () => {
+    const accounts = [
+      account({ id: "account-1", emailMask: "one@example.com", isActive: true }),
+      account({
+        id: "account-2",
+        emailMask: "two@example.com",
+        email: "two@example.com",
+        archiveFilename: "two.json",
+        manualOrder: 1,
+      }),
+    ];
+    vi.mocked(getAppSnapshot).mockResolvedValueOnce({ ...snapshot, accounts });
+    vi.mocked(removeAccount).mockResolvedValueOnce(accounts[1]);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    fireEvent.click(screen.getByRole("button", { name: "清除 two@example.com" }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(confirm).toHaveBeenCalledWith(
+      "确定清除 two@example.com 的本地归档账号吗？这不会注销远程账号，也不会删除当前 auth.json。",
+    );
+    expect(removeAccount).toHaveBeenCalledWith("account-2");
+    expect(screen.getByText("账号已清除。")).toBeInTheDocument();
   });
 
   it("shows Codex historical sessions in a dedicated workspace", async () => {
