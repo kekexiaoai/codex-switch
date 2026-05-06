@@ -472,15 +472,15 @@ function AccountRemovalDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-40 grid place-items-center bg-slate-950/18 px-4 backdrop-blur-sm">
+    <div className="absolute inset-0 z-40 grid place-items-center bg-slate-950/34 px-4">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="account-removal-title"
-        className="w-full max-w-[420px] rounded-2xl border border-rose-200/80 bg-white/96 p-5 shadow-[0_24px_60px_rgba(67,88,116,0.24)]"
+        className="w-full max-w-[420px] rounded-2xl border border-rose-300 bg-white p-5 shadow-[0_28px_70px_rgba(15,23,42,0.30)]"
       >
         <div className="flex items-start gap-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-rose-300 bg-rose-50 text-rose-700">
             <AlertTriangle className="h-4 w-4" />
           </div>
           <div className="min-w-0">
@@ -490,18 +490,23 @@ function AccountRemovalDialog({
             <div className="mt-1 truncate text-[13px] font-bold text-slate-700">{label}</div>
           </div>
         </div>
-        <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 text-[12px] leading-5 text-slate-600">
+        <div className="mt-4 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-[12px] leading-5 text-slate-700">
           这只会删除本地归档记录，不会注销远程账号，也不会删除当前 auth.json。
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-500">
-          <div className="truncate rounded-xl bg-white/80 px-3 py-2">来源：{account.source}</div>
-          <div className="truncate rounded-xl bg-white/80 px-3 py-2">归档：{account.archiveFilename}</div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-600">
+          <div className="truncate rounded-xl border border-slate-200 bg-slate-100 px-3 py-2">来源：{account.source}</div>
+          <div className="truncate rounded-xl border border-slate-200 bg-slate-100 px-3 py-2">归档：{account.archiveFilename}</div>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onCancel}>
+          <Button type="button" variant="secondary" className="border-slate-300 bg-white text-slate-700" onClick={onCancel}>
             取消
           </Button>
-          <Button type="button" variant="danger" onClick={onConfirm}>
+          <Button
+            type="button"
+            variant="danger"
+            className="border-red-700 bg-red-600 px-4 font-black text-white shadow-[0_12px_26px_rgba(220,38,38,0.36)] [background-image:none] hover:bg-red-700 hover:brightness-100"
+            onClick={onConfirm}
+          >
             确认清除
           </Button>
         </div>
