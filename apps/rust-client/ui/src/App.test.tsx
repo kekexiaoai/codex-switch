@@ -287,6 +287,26 @@ describe("App", () => {
     expect(await screen.findByText("浏览器登录已取消")).toBeInTheDocument();
   });
 
+  it("keeps browser login cancel visible beside the launch action", async () => {
+    vi.mocked(startBrowserLogin).mockResolvedValueOnce({
+      active: true,
+      message: "浏览器已打开，请在浏览器完成认证",
+      authUrl: "https://auth.openai.com/oauth/authorize?state=test",
+    });
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    const loginButton = screen.getByRole("button", { name: "浏览器登录" });
+    const actionBar = loginButton.parentElement;
+    fireEvent.click(loginButton);
+
+    await screen.findByTestId("browser-login-task");
+
+    expect(actionBar).not.toBeNull();
+    expect(within(actionBar as HTMLElement).getByRole("button", { name: "取消登录" })).toBeInTheDocument();
+  });
+
   it("shows a browser login launch error and enables retry", async () => {
     vi.mocked(startBrowserLogin).mockRejectedValueOnce(new Error("无法打开浏览器: No application found"));
 

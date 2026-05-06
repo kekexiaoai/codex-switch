@@ -13,6 +13,7 @@ import {
   Trash2,
   UserRoundPlus,
   UsersRound,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,6 +128,12 @@ export function AccountsView({
             <UserRoundPlus className="h-3.5 w-3.5" />
             浏览器登录
           </Button>
+          {loginState?.active ? (
+            <Button variant="danger" size="sm" onClick={onCancelLogin}>
+              <X className="h-3.5 w-3.5" />
+              取消登录
+            </Button>
+          ) : null}
         </div>
       </Card>
 
@@ -171,6 +178,7 @@ export function AccountsView({
               <div className="text-[11px] font-semibold text-slate-400">auth.json 当前生效身份</div>
             </div>
           </div>
+          <BrowserLoginTaskCard state={loginState} busy={loginBusy} onCancel={onCancelLogin} />
           <AccountSummaryCard
             account={active}
             usage={usageForAccount(active)}
@@ -217,7 +225,6 @@ export function AccountsView({
               <SummaryRow label="登录任务" value={loginState?.active ? "运行中" : "空闲"} />
             </div>
           </div>
-          <BrowserLoginTaskCard state={loginState} busy={loginBusy} onCancel={onCancelLogin} />
         </Card>
       </div>
     </div>
