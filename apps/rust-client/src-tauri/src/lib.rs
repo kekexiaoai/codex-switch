@@ -14,10 +14,12 @@ mod store;
 mod usage;
 
 use std::time::Duration;
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter, Manager, TitleBarStyle, WebviewUrl, WebviewWindowBuilder,
+    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 #[cfg(desktop)]
 use tauri_plugin_autostart::Builder as AutostartBuilder;
@@ -188,15 +190,19 @@ fn main_window(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
         return Ok(window);
     }
 
-    WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+    let builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("Codex Switch")
         .inner_size(1240.0, 840.0)
         .min_inner_size(1080.0, 720.0)
         .center()
-        .resizable(true)
+        .resizable(true);
+
+    #[cfg(target_os = "macos")]
+    let builder = builder
         .title_bar_style(TitleBarStyle::Transparent)
-        .hidden_title(true)
-        .build()
+        .hidden_title(true);
+
+    builder.build()
 }
 
 fn show_main_view(app: &AppHandle, view: &str) {
