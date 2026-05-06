@@ -10,7 +10,7 @@ use reqwest::Url;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::io::{ErrorKind, Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{Shutdown, TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
@@ -20,8 +20,9 @@ use tauri::Emitter;
 pub const LOGIN_EVENT: &str = "jobs://state-changed";
 
 const OAUTH_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
-const OAUTH_ORIGINATOR: &str = "codex_chatgpt_desktop";
-const OAUTH_SCOPES: &str = "openid profile email offline_access";
+const OAUTH_ORIGINATOR: &str = "codex_cli_rs";
+const OAUTH_SCOPES: &str =
+    "openid profile email offline_access api.connectors.read api.connectors.invoke";
 const DEFAULT_CALLBACK_PORT: u16 = 1455;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,7 +83,6 @@ impl DesktopLoginBroker {
                 ("originator", OAUTH_ORIGINATOR),
                 ("id_token_add_organizations", "true"),
                 ("codex_cli_simplified_flow", "true"),
-                ("allowed_workspace_id", ""),
             ],
         )
         .expect("authorization url should be valid")
@@ -450,7 +450,10 @@ fn write_http_response(stream: &mut TcpStream, status: u16, body: &str) -> std::
         "HTTP/1.1 {status} {status_text}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
         body.len()
     );
-    stream.write_all(response.as_bytes())
+    stream.write_all(response.as_bytes())?;
+    stream.flush()?;
+    let _ = stream.shutdown(Shutdown::Write);
+    Ok(())
 }
 
 fn random_url_safe_string(length: usize) -> String {
@@ -483,7 +486,7 @@ mod tests {
     use serde_json::Value;
 
     #[test]
-    fn builds_authorization_url_with_expected_desktop_query() {
+    fn builds_authorization_url_with_codex_cli_compatible_query() {
         let broker = DesktopLoginBroker::new();
         let redirect_uri = "http://localhost:1455/auth/callback";
         let url =
@@ -491,7 +494,7 @@ mod tests {
 
         assert_eq!(
             url,
-            "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access&code_challenge=a7vAnVI-b6qjdd18p8m2utvFMMIs0_T3n9RWc495DxQ&code_challenge_method=S256&state=expected-state&originator=codex_chatgpt_desktop&id_token_add_organizations=true&codex_cli_simplified_flow=true&allowed_workspace_id="
+            "https://auth.openai.com/oauth/authorize?response_type=code&client_id=app_EMoamEEZ73f0CkXaXp7hrann&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email+offline_access+api.connectors.read+api.connectors.invoke&code_challenge=a7vAnVI-b6qjdd18p8m2utvFMMIs0_T3n9RWc495DxQ&code_challenge_method=S256&state=expected-state&originator=codex_cli_rs&id_token_add_organizations=true&codex_cli_simplified_flow=true"
         );
     }
 
