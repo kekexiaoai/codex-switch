@@ -1,3 +1,4 @@
+import { AlertTriangle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   events,
@@ -24,12 +25,14 @@ import {
   startBrowserLogin,
   switchAccount,
   switchProvider,
+  type AccountListItem,
   type AppSnapshot,
   type BackupImportResult,
   type CodexSessionDetail,
   type CodexSessionListItem,
   type LoginJobState,
 } from "@/lib/tauri";
+import { Button } from "@/components/ui/button";
 import { Sidebar, type AppView } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
 import { AccountsView } from "@/features/accounts/accounts-view";
@@ -69,6 +72,12 @@ type UsageRefreshStatus = {
   message: string;
 };
 
+type PendingAccountRemoval = {
+  id: string;
+  label: string;
+  account: AccountListItem;
+};
+
 function backupImportSuccessMessage(result: BackupImportResult) {
   const skipped = result.skippedCount > 0 ? `，跳过 ${result.skippedCount} 个不可导入项` : "";
   return `已导入 ${result.accounts.length} 个备份账号${skipped}。`;
@@ -86,6 +95,7 @@ export function App() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "info" | "success" | "error"; message: string } | null>(null);
   const [usageRefreshStatus, setUsageRefreshStatus] = useState<UsageRefreshStatus | null>(null);
+  const [pendingAccountRemoval, setPendingAccountRemoval] = useState<PendingAccountRemoval | null>(null);
   const refreshInFlight = useRef<Promise<boolean> | null>(null);
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const isTray = search.get("panel") === "tray";
@@ -334,10 +344,7 @@ export function App() {
                   return;
                 }
                 const label = target.email ?? target.emailMask;
-                if (!window.confirm(`确定清除 ${label} 的本地归档账号吗？这不会注销远程账号，也不会删除当前 auth.json。`)) {
-                  return;
-                }
-                void runAction("正在清除账号…", () => removeAccount(id), "账号已清除。");
+                setPendingAccountRemoval({ id, label, account: target });
               }}
               onRefreshUsage={() => {
                 void runAction(
@@ -436,7 +443,69 @@ export function App() {
           ) : null}
         </div>
         {feedback ? <GlobalFeedback kind={feedback.kind} message={feedback.message} /> : null}
+        {pendingAccountRemoval ? (
+          <AccountRemovalDialog
+            account={pendingAccountRemoval.account}
+            label={pendingAccountRemoval.label}
+            onCancel={() => setPendingAccountRemoval(null)}
+            onConfirm={() => {
+              const { id } = pendingAccountRemoval;
+              setPendingAccountRemoval(null);
+              void runAction("正在清除账号…", () => removeAccount(id), "账号已清除。");
+            }}
+          />
+        ) : null}
       </main>
+    </div>
+  );
+}
+
+function AccountRemovalDialog({
+  account,
+  label,
+  onCancel,
+  onConfirm,
+}: {
+  account: AccountListItem;
+  label: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-40 grid place-items-center bg-slate-950/18 px-4 backdrop-blur-sm">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="account-removal-title"
+        className="w-full max-w-[420px] rounded-2xl border border-rose-200/80 bg-white/96 p-5 shadow-[0_24px_60px_rgba(67,88,116,0.24)]"
+      >
+        <div className="flex items-start gap-3">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-rose-200 bg-rose-50 text-rose-600">
+            <AlertTriangle className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <h2 id="account-removal-title" className="m-0 text-[16px] font-black tracking-[-0.03em] text-slate-950">
+              清除归档账号
+            </h2>
+            <div className="mt-1 truncate text-[13px] font-bold text-slate-700">{label}</div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 text-[12px] leading-5 text-slate-600">
+          这只会删除本地归档记录，不会注销远程账号，也不会删除当前 auth.json。
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-500">
+          <div className="truncate rounded-xl bg-white/80 px-3 py-2">来源：{account.source}</div>
+          <div className="truncate rounded-xl bg-white/80 px-3 py-2">归档：{account.archiveFilename}</div>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onCancel}>
+            取消
+          </Button>
+          <Button type="button" variant="danger" onClick={onConfirm}>
+            确认清除
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }

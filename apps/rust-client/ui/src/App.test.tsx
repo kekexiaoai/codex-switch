@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccountListItem, AppSnapshot, CodexSessionDetail, CodexSessionListItem } from "@/lib/tauri";
 
@@ -360,12 +360,25 @@ describe("App", () => {
     ];
     vi.mocked(getAppSnapshot).mockResolvedValueOnce({ ...snapshot, accounts });
     vi.mocked(removeAccount).mockResolvedValueOnce(accounts[1]);
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    const confirm = vi.spyOn(window, "confirm");
 
     render(<App />);
 
     await screen.findByText("账号工作台");
     fireEvent.click(screen.getByRole("button", { name: "清除 two@example.com" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "清除归档账号" });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByText("two@example.com")).toBeInTheDocument();
+    expect(within(dialog).getByText("这只会删除本地归档记录，不会注销远程账号，也不会删除当前 auth.json。")).toBeInTheDocument();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(removeAccount).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+    expect(screen.queryByRole("dialog", { name: "清除归档账号" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "清除 two@example.com" }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认清除" }));
 
     await act(async () => {
       await Promise.resolve();
@@ -373,11 +386,9 @@ describe("App", () => {
       await Promise.resolve();
     });
 
-    expect(confirm).toHaveBeenCalledWith(
-      "确定清除 two@example.com 的本地归档账号吗？这不会注销远程账号，也不会删除当前 auth.json。",
-    );
     expect(removeAccount).toHaveBeenCalledWith("account-2");
     expect(screen.getByText("账号已清除。")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "清除归档账号" })).not.toBeInTheDocument();
   });
 
   it("shows Codex historical sessions in a dedicated workspace", async () => {
