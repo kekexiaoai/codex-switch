@@ -9,7 +9,7 @@ use chrono::{DateTime, SecondsFormat, Utc};
 use reqwest::Url;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
-use std::io::{Read, Write};
+use std::io::{ErrorKind, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
@@ -218,7 +218,7 @@ struct LocalServerInner {
 
 impl LocalOAuthCallbackServer {
     pub fn new(port: Option<u16>) -> AppResult<Self> {
-        let listener = TcpListener::bind(("127.0.0.1", port.unwrap_or(DEFAULT_CALLBACK_PORT)))?;
+        let listener = bind_callback_listener(port)?;
         listener.set_nonblocking(true)?;
         let actual_port = listener.local_addr()?.port();
         let redirect_uri = format!("http://localhost:{actual_port}/auth/callback");
@@ -268,6 +268,19 @@ impl LocalOAuthCallbackServer {
         if let Some(handle) = self.inner.handle.lock().unwrap().take() {
             let _ = handle.join();
         }
+    }
+}
+
+fn bind_callback_listener(port: Option<u16>) -> std::io::Result<TcpListener> {
+    match port {
+        Some(port) => TcpListener::bind(("127.0.0.1", port)),
+        None => match TcpListener::bind(("127.0.0.1", DEFAULT_CALLBACK_PORT)) {
+            Ok(listener) => Ok(listener),
+            Err(error) if error.kind() == ErrorKind::AddrInUse => {
+                TcpListener::bind(("127.0.0.1", 0))
+            }
+            Err(error) => Err(error),
+        },
     }
 }
 
@@ -530,10 +543,29 @@ mod tests {
     }
 
     #[test]
-    fn callback_server_defaults_to_registered_desktop_redirect_uri() {
+    fn callback_server_prefers_registered_desktop_redirect_uri_when_available() {
+        let probe = TcpListener::bind(("127.0.0.1", DEFAULT_CALLBACK_PORT));
+        if probe.is_err() {
+            return;
+        }
+        drop(probe);
+
         let server = LocalOAuthCallbackServer::new(None).unwrap();
 
         assert_eq!(server.redirect_uri(), "http://localhost:1455/auth/callback");
+
+        server.stop();
+    }
+
+    #[test]
+    fn callback_server_falls_back_to_random_port_when_default_is_busy() {
+        let occupied = TcpListener::bind(("127.0.0.1", DEFAULT_CALLBACK_PORT)).ok();
+        let server = LocalOAuthCallbackServer::new(None).unwrap();
+
+        assert!(server.redirect_uri().starts_with("http://localhost:"));
+        if occupied.is_some() {
+            assert_ne!(server.redirect_uri(), "http://localhost:1455/auth/callback");
+        }
 
         server.stop();
     }
