@@ -145,6 +145,15 @@ pub fn accounts_login_start(
 }
 
 #[tauri::command]
+pub fn accounts_login_cancel(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> CmdResult<LoginJobState> {
+    let job = state.login.cancel(app).map_err(|e| e.to_string())?;
+    Ok(job)
+}
+
+#[tauri::command]
 pub async fn usage_refresh(app: AppHandle, state: State<'_, AppState>) -> CmdResult<UsageSnapshot> {
     let settings = state.settings.load().map_err(|e| e.to_string())?;
     let snapshot = state

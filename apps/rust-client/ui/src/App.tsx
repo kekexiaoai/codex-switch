@@ -6,6 +6,7 @@ import {
   getAppSnapshot,
   getAutostartEnabled,
   accountsImportBackups,
+  cancelBrowserLogin,
   importCurrentAccount,
   listSessionProjects,
   listSessions,
@@ -376,10 +377,33 @@ export function App() {
                   return;
                 }
                 setLoginLaunchPending(true);
-                void runAction("正在打开浏览器登录…", () => startBrowserLogin(), "浏览器登录已打开。")
+                setFeedback(null);
+                setLoginState({
+                  active: true,
+                  message: "正在打开浏览器登录…",
+                  authUrl: null,
+                });
+                void startBrowserLogin()
                   .then(setLoginState)
-                  .catch(() => {})
+                  .catch((error) => {
+                    const message = error instanceof Error ? error.message : String(error);
+                    setLoginState({
+                      active: false,
+                      message,
+                      authUrl: null,
+                    });
+                  })
                   .finally(() => setLoginLaunchPending(false));
+              }}
+              onCancelLogin={() => {
+                void cancelBrowserLogin()
+                  .then(setLoginState)
+                  .catch((error) => {
+                    setFeedback({
+                      kind: "error",
+                      message: error instanceof Error ? error.message : String(error),
+                    });
+                  });
               }}
             />
           ) : null}

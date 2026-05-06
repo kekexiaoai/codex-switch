@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import {
   ArrowRightLeft,
   Bot,
   Clock3,
+  Copy,
   Eye,
   EyeOff,
   FolderOpen,
@@ -36,6 +37,7 @@ export function AccountsView({
   onRemove,
   onRefreshUsage,
   onLogin,
+  onCancelLogin,
 }: {
   accounts: AccountListItem[];
   usage?: UsageSnapshot | null;
@@ -53,6 +55,7 @@ export function AccountsView({
   onRemove: (id: string) => void;
   onRefreshUsage: () => void;
   onLogin: () => void;
+  onCancelLogin: () => void;
 }) {
   const active = useMemo(() => accounts.find((account) => account.isActive), [accounts]);
   const usageSummary = usage ? `${usage.fiveHour.percentUsed}% / ${usage.weekly.percentUsed}%` : "--";
@@ -214,11 +217,76 @@ export function AccountsView({
               <SummaryRow label="登录任务" value={loginState?.active ? "运行中" : "空闲"} />
             </div>
           </div>
-          <div className="min-h-0 rounded-2xl bg-white/58 p-3 text-[12px] leading-5 text-slate-500">
-            {loginState?.message ?? "尚未启动登录任务。"}
-          </div>
+          <BrowserLoginTaskCard state={loginState} busy={loginBusy} onCancel={onCancelLogin} />
         </Card>
       </div>
+    </div>
+  );
+}
+
+function BrowserLoginTaskCard({
+  state,
+  busy,
+  onCancel,
+}: {
+  state?: LoginJobState | null;
+  busy?: boolean;
+  onCancel: () => void;
+}) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const active = Boolean(state?.active || busy);
+  const authUrl = state?.authUrl ?? null;
+  const message = state?.message ?? "尚未启动登录任务。";
+
+  const copyAuthUrl = async () => {
+    if (!authUrl) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(authUrl);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1800);
+    } catch {
+      setCopyState("failed");
+    }
+  };
+
+  return (
+    <div
+      data-testid="browser-login-task"
+      className={[
+        "rounded-2xl border p-3 text-[12px] leading-5",
+        active ? "border-blue-200 bg-blue-50/70 text-slate-700" : "border-slate-200/80 bg-white/58 text-slate-500",
+      ].join(" ")}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-black text-slate-900">{active ? "等待浏览器授权" : "浏览器登录"}</div>
+        <Badge className={active ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-300 bg-slate-50 text-slate-600"}>
+          {active ? "进行中" : "空闲"}
+        </Badge>
+      </div>
+      <div className="mt-2 font-medium text-slate-600">{message}</div>
+      {authUrl ? (
+        <div className="mt-2 truncate rounded-xl border border-blue-100 bg-white/78 px-3 py-2 font-mono text-[11px] text-slate-500">
+          {authUrl}
+        </div>
+      ) : null}
+      <div className="mt-3 flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="secondary" size="sm" onClick={copyAuthUrl} disabled={!authUrl}>
+          <Copy className="h-3.5 w-3.5" />
+          复制链接
+        </Button>
+        {active ? (
+          <Button type="button" variant="danger" size="sm" onClick={onCancel}>
+            取消登录
+          </Button>
+        ) : null}
+      </div>
+      {copyState !== "idle" ? (
+        <div className={copyState === "copied" ? "mt-2 text-right font-bold text-emerald-600" : "mt-2 text-right font-bold text-rose-600"}>
+          {copyState === "copied" ? "链接已复制" : "复制失败"}
+        </div>
+      ) : null}
     </div>
   );
 }

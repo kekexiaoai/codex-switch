@@ -98,6 +98,7 @@ export interface SyncResult {
 export interface LoginJobState {
   active: boolean;
   message: string;
+  authUrl?: string | null;
 }
 
 export interface CodexSessionListItem {
@@ -210,6 +211,10 @@ export function removeAccount(accountId: string) {
 
 export function startBrowserLogin() {
   return invoke<LoginJobState>("accounts_login_start");
+}
+
+export function cancelBrowserLogin() {
+  return invoke<LoginJobState>("accounts_login_cancel");
 }
 
 export function refreshUsage() {

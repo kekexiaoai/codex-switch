@@ -126,7 +126,9 @@ mod tests {
         );
         assert_eq!(
             paths.auth_file(),
-            PathBuf::from(r"C:\Users\alice").join(".codex").join("auth.json")
+            PathBuf::from(r"C:\Users\alice")
+                .join(".codex")
+                .join("auth.json")
         );
     }
 }

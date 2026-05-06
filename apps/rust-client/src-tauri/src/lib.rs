@@ -51,6 +51,7 @@ pub fn run() {
             commands::accounts_switch,
             commands::accounts_remove,
             commands::accounts_login_start,
+            commands::accounts_login_cancel,
             commands::usage_refresh,
             commands::provider_sync_status,
             commands::provider_sync_run,

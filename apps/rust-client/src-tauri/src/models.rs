@@ -251,6 +251,7 @@ pub struct AppSnapshot {
 pub struct LoginJobState {
     pub active: bool,
     pub message: String,
+    pub auth_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

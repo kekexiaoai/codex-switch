@@ -24,6 +24,8 @@ const OAUTH_ORIGINATOR: &str = "codex_cli_rs";
 const OAUTH_SCOPES: &str =
     "openid profile email offline_access api.connectors.read api.connectors.invoke";
 const DEFAULT_CALLBACK_PORT: u16 = 1455;
+const LOGIN_TIMEOUT_SECONDS: u64 = 900;
+const CALLBACK_STOPPED_MESSAGE: &str = "回调监听已停止";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OAuthCallbackResult {
@@ -49,6 +51,7 @@ struct DesktopLoginAttempt {
     server: LocalOAuthCallbackServer,
     state: String,
     code_verifier: String,
+    auth_url: String,
 }
 
 #[derive(Debug, Clone)]
@@ -122,7 +125,7 @@ impl DesktopLoginBroker {
         let state = random_url_safe_string(32);
         let code_verifier = random_url_safe_string(64);
         let url = self.build_authorization_url(server.redirect_uri(), &state, &code_verifier);
-        if let Err(error) = open::that(url) {
+        if let Err(error) = open::that(&url) {
             server.stop();
             return Err(AppError::Login(format!("无法打开浏览器: {error}")));
         }
@@ -131,14 +134,17 @@ impl DesktopLoginBroker {
             server,
             state,
             code_verifier,
+            auth_url: url,
         })
     }
 
     async fn complete_login(&self, attempt: DesktopLoginAttempt) -> AppResult<Vec<u8>> {
-        let result =
-            tokio::time::timeout(Duration::from_secs(180), attempt.server.wait_for_callback())
-                .await
-                .map_err(|_| AppError::Login("浏览器登录超时，请稍后重试".into()))??;
+        let result = tokio::time::timeout(
+            Duration::from_secs(LOGIN_TIMEOUT_SECONDS),
+            attempt.server.wait_for_callback(),
+        )
+        .await
+        .map_err(|_| AppError::Login("浏览器登录超时，请稍后重试".into()))??;
         attempt.server.stop();
 
         match result {
@@ -289,6 +295,7 @@ pub struct LoginService {
     pub paths: CodexPaths,
     pub state: Arc<Mutex<LoginJobState>>,
     broker: DesktopLoginBroker,
+    active_server: Arc<Mutex<Option<LocalOAuthCallbackServer>>>,
 }
 
 impl LoginService {
@@ -298,8 +305,10 @@ impl LoginService {
             state: Arc::new(Mutex::new(LoginJobState {
                 active: false,
                 message: "idle".into(),
+                auth_url: None,
             })),
             broker: DesktopLoginBroker::new(),
+            active_server: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -322,16 +331,27 @@ impl LoginService {
             let mut state = self.state.lock().unwrap();
             state.active = true;
             state.message = "浏览器已打开，请在浏览器完成认证".into();
+            state.auth_url = Some(attempt.auth_url.clone());
+        }
+        {
+            let mut active_server = self.active_server.lock().unwrap();
+            *active_server = Some(attempt.server.clone());
         }
         let _ = app.emit(LOGIN_EVENT, self.state());
 
         let state = self.state.clone();
+        let active_server = self.active_server.clone();
         let paths = self.paths.clone();
         let broker = self.broker.clone();
         tauri::async_runtime::spawn(async move {
             let result = broker.complete_login(attempt).await;
+            {
+                let mut active_server = active_server.lock().unwrap();
+                active_server.take();
+            }
             let mut guard = state.lock().unwrap();
             guard.active = false;
+            guard.auth_url = None;
             guard.message = match result {
                 Ok(data) => {
                     let store = AuthStore::new(paths.clone());
@@ -346,12 +366,36 @@ impl LoginService {
                         Err(error) => format!("登录成功，但账号导入失败: {error}"),
                     }
                 }
+                Err(error) if error.to_string().contains(CALLBACK_STOPPED_MESSAGE) => {
+                    "浏览器登录已取消".into()
+                }
                 Err(error) => error.to_string(),
             };
             let _ = app.emit(LOGIN_EVENT, guard.clone());
         });
 
         Ok(self.state())
+    }
+
+    pub fn cancel(&self, app: tauri::AppHandle) -> AppResult<LoginJobState> {
+        let active_server = {
+            let mut active_server = self.active_server.lock().unwrap();
+            active_server.take()
+        };
+
+        if let Some(server) = active_server {
+            server.stop();
+        }
+
+        let snapshot = {
+            let mut state = self.state.lock().unwrap();
+            state.active = false;
+            state.message = "浏览器登录已取消".into();
+            state.auth_url = None;
+            state.clone()
+        };
+        let _ = app.emit(LOGIN_EVENT, snapshot.clone());
+        Ok(snapshot)
     }
 }
 
@@ -543,6 +587,20 @@ mod tests {
                 state: "test-state".into(),
             }
         );
+    }
+
+    #[tokio::test]
+    async fn callback_server_stop_unblocks_waiter() {
+        let server = LocalOAuthCallbackServer::new(Some(0)).unwrap();
+        let wait = tokio::spawn({
+            let server = server.clone();
+            async move { server.wait_for_callback().await }
+        });
+
+        server.stop();
+        let error = wait.await.unwrap().unwrap_err();
+
+        assert!(error.to_string().contains(CALLBACK_STOPPED_MESSAGE));
     }
 
     #[test]

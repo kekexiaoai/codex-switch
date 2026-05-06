@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AccountListItem, AppSnapshot, CodexSessionDetail, CodexSessionListItem } from "@/lib/tauri";
+import type { AccountListItem, AppSnapshot, CodexSessionDetail, CodexSessionListItem, LoginJobState } from "@/lib/tauri";
 
 const snapshot: AppSnapshot = {
   accounts: [],
@@ -49,6 +49,7 @@ vi.mock("@/lib/tauri", () => ({
   getAppSnapshot: vi.fn(),
   getSessionDetail: vi.fn(),
   accountsImportBackups: vi.fn(),
+  cancelBrowserLogin: vi.fn(),
   importCurrentAccount: vi.fn(),
   listSessionProjects: vi.fn(),
   listSessions: vi.fn(),
@@ -78,6 +79,7 @@ vi.mock("@/lib/tauri", () => ({
 import { App } from "./App";
 import {
   accountsImportBackups,
+  cancelBrowserLogin,
   getAppSnapshot,
   getSessionDetail,
   listSessionProjects,
@@ -142,10 +144,17 @@ describe("App", () => {
     vi.mocked(switchAccount).mockResolvedValue(account({ isActive: true }));
     vi.mocked(removeAccount).mockReset();
     vi.mocked(removeAccount).mockResolvedValue(account({}));
+    vi.mocked(cancelBrowserLogin).mockReset();
+    vi.mocked(cancelBrowserLogin).mockResolvedValue({
+      active: false,
+      message: "浏览器登录已取消",
+      authUrl: null,
+    });
     vi.mocked(startBrowserLogin).mockReset();
     vi.mocked(startBrowserLogin).mockResolvedValue({
       active: true,
       message: "浏览器登录已启动，请在浏览器完成认证",
+      authUrl: "https://auth.openai.com/oauth/authorize?state=test",
     });
   });
 
@@ -231,7 +240,7 @@ describe("App", () => {
   });
 
   it("disables browser login while the launch request is pending", async () => {
-    const pendingLogin = deferred<{ active: boolean; message: string }>();
+    const pendingLogin = deferred<LoginJobState>();
     vi.mocked(startBrowserLogin).mockReturnValueOnce(pendingLogin.promise);
 
     render(<App />);
@@ -248,9 +257,34 @@ describe("App", () => {
       pendingLogin.resolve({
         active: true,
         message: "浏览器登录已启动，请在浏览器完成认证",
+        authUrl: "https://auth.openai.com/oauth/authorize?state=test",
       });
       await pendingLogin.promise;
     });
+  });
+
+  it("shows browser login as an in-page task with copy link and cancel actions", async () => {
+    vi.mocked(startBrowserLogin).mockResolvedValueOnce({
+      active: true,
+      message: "浏览器已打开，请在浏览器完成认证",
+      authUrl: "https://auth.openai.com/oauth/authorize?state=test",
+    });
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    fireEvent.click(screen.getByRole("button", { name: "浏览器登录" }));
+
+    const task = await screen.findByTestId("browser-login-task");
+    expect(within(task).getByText("等待浏览器授权")).toBeInTheDocument();
+    expect(within(task).getByRole("button", { name: "复制链接" })).toBeInTheDocument();
+    expect(within(task).getByRole("button", { name: "取消登录" })).toBeInTheDocument();
+    expect(screen.queryByText("浏览器登录已打开。")).not.toBeInTheDocument();
+
+    fireEvent.click(within(task).getByRole("button", { name: "取消登录" }));
+
+    expect(cancelBrowserLogin).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("浏览器登录已取消")).toBeInTheDocument();
   });
 
   it("shows a browser login launch error and enables retry", async () => {
