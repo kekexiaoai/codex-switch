@@ -96,6 +96,7 @@ export function App() {
   const [feedback, setFeedback] = useState<{ kind: "info" | "success" | "error"; message: string } | null>(null);
   const [usageRefreshStatus, setUsageRefreshStatus] = useState<UsageRefreshStatus | null>(null);
   const [pendingAccountRemoval, setPendingAccountRemoval] = useState<PendingAccountRemoval | null>(null);
+  const [loginLaunchPending, setLoginLaunchPending] = useState(false);
   const refreshInFlight = useRef<Promise<boolean> | null>(null);
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const isTray = search.get("panel") === "tray";
@@ -277,6 +278,7 @@ export function App() {
               accounts={snapshot.accounts}
               usage={snapshot.activeUsage}
               loginState={loginState}
+              loginBusy={loginLaunchPending || Boolean(loginState?.active)}
               currentAuthMode={snapshot.currentAuthMode}
               showFullEmail={snapshot.settings.showFullEmail}
               usageSourceMode={snapshot.settings.usageSourceMode}
@@ -370,8 +372,14 @@ export function App() {
                   });
               }}
               onLogin={() => {
-                void runAction("正在启动浏览器登录…", () => startBrowserLogin(), "浏览器登录已启动。")
-                  .then(setLoginState);
+                if (loginLaunchPending || loginState?.active) {
+                  return;
+                }
+                setLoginLaunchPending(true);
+                void runAction("正在打开浏览器登录…", () => startBrowserLogin(), "浏览器登录已打开。")
+                  .then(setLoginState)
+                  .catch(() => {})
+                  .finally(() => setLoginLaunchPending(false));
               }}
             />
           ) : null}

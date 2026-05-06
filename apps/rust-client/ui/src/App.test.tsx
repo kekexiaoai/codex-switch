@@ -87,6 +87,7 @@ import {
   refreshUsage,
   removeAccount,
   saveSettings,
+  startBrowserLogin,
   switchAccount,
 } from "@/lib/tauri";
 
@@ -141,6 +142,11 @@ describe("App", () => {
     vi.mocked(switchAccount).mockResolvedValue(account({ isActive: true }));
     vi.mocked(removeAccount).mockReset();
     vi.mocked(removeAccount).mockResolvedValue(account({}));
+    vi.mocked(startBrowserLogin).mockReset();
+    vi.mocked(startBrowserLogin).mockResolvedValue({
+      active: true,
+      message: "浏览器登录已启动，请在浏览器完成认证",
+    });
   });
 
   it("renders a devtools-style desktop shell instead of a floating dock", async () => {
@@ -222,6 +228,43 @@ describe("App", () => {
     expect(await screen.findByText("无法刷新 Usage。远程 API：HTTP 401，登录态已过期")).toBeInTheDocument();
     expect(screen.getByText("异常")).toBeInTheDocument();
     expect(screen.queryByTestId("global-feedback")).not.toBeInTheDocument();
+  });
+
+  it("disables browser login while the launch request is pending", async () => {
+    const pendingLogin = deferred<{ active: boolean; message: string }>();
+    vi.mocked(startBrowserLogin).mockReturnValueOnce(pendingLogin.promise);
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    const button = screen.getByRole("button", { name: "浏览器登录" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(button).toBeDisabled();
+    expect(startBrowserLogin).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      pendingLogin.resolve({
+        active: true,
+        message: "浏览器登录已启动，请在浏览器完成认证",
+      });
+      await pendingLogin.promise;
+    });
+  });
+
+  it("shows a browser login launch error and enables retry", async () => {
+    vi.mocked(startBrowserLogin).mockRejectedValueOnce(new Error("无法打开浏览器: No application found"));
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    const button = screen.getByRole("button", { name: "浏览器登录" });
+    fireEvent.click(button);
+
+    expect(button).toBeDisabled();
+    expect(await screen.findByText("无法打开浏览器: No application found")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "浏览器登录" })).not.toBeDisabled();
   });
 
   it("lets the dashboard toggle full email display", async () => {

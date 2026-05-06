@@ -23,6 +23,7 @@ export function AccountsView({
   accounts,
   usage,
   loginState,
+  loginBusy,
   currentAuthMode,
   showFullEmail,
   usageSourceMode,
@@ -39,6 +40,7 @@ export function AccountsView({
   accounts: AccountListItem[];
   usage?: UsageSnapshot | null;
   loginState?: LoginJobState | null;
+  loginBusy?: boolean;
   currentAuthMode: CurrentAuthMode;
   showFullEmail: boolean;
   usageSourceMode: UsageSourceMode;
@@ -118,7 +120,7 @@ export function AccountsView({
             <FolderOpen className="h-3.5 w-3.5" />
             导入文件夹
           </Button>
-          <Button size="sm" onClick={onLogin}>
+          <Button size="sm" onClick={onLogin} disabled={loginBusy}>
             <UserRoundPlus className="h-3.5 w-3.5" />
             浏览器登录
           </Button>

@@ -44,6 +44,12 @@ pub struct OAuthTokenResponse {
     pub account_id: Option<String>,
 }
 
+struct DesktopLoginAttempt {
+    server: LocalOAuthCallbackServer,
+    state: String,
+    code_verifier: String,
+}
+
 #[derive(Debug, Clone)]
 pub struct DesktopLoginBroker {
     client: reqwest::Client,
@@ -111,28 +117,44 @@ impl DesktopLoginBroker {
         Ok(serde_json::to_vec_pretty(&value)?)
     }
 
-    pub async fn perform_login(&self) -> AppResult<Vec<u8>> {
+    fn begin_login(&self) -> AppResult<DesktopLoginAttempt> {
         let server = LocalOAuthCallbackServer::new(None)?;
         let state = random_url_safe_string(32);
         let code_verifier = random_url_safe_string(64);
         let url = self.build_authorization_url(server.redirect_uri(), &state, &code_verifier);
-        open::that(url).map_err(|error| AppError::Login(format!("无法打开浏览器: {error}")))?;
+        if let Err(error) = open::that(url) {
+            server.stop();
+            return Err(AppError::Login(format!("无法打开浏览器: {error}")));
+        }
 
-        let result = tokio::time::timeout(Duration::from_secs(180), server.wait_for_callback())
-            .await
-            .map_err(|_| AppError::Login("浏览器登录超时，请稍后重试".into()))??;
-        server.stop();
+        Ok(DesktopLoginAttempt {
+            server,
+            state,
+            code_verifier,
+        })
+    }
+
+    async fn complete_login(&self, attempt: DesktopLoginAttempt) -> AppResult<Vec<u8>> {
+        let result =
+            tokio::time::timeout(Duration::from_secs(180), attempt.server.wait_for_callback())
+                .await
+                .map_err(|_| AppError::Login("浏览器登录超时，请稍后重试".into()))??;
+        attempt.server.stop();
 
         match result {
             OAuthCallbackResult::Code {
                 code,
                 state: returned_state,
             } => {
-                if returned_state != state {
+                if returned_state != attempt.state {
                     return Err(AppError::Login("登录状态校验失败，请重试".into()));
                 }
                 let token = self
-                    .exchange_code_for_tokens(&code, &code_verifier, server.redirect_uri())
+                    .exchange_code_for_tokens(
+                        &code,
+                        &attempt.code_verifier,
+                        attempt.server.redirect_uri(),
+                    )
                     .await?;
                 self.build_auth_data(token, Utc::now())
             }
@@ -274,16 +296,27 @@ impl LoginService {
 
     pub fn start(&self, app: tauri::AppHandle) -> AppResult<LoginJobState> {
         {
+            let state = self.state.lock().unwrap();
+            if state.active {
+                return Err(AppError::Login(
+                    "浏览器登录正在进行中，请先完成当前登录或等待超时后再试".into(),
+                ));
+            }
+        }
+
+        let attempt = self.broker.begin_login()?;
+        {
             let mut state = self.state.lock().unwrap();
             state.active = true;
-            state.message = "浏览器登录已启动，请在浏览器完成认证".into();
+            state.message = "浏览器已打开，请在浏览器完成认证".into();
         }
+        let _ = app.emit(LOGIN_EVENT, self.state());
 
         let state = self.state.clone();
         let paths = self.paths.clone();
         let broker = self.broker.clone();
         tauri::async_runtime::spawn(async move {
-            let result = broker.perform_login().await;
+            let result = broker.complete_login(attempt).await;
             let mut guard = state.lock().unwrap();
             guard.active = false;
             guard.message = match result {
