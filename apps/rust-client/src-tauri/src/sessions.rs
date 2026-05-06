@@ -77,6 +77,7 @@ impl SessionsService {
                     .filter(|cwd| !cwd.is_empty())
                     .or_else(|| file.map(|meta| meta.cwd.clone()))
                     .unwrap_or_default();
+                let project = normalize_project_path(&project);
                 let file_path = file
                     .map(|meta| meta.file_path.clone())
                     .or_else(|| thread.and_then(|entry| entry.file_path.clone()));
@@ -385,12 +386,23 @@ fn normalize_display_text(text: &str) -> String {
 }
 
 fn project_name(project: &str) -> String {
-    project
-        .split('/')
+    normalize_project_path(project)
+        .split(['/', '\\'])
         .filter(|part| !part.is_empty())
         .last()
         .unwrap_or(project)
         .to_string()
+}
+
+fn normalize_project_path(project: &str) -> String {
+    let trimmed = project.trim();
+    if let Some(rest) = trimmed.strip_prefix("\\\\?\\UNC\\") {
+        return format!("\\\\{rest}");
+    }
+    if let Some(rest) = trimmed.strip_prefix("\\\\?\\") {
+        return rest.to_string();
+    }
+    trimmed.to_string()
 }
 
 fn parse_timestamp(value: &Value) -> Option<DateTime<Utc>> {
@@ -440,7 +452,7 @@ fn extract_session_id_from_path(path: &Path) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::SessionsService;
+    use super::{project_name, SessionsService};
     use crate::paths::CodexPaths;
     use rusqlite::Connection;
     use std::fs;
@@ -472,6 +484,34 @@ mod tests {
         assert_eq!(items[0].display, "history title");
         assert_eq!(items[0].project_name, "codex-switch");
         assert_eq!(items[0].message_count, 2);
+    }
+
+    #[test]
+    fn normalizes_windows_verbatim_project_paths() {
+        let temp = tempdir().unwrap();
+        let codex = temp.path().join(".codex");
+        let sessions = codex.join("sessions/2026/05/02");
+        fs::create_dir_all(&sessions).unwrap();
+        fs::write(
+            sessions.join("rollout-2026-05-02T10-00-00-55555555-5555-5555-5555-555555555555.jsonl"),
+            r#"{"timestamp":"2026-05-02T10:00:00Z","type":"session_meta","payload":{"id":"55555555-5555-5555-5555-555555555555","timestamp":"2026-05-02T10:00:00Z","cwd":"\\\\?\\D:\\Clear-Bill"}}
+{"timestamp":"2026-05-02T10:00:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"检查项目"}]}}"#,
+        )
+        .unwrap();
+
+        let service = SessionsService::new(CodexPaths::new(codex));
+        let items = service.list().unwrap();
+
+        assert_eq!(items[0].project, r"D:\Clear-Bill");
+        assert_eq!(items[0].project_name, "Clear-Bill");
+        assert_eq!(service.projects().unwrap(), vec![r"D:\Clear-Bill"]);
+    }
+
+    #[test]
+    fn extracts_project_name_from_windows_paths() {
+        assert_eq!(project_name(r"D:\Clear-Bill"), "Clear-Bill");
+        assert_eq!(project_name(r"\\?\D:\Clear-Bill"), "Clear-Bill");
+        assert_eq!(project_name(r"\\?\UNC\server\share\repo"), "repo");
     }
 
     #[test]

@@ -261,8 +261,9 @@ function MetaLine({ label, value, monospace = false }: { label: string; value: s
 }
 
 function projectName(path: string) {
-  const parts = path.split("/").filter(Boolean);
-  return parts[parts.length - 1] || path;
+  const normalized = path.replace(/^\\\\\?\\UNC\\/, "\\\\").replace(/^\\\\\?\\/, "");
+  const parts = normalized.split(/[\\/]/).filter(Boolean);
+  return parts[parts.length - 1] || normalized;
 }
 
 function roleName(role: string) {

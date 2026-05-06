@@ -392,6 +392,17 @@ describe("App", () => {
     expect(screen.getByText("来自 ~/.codex/history.jsonl 与 sessions 目录")).toBeInTheDocument();
   });
 
+  it("displays Windows verbatim session projects with their folder name", async () => {
+    vi.mocked(listSessionProjects).mockResolvedValueOnce([String.raw`\\?\D:\Clear-Bill`]);
+
+    render(<App />);
+
+    await screen.findByText("仪表盘");
+    fireEvent.click(screen.getByTitle("Sessions"));
+
+    expect(await screen.findByRole("option", { name: "Clear-Bill" })).toBeInTheDocument();
+  });
+
   it("collapses Codex bootstrap context blocks by default", async () => {
     vi.mocked(getSessionDetail).mockResolvedValueOnce({
       session: sessionItem,
