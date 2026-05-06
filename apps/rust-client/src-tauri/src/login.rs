@@ -22,11 +22,18 @@ pub const LOGIN_EVENT: &str = "jobs://state-changed";
 const OAUTH_CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const OAUTH_ORIGINATOR: &str = "codex_chatgpt_desktop";
 const OAUTH_SCOPES: &str = "openid profile email offline_access";
+const DEFAULT_CALLBACK_PORT: u16 = 1455;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OAuthCallbackResult {
-    Code { code: String, state: String },
-    Failure { error: String, description: Option<String> },
+    Code {
+        code: String,
+        state: String,
+    },
+    Failure {
+        error: String,
+        description: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,8 +89,14 @@ impl DesktopLoginBroker {
         now: DateTime<Utc>,
     ) -> AppResult<Vec<u8>> {
         let mut tokens = serde_json::Map::new();
-        tokens.insert("access_token".into(), serde_json::Value::String(token.access_token));
-        tokens.insert("refresh_token".into(), serde_json::Value::String(token.refresh_token));
+        tokens.insert(
+            "access_token".into(),
+            serde_json::Value::String(token.access_token),
+        );
+        tokens.insert(
+            "refresh_token".into(),
+            serde_json::Value::String(token.refresh_token),
+        );
         tokens.insert("id_token".into(), serde_json::Value::String(token.id_token));
         if let Some(account_id) = token.account_id {
             tokens.insert("account_id".into(), serde_json::Value::String(account_id));
@@ -111,7 +124,10 @@ impl DesktopLoginBroker {
         server.stop();
 
         match result {
-            OAuthCallbackResult::Code { code, state: returned_state } => {
+            OAuthCallbackResult::Code {
+                code,
+                state: returned_state,
+            } => {
                 if returned_state != state {
                     return Err(AppError::Login("登录状态校验失败，请重试".into()));
                 }
@@ -180,7 +196,7 @@ struct LocalServerInner {
 
 impl LocalOAuthCallbackServer {
     pub fn new(port: Option<u16>) -> AppResult<Self> {
-        let listener = TcpListener::bind(("127.0.0.1", port.unwrap_or(0)))?;
+        let listener = TcpListener::bind(("127.0.0.1", port.unwrap_or(DEFAULT_CALLBACK_PORT)))?;
         listener.set_nonblocking(true)?;
         let actual_port = listener.local_addr()?.port();
         let redirect_uri = format!("http://localhost:{actual_port}/auth/callback");
@@ -189,7 +205,8 @@ impl LocalOAuthCallbackServer {
         let result_tx = Arc::new(Mutex::new(Some(result_tx)));
         let thread_result_tx = Arc::clone(&result_tx);
 
-        let handle = thread::spawn(move || run_callback_server(listener, stop_rx, thread_result_tx));
+        let handle =
+            thread::spawn(move || run_callback_server(listener, stop_rx, thread_result_tx));
 
         Ok(Self {
             redirect_uri,
@@ -344,7 +361,9 @@ fn handle_callback_connection(stream: &mut TcpStream) -> Option<OAuthCallbackRes
         return None;
     }
 
-    let params = url.query_pairs().collect::<std::collections::HashMap<_, _>>();
+    let params = url
+        .query_pairs()
+        .collect::<std::collections::HashMap<_, _>>();
     if let (Some(code), Some(state)) = (params.get("code"), params.get("state")) {
         let _ = write_http_response(
             stream,
@@ -365,7 +384,9 @@ fn handle_callback_connection(stream: &mut TcpStream) -> Option<OAuthCallbackRes
         );
         return Some(OAuthCallbackResult::Failure {
             error: error.to_string(),
-            description: params.get("error_description").map(|value| value.to_string()),
+            description: params
+                .get("error_description")
+                .map(|value| value.to_string()),
         });
     }
 
@@ -419,7 +440,8 @@ mod tests {
     fn builds_authorization_url_with_expected_desktop_query() {
         let broker = DesktopLoginBroker::new();
         let redirect_uri = "http://localhost:1455/auth/callback";
-        let url = broker.build_authorization_url(redirect_uri, "expected-state", "expected-verifier");
+        let url =
+            broker.build_authorization_url(redirect_uri, "expected-state", "expected-verifier");
 
         assert_eq!(
             url,
@@ -452,7 +474,7 @@ mod tests {
 
     #[tokio::test]
     async fn callback_server_receives_authorization_code() {
-        let server = LocalOAuthCallbackServer::new(None).unwrap();
+        let server = LocalOAuthCallbackServer::new(Some(0)).unwrap();
         let callback_url = format!("{}?code=test-code&state=test-state", server.redirect_uri());
 
         let wait = tokio::spawn({
@@ -472,5 +494,14 @@ mod tests {
                 state: "test-state".into(),
             }
         );
+    }
+
+    #[test]
+    fn callback_server_defaults_to_registered_desktop_redirect_uri() {
+        let server = LocalOAuthCallbackServer::new(None).unwrap();
+
+        assert_eq!(server.redirect_uri(), "http://localhost:1455/auth/callback");
+
+        server.stop();
     }
 }
