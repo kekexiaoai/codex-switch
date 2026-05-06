@@ -81,7 +81,7 @@ jobs:
       - name: Inspect macOS Binary Architecture
         if: runner.os == 'macOS'
         run: |
-          file "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app/Contents/MacOS/codex-switch" | tee /tmp/codex-switch-app-arch.txt
+          file "apps/rust-client/src-tauri/target/release/codex-switch" | tee /tmp/codex-switch-app-arch.txt
           grep -q "${{ matrix.arch }}" /tmp/codex-switch-app-arch.txt
 
       - name: Collect Bundle Outputs
