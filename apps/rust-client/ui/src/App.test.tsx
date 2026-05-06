@@ -347,6 +347,46 @@ describe("App", () => {
     expect(switchAccount).toHaveBeenCalledWith("account-1");
   });
 
+  it("does not show the active account usage on every archived account row", async () => {
+    const accounts = [
+      account({ id: "account-1", emailMask: "one@example.com", isActive: true }),
+      account({
+        id: "account-2",
+        emailMask: "two@example.com",
+        email: "two@example.com",
+        archiveFilename: "two.json",
+        manualOrder: 1,
+      }),
+    ];
+    vi.mocked(getAppSnapshot).mockResolvedValueOnce({
+      ...snapshot,
+      accounts,
+      activeAccountId: "account-1",
+      activeUsage: {
+        accountId: "account-1",
+        updatedAt: "2026-05-02T10:00:00Z",
+        sourceLabel: "API",
+        fiveHour: {
+          percentUsed: 42,
+          resetsAt: "2026-05-02T15:00:00Z",
+        },
+        weekly: {
+          percentUsed: 18,
+          resetsAt: "2026-05-09T10:00:00Z",
+        },
+      },
+    });
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    const inactiveAccountRow = screen.getByRole("button", { name: "切换到 two@example.com" }).closest("div.grid");
+
+    expect(inactiveAccountRow).not.toBeNull();
+    expect(within(inactiveAccountRow as HTMLElement).queryByText("42%")).not.toBeInTheDocument();
+    expect(within(inactiveAccountRow as HTMLElement).queryByText("18%")).not.toBeInTheDocument();
+  });
+
   it("clears an inactive archived account after confirmation", async () => {
     const accounts = [
       account({ id: "account-1", emailMask: "one@example.com", isActive: true }),

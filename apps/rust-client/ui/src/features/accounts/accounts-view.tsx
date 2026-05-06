@@ -65,6 +65,8 @@ export function AccountsView({
   const quickSwitchAccount = accounts.find((account) => !account.isActive) ?? (active ? undefined : accounts[0]);
   const usageSourceLabel = formatUsageSource(usageSourceMode);
   const currentModeLabel = formatCurrentAuthMode(currentAuthMode);
+  const usageForAccount = (account?: AccountListItem) =>
+    account && usage?.accountId === account.id ? usage : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden">
@@ -148,7 +150,7 @@ export function AccountsView({
               <AccountTableRow
                 key={account.id}
                 account={account}
-                usage={usage}
+                usage={usageForAccount(account)}
                 showFullEmail={showFullEmail}
                 onSwitch={onSwitch}
                 onRemove={onRemove}
@@ -166,7 +168,7 @@ export function AccountsView({
           </div>
           <AccountSummaryCard
             account={active}
-            usage={usage}
+            usage={usageForAccount(active)}
             showFullEmail={showFullEmail}
             emptyText="未检测到 ChatGPT 账号"
           />
@@ -190,7 +192,7 @@ export function AccountsView({
             <div className="mt-2">
               <AccountSummaryCard
                 account={quickSwitchAccount}
-                usage={usage}
+                usage={usageForAccount(quickSwitchAccount)}
                 showFullEmail={showFullEmail}
                 emptyText="暂无备用账号"
                 onSwitch={onSwitch}
