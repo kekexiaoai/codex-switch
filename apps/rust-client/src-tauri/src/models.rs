@@ -256,6 +256,14 @@ pub struct LoginJobState {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct CodexRestartResult {
+    pub attempted: bool,
+    pub success: bool,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct CodexSessionListItem {
     pub id: String,
     pub display: String,

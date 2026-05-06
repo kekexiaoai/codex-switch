@@ -58,6 +58,7 @@ vi.mock("@/lib/tauri", () => ({
   getAutostartEnabled: vi.fn().mockResolvedValue(false),
   switchAccount: vi.fn(),
   removeAccount: vi.fn(),
+  restartCodexApp: vi.fn(),
   refreshUsage: vi.fn(),
   runProviderSync: vi.fn(),
   switchProvider: vi.fn(),
@@ -88,6 +89,7 @@ import {
   pickAuthBackupFiles,
   refreshUsage,
   removeAccount,
+  restartCodexApp,
   saveSettings,
   startBrowserLogin,
   switchAccount,
@@ -144,6 +146,12 @@ describe("App", () => {
     vi.mocked(switchAccount).mockResolvedValue(account({ isActive: true }));
     vi.mocked(removeAccount).mockReset();
     vi.mocked(removeAccount).mockResolvedValue(account({}));
+    vi.mocked(restartCodexApp).mockReset();
+    vi.mocked(restartCodexApp).mockResolvedValue({
+      attempted: true,
+      success: true,
+      message: "Codex 已重启",
+    });
     vi.mocked(cancelBrowserLogin).mockReset();
     vi.mocked(cancelBrowserLogin).mockResolvedValue({
       active: false,
@@ -417,6 +425,31 @@ describe("App", () => {
     });
   });
 
+  it("attempts to restart Codex after switching accounts", async () => {
+    const accounts = [
+      account({ id: "account-1", emailMask: "one@example.com", isActive: true }),
+      account({
+        id: "account-2",
+        emailMask: "two@example.com",
+        email: "two@example.com",
+        archiveFilename: "two.json",
+        manualOrder: 1,
+      }),
+    ];
+    vi.mocked(getAppSnapshot).mockResolvedValueOnce({ ...snapshot, accounts });
+    vi.mocked(switchAccount).mockResolvedValueOnce({ ...accounts[1], isActive: true });
+
+    render(<App />);
+
+    await screen.findByText("账号工作台");
+    fireEvent.click(screen.getByRole("button", { name: "切换到 two@example.com" }));
+
+    await screen.findByText("账号已切换，并已重启 Codex。");
+
+    expect(switchAccount).toHaveBeenCalledWith("account-2");
+    expect(restartCodexApp).toHaveBeenCalledTimes(1);
+  });
+
   it("shows OPENAI_API_KEY mode and allows switching after backup", async () => {
     const accounts = [
       account({ id: "account-1", emailMask: "one@example.com", isActive: false }),
@@ -506,6 +539,7 @@ describe("App", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "清除归档账号" });
     expect(dialog).toBeInTheDocument();
+    expect(dialog.className).not.toContain("border-rose");
     expect(within(dialog).getByText("two@example.com")).toBeInTheDocument();
     expect(within(dialog).getByText("这只会删除本地归档记录，不会注销远程账号，也不会删除当前 auth.json。")).toBeInTheDocument();
     expect(confirm).not.toHaveBeenCalled();

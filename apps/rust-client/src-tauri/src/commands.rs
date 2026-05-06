@@ -1,6 +1,6 @@
 use crate::models::{
-    AppSnapshot, BackupEntry, CodexSessionDetail, CodexSessionListItem, DiagnosticsEvent,
-    LoginJobState, ProviderSyncStatus, SettingsDto, SyncResult, UsageSnapshot,
+    AppSnapshot, BackupEntry, CodexRestartResult, CodexSessionDetail, CodexSessionListItem,
+    DiagnosticsEvent, LoginJobState, ProviderSyncStatus, SettingsDto, SyncResult, UsageSnapshot,
 };
 use crate::state::{
     AppState, EVENT_ACCOUNTS_CHANGED, EVENT_DIAGNOSTICS_APPENDED, EVENT_SETTINGS_CHANGED,
@@ -32,6 +32,11 @@ pub fn app_open_view(app: AppHandle, view: String) -> CmdResult<()> {
 pub fn app_quit(app: AppHandle) -> CmdResult<()> {
     app.exit(0);
     Ok(())
+}
+
+#[tauri::command]
+pub fn app_restart_codex() -> CmdResult<CodexRestartResult> {
+    Ok(crate::codex_app::restart_codex_app())
 }
 
 #[tauri::command]

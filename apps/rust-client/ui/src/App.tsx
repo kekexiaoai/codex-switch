@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   events,
@@ -18,6 +18,7 @@ import {
   quitApp,
   refreshUsage,
   removeAccount,
+  restartCodexApp,
   restoreProviderBackup,
   runProviderSync,
   saveSettings,
@@ -253,7 +254,11 @@ export function App() {
         accounts={snapshot.accounts}
         usage={snapshot.activeUsage}
         showFullEmail={snapshot.settings.showFullEmail}
-        onSwitch={(id) => void switchAccount(id).then(() => refreshAll())}
+        onSwitch={(id) =>
+          void switchAccount(id)
+            .then(() => restartCodexApp().catch(() => null))
+            .then(() => refreshAll())
+        }
         onRefresh={() => void refreshUsage().then(() => refreshAll())}
         onOpenMain={() => void showMainWindow()}
         onOpenSettings={() => void openView("settings")}
@@ -330,7 +335,19 @@ export function App() {
                 const previousSnapshot = snapshot;
                 setActiveAccountOptimistically(id);
                 setUsageRefreshStatus(null);
-                void runAction("正在切换账号…", () => switchAccount(id), "账号已切换。").catch(() =>
+                void runAction(
+                  "正在切换账号…",
+                  async () => {
+                    const account = await switchAccount(id);
+                    const restart = await restartCodexApp().catch((error) => ({
+                      attempted: true,
+                      success: false,
+                      message: error instanceof Error ? error.message : String(error),
+                    }));
+                    return { account, restart };
+                  },
+                  ({ restart }) => (restart.success ? "账号已切换，并已重启 Codex。" : `账号已切换。${restart.message}`),
+                ).catch(() =>
                   setSnapshot(previousSnapshot),
                 );
               }}
@@ -504,39 +521,50 @@ function AccountRemovalDialog({
   onConfirm: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-40 grid place-items-center bg-slate-950/34 px-4">
+    <div className="absolute inset-0 z-40 grid place-items-center bg-black/50 px-4">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="account-removal-title"
-        className="w-full max-w-[420px] rounded-2xl border border-rose-300 bg-white p-5 shadow-[0_28px_70px_rgba(15,23,42,0.30)]"
+        className="relative w-full max-w-[430px] rounded-lg border border-slate-200 bg-white p-6 text-slate-950 shadow-lg"
       >
-        <div className="flex items-start gap-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-rose-300 bg-rose-50 text-rose-700">
-            <AlertTriangle className="h-4 w-4" />
-          </div>
+        <button
+          type="button"
+          aria-label="关闭"
+          onClick={onCancel}
+          className="absolute right-4 top-4 rounded-sm text-slate-500 opacity-70 transition hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <div className="pr-8">
           <div className="min-w-0">
-            <h2 id="account-removal-title" className="m-0 text-[16px] font-black tracking-[-0.03em] text-slate-950">
+            <h2 id="account-removal-title" className="m-0 text-[18px] font-semibold leading-none text-slate-950">
               清除归档账号
             </h2>
-            <div className="mt-1 truncate text-[13px] font-bold text-slate-700">{label}</div>
+            <div className="mt-3 text-[14px] leading-5 text-slate-600">
+              这只会删除本地归档记录，不会注销远程账号，也不会删除当前 auth.json。
+            </div>
           </div>
         </div>
-        <div className="mt-4 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-[12px] leading-5 text-slate-700">
-          这只会删除本地归档记录，不会注销远程账号，也不会删除当前 auth.json。
+        <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <div className="truncate text-[13px] font-semibold text-slate-900">{label}</div>
+          <div className="mt-1 flex items-center gap-1.5 text-[12px] text-slate-500">
+            <AlertTriangle className="h-3.5 w-3.5 text-slate-400" />
+            <span>清除后可通过备份文件重新导入。</span>
+          </div>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-600">
-          <div className="truncate rounded-xl border border-slate-200 bg-slate-100 px-3 py-2">来源：{account.source}</div>
-          <div className="truncate rounded-xl border border-slate-200 bg-slate-100 px-3 py-2">归档：{account.archiveFilename}</div>
+          <div className="truncate rounded-md border border-slate-200 bg-white px-3 py-2">来源：{account.source}</div>
+          <div className="truncate rounded-md border border-slate-200 bg-white px-3 py-2">归档：{account.archiveFilename}</div>
         </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button type="button" variant="secondary" className="border-slate-300 bg-white text-slate-700" onClick={onCancel}>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button type="button" variant="secondary" className="rounded-md border-slate-300 bg-white text-slate-700" onClick={onCancel}>
             取消
           </Button>
           <Button
             type="button"
             variant="danger"
-            className="border-red-700 bg-red-600 px-4 font-black text-white shadow-[0_12px_26px_rgba(220,38,38,0.36)] [background-image:none] hover:bg-red-700 hover:brightness-100"
+            className="rounded-md border-slate-950 bg-slate-950 px-4 font-semibold text-white shadow-sm [background-image:none] hover:bg-slate-800 hover:brightness-100"
             onClick={onConfirm}
           >
             确认清除

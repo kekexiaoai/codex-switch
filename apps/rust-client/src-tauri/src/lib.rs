@@ -1,4 +1,5 @@
 mod accounts;
+mod codex_app;
 mod commands;
 mod diagnostics;
 mod error;
@@ -43,6 +44,7 @@ pub fn run() {
             commands::app_show_main_window,
             commands::app_open_view,
             commands::app_quit,
+            commands::app_restart_codex,
             commands::app_snapshot,
             commands::accounts_list,
             commands::accounts_import_current,

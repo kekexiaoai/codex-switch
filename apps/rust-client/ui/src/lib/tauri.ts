@@ -101,6 +101,12 @@ export interface LoginJobState {
   authUrl?: string | null;
 }
 
+export interface CodexRestartResult {
+  attempted: boolean;
+  success: boolean;
+  message: string;
+}
+
 export interface CodexSessionListItem {
   id: string;
   display: string;
@@ -150,6 +156,10 @@ export function openView(view: "accounts" | "usage" | "provider-sync" | "session
 
 export function quitApp() {
   return invoke("app_quit");
+}
+
+export function restartCodexApp() {
+  return invoke<CodexRestartResult>("app_restart_codex");
 }
 
 export function getAutostartEnabled() {
