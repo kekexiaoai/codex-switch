@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT_PATH="$ROOT_DIR/apps/mac-client/CodexSwitch.xcodeproj"
 DERIVED_DATA_PATH="$ROOT_DIR/.build-artifacts/DerivedData"
-BUILD_PRODUCTS_PATH="$DERIVED_DATA_PATH/Build/Products/Debug"
+BUILD_CONFIGURATION="${BUILD_CONFIGURATION:-Release}"
+BUILD_PRODUCTS_PATH="$DERIVED_DATA_PATH/Build/Products/$BUILD_CONFIGURATION"
 DIST_DIR="$ROOT_DIR/dist"
 APP_NAME="Codex Switch.app"
 APP_BUNDLE_PATH="$DIST_DIR/$APP_NAME"
@@ -23,7 +24,7 @@ mkdir -p "$DERIVED_DATA_PATH"
 xcodebuild build \
   -project "$PROJECT_PATH" \
   -scheme CodexSwitchApp \
-  -configuration Debug \
+  -configuration "$BUILD_CONFIGURATION" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
   >/tmp/codex-switch-package-build.log
 

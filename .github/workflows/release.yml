@@ -1,9 +1,9 @@
-name: Release
+name: Release Swift Legacy
 
 on:
   push:
     tags:
-      - "v*"
+      - "v*-swift"
   workflow_dispatch:
     inputs:
       ref:
@@ -28,8 +28,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release-arm64:
-    name: Release arm64
+  release-swift-arm64:
+    name: Release Swift arm64
     runs-on: macos-14
     timeout-minutes: 45
 
@@ -60,7 +60,7 @@ jobs:
           fi
 
           echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
-          echo "zip_name=Codex-Switch-${TAG_NAME}-arm64.zip" >>"$GITHUB_OUTPUT"
+          echo "dmg_name=Codex-Switch-${TAG_NAME}-swift-macos-arm64.dmg" >>"$GITHUB_OUTPUT"
 
       - name: Xcode Project Tests
         run: xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'
@@ -75,8 +75,14 @@ jobs:
           grep -q "arm64" /tmp/codex-switch-app-arch.txt
           grep -q "arm64" /tmp/codex-switch-framework-arch.txt
 
-      - name: Create Release Archive
-        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
+      - name: Create Release DMG
+        run: |
+          hdiutil create \
+            -volname "Codex Switch Swift Legacy" \
+            -srcfolder "dist/Codex Switch.app" \
+            -ov \
+            -format UDZO \
+            "dist/${{ steps.meta.outputs.dmg_name }}"
 
       - name: Publish arm64 Asset
         env:
@@ -87,19 +93,19 @@ jobs:
             echo "Release ${{ steps.meta.outputs.tag_name }} already exists"
           else
             if [[ "$PRERELEASE" == "true" ]]; then
-              gh release create "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --target "${GITHUB_SHA}" --generate-notes --prerelease
+              gh release create "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.dmg_name }}" --target "${GITHUB_SHA}" --title "Codex Switch ${{ steps.meta.outputs.tag_name }} (Swift Legacy)" --notes "Swift legacy macOS baseline. Future regular releases use the Rust/Tauri implementation." --prerelease
               exit 0
             fi
-            gh release create "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --target "${GITHUB_SHA}" --generate-notes
+            gh release create "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.dmg_name }}" --target "${GITHUB_SHA}" --title "Codex Switch ${{ steps.meta.outputs.tag_name }} (Swift Legacy)" --notes "Swift legacy macOS baseline. Future regular releases use the Rust/Tauri implementation."
             exit 0
           fi
 
-          gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --clobber
+          gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.dmg_name }}" --clobber
 
-  release-x86_64:
-    name: Release x86_64
+  release-swift-x86_64:
+    name: Release Swift x86_64
     runs-on: macos-15-intel
-    needs: release-arm64
+    needs: release-swift-arm64
     timeout-minutes: 45
 
     steps:
@@ -129,7 +135,7 @@ jobs:
           fi
 
           echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
-          echo "zip_name=Codex-Switch-${TAG_NAME}-x86_64.zip" >>"$GITHUB_OUTPUT"
+          echo "dmg_name=Codex-Switch-${TAG_NAME}-swift-macos-x86_64.dmg" >>"$GITHUB_OUTPUT"
 
       - name: Xcode Project Tests
         run: xcodebuild test -project apps/mac-client/CodexSwitch.xcodeproj -scheme CodexSwitch -destination 'platform=macOS'
@@ -144,10 +150,16 @@ jobs:
           grep -q "x86_64" /tmp/codex-switch-app-arch.txt
           grep -q "x86_64" /tmp/codex-switch-framework-arch.txt
 
-      - name: Create Release Archive
-        run: ditto -c -k --sequesterRsrc --keepParent "dist/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
+      - name: Create Release DMG
+        run: |
+          hdiutil create \
+            -volname "Codex Switch Swift Legacy" \
+            -srcfolder "dist/Codex Switch.app" \
+            -ov \
+            -format UDZO \
+            "dist/${{ steps.meta.outputs.dmg_name }}"
 
       - name: Upload x86_64 Asset To Existing Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --clobber
+        run: gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.dmg_name }}" --clobber

@@ -15,5 +15,5 @@
 ## Packaging
 
 - Confirm bundle identifier and signing settings are correct
-- Archive a release build in Xcode
-- Export a notarized app package when distribution starts
+- Run `./scripts/package-macos-app.sh` and confirm `dist/Codex Switch.app` exists
+- Push a `v*-swift` tag and confirm the Swift legacy Release workflow publishes arm64 and x86_64 DMG assets

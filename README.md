@@ -40,3 +40,14 @@ This repository is initialized with a planning-first scaffold. The first impleme
 
 - Build a double-clickable app bundle: `./scripts/package-macos-app.sh`
 - Output bundle: `dist/Codex Switch.app`
+
+## Legacy Release
+
+The Swift client is kept as the macOS legacy baseline. The release workflow on this branch only listens to `v*-swift` tags, for example:
+
+```bash
+git tag -a v0.1.0-swift -m "Release v0.1.0 Swift baseline"
+git push origin v0.1.0-swift
+```
+
+Future regular releases are expected to use the Rust/Tauri implementation.
