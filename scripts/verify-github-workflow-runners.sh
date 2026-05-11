@@ -33,6 +33,7 @@ done
 
 assert_contains "$CI_WORKFLOW" "runner: macos-15-intel"
 assert_contains "$PACKAGE_WORKFLOW" "runner: macos-15-intel"
+assert_contains "$PACKAGE_WORKFLOW" "runner: ubuntu-22.04"
 assert_contains "$RELEASE_WORKFLOW" "runs-on: macos-15-intel"
 
 echo "GitHub workflow runner 配置检查通过"

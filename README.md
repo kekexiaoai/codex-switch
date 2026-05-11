@@ -78,8 +78,9 @@ GitHub Actions 打包：
 
 - 手动运行 `Package` workflow，可以选择 `ref`。
 - 产物会作为 GitHub Artifacts 上传。
-- 当前矩阵覆盖 `macOS arm64`、`macOS x86_64`、`Windows x64`。
+- 当前矩阵覆盖 `macOS arm64`、`macOS x86_64`、`Windows x64`、`Linux x64`。
 - macOS 产物使用 DMG 安装包；Windows 产物使用 NSIS 安装包。
+- Linux 产物使用 DEB 与 AppImage 安装包。
 
 ### Fixture Overrides
 

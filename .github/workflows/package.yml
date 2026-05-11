@@ -42,6 +42,12 @@ jobs:
             arch: x86_64
             bundle_args: "--bundles nsis"
             artifact: codex-switch-windows-x64
+          - label: Linux x64
+            runner: ubuntu-22.04
+            platform: linux
+            arch: x86_64
+            bundle_args: "--bundles deb,appimage"
+            artifact: codex-switch-linux-x64
 
     steps:
       - name: Checkout
@@ -59,6 +65,21 @@ jobs:
       - name: Select Xcode
         if: runner.os == 'macOS'
         run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Install Linux System Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
 
       - name: Show Toolchain Versions
         shell: bash
@@ -97,6 +118,10 @@ jobs:
               ;;
             windows)
               find "$bundle_dir/nsis" -maxdepth 2 -type f -name "*.exe" -print -exec cp {} dist/ \;
+              ;;
+            linux)
+              find "$bundle_dir/deb" -maxdepth 2 -type f -name "*.deb" -print -exec cp {} dist/ \;
+              find "$bundle_dir/appimage" -maxdepth 2 -type f -name "*.AppImage" -print -exec cp {} dist/ \;
               ;;
             *)
               echo "Unsupported platform: ${{ matrix.platform }}" >&2
