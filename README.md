@@ -1,54 +1,59 @@
 # Codex Switch
 
-Codex Switch 是一个以桌面软件体验为目标的多账号 Codex 管理器，当前主线实现正在迁移到 `Rust + Tauri + React + shadcn/ui`。
+Codex Switch 是一个桌面端 Codex 账号管理器，用来在多套 Codex 登录态之间切换、查看用量、同步 provider 配置，并保留对现有 `~/.codex` 数据结构的兼容。
 
-## Current Status
+当前主线实现是 `Rust + Tauri 2 + React + Tailwind/shadcn-ui`。旧的 Swift/macOS 客户端仍保留在仓库中，主要作为迁移参考和行为基线。
 
-仓库已经完成第一轮 Tauri 重构骨架，当前可用内容包括：
+## 功能概览
 
-- `apps/rust-client/src-tauri/` 下的 Tauri 2 + Rust 后端
-- `apps/rust-client/ui/` 下的 React + TypeScript + Tailwind + shadcn/ui 前端
-- 主窗口 + 托盘面板双壳层
-- `.codex` 路径、auth 导入/归档/切换、JWT 解码、usage 刷新、diagnostics、settings、Provider Sync 基础闭环
-- OpenSpec、分析文档、实施计划与进度跟踪
+- 管理多个 Codex 账号归档，并一键切换当前 `auth.json`
+- 从当前登录态或备份文件导入账号
+- 刷新并查看 Codex usage 摘要
+- 扫描 Codex sessions，按项目浏览历史会话
+- 同步和切换 `~/.codex/config.toml` 中的 provider 配置
+- 提供主窗口和托盘快速入口
+- 支持诊断日志、设置项和测试目录覆盖
 
-Swift 版本仍保留在 `apps/mac-client/`，当前仅作为行为基线和迁移参考，不再是主实施方向。
+## 安装包
 
-## Product Direction
+通过 GitHub Release 发布的版本会附带以下产物：
 
-- 主窗口为主入口，托盘为快速入口
-- UI 去 Web 化，强调桌面软件质感，而不是网页式 SaaS 后台
-- 保持 `.codex` 数据兼容：
-  - `~/.codex/auth.json`
-  - `~/.codex/accounts/*.json`
-  - `~/.codex/accounts/usage-cache.json`
-  - `~/.codex/sessions/**/rollout-*.jsonl`
-  - `~/.codex/config.toml`
-  - `~/.codex/state_5.sqlite`
-  - `~/.codex/codex-switch/*.log`
+- macOS arm64：DMG
+- macOS x86_64：DMG
+- Windows x64：NSIS 安装包
+- Linux x64：DEB 与 AppImage
 
-## Repository Layout
+Linux 产物在 Ubuntu 22.04 runner 上构建，面向 22.04 及更新的 LTS 版本使用。Ubuntu/Debian 用户优先选择 DEB；其他发行版可尝试 AppImage。
 
-- `apps/rust-client/`: Tauri 桌面端主实现
-- `apps/mac-client/`: 旧 Swift/macOS 基线实现
-- `docs/analysis/`: 重构分析文档
-- `docs/plan/`: 分阶段实施计划
-- `docs/progress/`: 持续进度追踪
-- `openspec/changes/refactor-desktop-to-tauri-rust/`: 当前重构规格
-- `tests/`: 仓库级辅助测试
+## 发版
 
-## Local Development
+推送 `v*` tag 会触发 `Release` workflow，并发布跨平台安装包：
 
-### Frontend
+```bash
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+```
+
+也可以在 GitHub Actions 手动运行 `Package` workflow，对指定分支或 commit 生成临时构建产物。
+
+## 本地开发
+
+安装前端依赖：
 
 ```bash
 cd apps/rust-client/ui
 npm install
+```
+
+运行前端测试和构建：
+
+```bash
+cd apps/rust-client/ui
 npm test
 npm run build
 ```
 
-### Rust / Tauri Backend
+运行 Rust 后端测试：
 
 ```bash
 cd apps/rust-client/src-tauri
@@ -56,35 +61,29 @@ cargo fmt --check
 cargo test
 ```
 
-### Tauri App
-
-正式联调时由 Tauri 使用：
-
-- `apps/rust-client/ui` 作为前端工作区
-- `apps/rust-client/src-tauri` 作为桌面运行时
-
-本地构建 macOS app bundle：
+构建本机桌面应用：
 
 ```bash
 cd apps/rust-client/ui
-npm run tauri build -- --bundles app
+npm run tauri build
 ```
 
-输出路径：
+按平台指定安装包类型：
 
-- `apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app`
+```bash
+# macOS
+npm run tauri build -- --bundles dmg
 
-GitHub Actions 打包：
+# Windows
+npm run tauri build -- --bundles nsis
 
-- 手动运行 `Package` workflow，可以选择 `ref`。
-- 产物会作为 GitHub Artifacts 上传。
-- 当前矩阵覆盖 `macOS arm64`、`macOS x86_64`、`Windows x64`、`Linux x64`。
-- macOS 产物使用 DMG 安装包；Windows 产物使用 NSIS 安装包。
-- Linux 产物使用 DEB 与 AppImage 安装包。
+# Linux
+npm run tauri build -- --bundles deb,appimage
+```
 
-### Fixture Overrides
+## 测试目录覆盖
 
-为了做本地回归或端到端验收，可以用环境变量把桌面端指向临时目录：
+为了做本地回归或端到端验收，可以把应用指向临时 `.codex` 目录，避免修改真实用户数据：
 
 ```bash
 export CODEX_SWITCH_CODEX_DIR=/path/to/test/.codex
@@ -93,21 +92,26 @@ export CODEX_SWITCH_CONFIG_DIR=/path/to/test/config
 
 应用启动和 `AppState::new()` 会优先使用这些路径。
 
-## Verification
+## 仓库结构
 
-当前已验证：
+- `apps/rust-client/`：当前 Tauri 桌面端主实现
+- `apps/rust-client/src-tauri/`：Rust 后端、Tauri commands、托盘与窗口壳
+- `apps/rust-client/ui/`：React 前端
+- `apps/mac-client/`：旧 Swift/macOS 实现
+- `docs/`：分析、计划、进度和发布文档
+- `openspec/`：规格和变更记录
+- `tests/`：仓库级辅助测试
 
-- `openspec validate refactor-desktop-to-tauri-rust --strict`
-- `npm test`
-- `npm run build`
-- `cargo test`
-- `cargo build`
-- `npm run tauri build -- --bundles app`
+## 数据兼容
 
-## Migration Notes
+Codex Switch 读写现有 Codex 数据位置：
 
-- 当前实现已经覆盖主要骨架和核心服务，但仍在继续收口高级能力与完整验收。
-- 浏览器登录已经切换到桌面 broker：本地 callback server + PKCE 授权 URL + token exchange + `auth.json` 写回。
-- `Launch at login` 已开始接入 Tauri autostart 插件，不再只是本地偏好位。
-- 账号页已经支持通过原生文件选择器导入备份 `auth.json`。
-- Swift 代码暂不删除，等 Tauri 版本进一步达到更高对等度后再进行最终清理。
+- `~/.codex/auth.json`
+- `~/.codex/accounts/*.json`
+- `~/.codex/accounts/usage-cache.json`
+- `~/.codex/sessions/**/rollout-*.jsonl`
+- `~/.codex/config.toml`
+- `~/.codex/state_5.sqlite`
+- `~/.codex/codex-switch/*.log`
+
+修改账号、provider 或配置前，应用会尽量通过归档和备份保留可恢复路径。

@@ -67,25 +67,29 @@ jobs:
           fi
 
           echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
-          echo "zip_name=Codex-Switch-${TAG_NAME}-arm64.zip" >>"$GITHUB_OUTPUT"
+          echo "dmg_name=Codex-Switch-${TAG_NAME}-macos-arm64.dmg" >>"$GITHUB_OUTPUT"
 
       - name: Install Frontend Dependencies
         working-directory: apps/rust-client/ui
         run: npm ci
 
-      - name: Build App Bundle
+      - name: Build DMG Installer
         working-directory: apps/rust-client/ui
-        run: npm run tauri build -- --bundles app
+        run: npm run tauri build -- --bundles dmg
 
       - name: Inspect Binary Architecture
         run: |
-          file "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app/Contents/MacOS/codex-switch" | tee /tmp/codex-switch-app-arch.txt
+          file "apps/rust-client/src-tauri/target/release/codex-switch" | tee /tmp/codex-switch-app-arch.txt
           grep -q "arm64" /tmp/codex-switch-app-arch.txt
 
-      - name: Create Release Archive
+      - name: Collect DMG Installer
         run: |
+          set -euo pipefail
           mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
+          dmg_path="$(find "apps/rust-client/src-tauri/target/release/bundle/dmg" -maxdepth 2 -type f -name "*.dmg" -print -quit)"
+          test -n "$dmg_path"
+          cp "$dmg_path" "dist/${{ steps.meta.outputs.dmg_name }}"
+          find dist -maxdepth 1 -type f -print
 
       - name: Publish arm64 Asset
         env:
@@ -96,14 +100,14 @@ jobs:
             echo "Release ${{ steps.meta.outputs.tag_name }} already exists"
           else
             if [[ "$PRERELEASE" == "true" ]]; then
-              gh release create "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --target "${GITHUB_SHA}" --generate-notes --prerelease
+              gh release create "${{ steps.meta.outputs.tag_name }}" dist/*.dmg --target "${GITHUB_SHA}" --generate-notes --prerelease
               exit 0
             fi
-            gh release create "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --target "${GITHUB_SHA}" --generate-notes
+            gh release create "${{ steps.meta.outputs.tag_name }}" dist/*.dmg --target "${GITHUB_SHA}" --generate-notes
             exit 0
           fi
 
-          gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --clobber
+          gh release upload "${{ steps.meta.outputs.tag_name }}" dist/*.dmg --clobber
 
   release-x86_64:
     name: Release x86_64
@@ -145,30 +149,34 @@ jobs:
           fi
 
           echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
-          echo "zip_name=Codex-Switch-${TAG_NAME}-x86_64.zip" >>"$GITHUB_OUTPUT"
+          echo "dmg_name=Codex-Switch-${TAG_NAME}-macos-x86_64.dmg" >>"$GITHUB_OUTPUT"
 
       - name: Install Frontend Dependencies
         working-directory: apps/rust-client/ui
         run: npm ci
 
-      - name: Build App Bundle
+      - name: Build DMG Installer
         working-directory: apps/rust-client/ui
-        run: npm run tauri build -- --bundles app
+        run: npm run tauri build -- --bundles dmg
 
       - name: Inspect Binary Architecture
         run: |
-          file "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app/Contents/MacOS/codex-switch" | tee /tmp/codex-switch-app-arch.txt
+          file "apps/rust-client/src-tauri/target/release/codex-switch" | tee /tmp/codex-switch-app-arch.txt
           grep -q "x86_64" /tmp/codex-switch-app-arch.txt
 
-      - name: Create Release Archive
+      - name: Collect DMG Installer
         run: |
+          set -euo pipefail
           mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent "apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app" "dist/${{ steps.meta.outputs.zip_name }}"
+          dmg_path="$(find "apps/rust-client/src-tauri/target/release/bundle/dmg" -maxdepth 2 -type f -name "*.dmg" -print -quit)"
+          test -n "$dmg_path"
+          cp "$dmg_path" "dist/${{ steps.meta.outputs.dmg_name }}"
+          find dist -maxdepth 1 -type f -print
 
       - name: Upload x86_64 Asset To Existing Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --clobber
+        run: gh release upload "${{ steps.meta.outputs.tag_name }}" dist/*.dmg --clobber
 
   release-windows-x64:
     name: Release Windows x64

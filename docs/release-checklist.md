@@ -4,7 +4,7 @@
 
 - Run `npm ci && npm test && npm run build` in `apps/rust-client/ui`
 - Run `cargo test && cargo build` in `apps/rust-client/src-tauri`
-- Run `npm run tauri build -- --bundles app` in `apps/rust-client/ui`
+- Run `npm run tauri build -- --bundles dmg` in `apps/rust-client/ui`
 - Confirm the generated app launches correctly on macOS
 
 ## Product Checks
@@ -18,5 +18,5 @@
 ## Packaging
 
 - Confirm Tauri bundle metadata and icons are correct
-- Confirm the output bundle exists at `apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app`
+- Confirm macOS DMG files exist under `apps/rust-client/src-tauri/target/release/bundle/dmg/`
 - Push a `v*` tag and confirm the Release workflow publishes macOS arm64/x86_64, Windows x64, and Linux x64 assets
