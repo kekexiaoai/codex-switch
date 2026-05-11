@@ -169,3 +169,140 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: gh release upload "${{ steps.meta.outputs.tag_name }}" "dist/${{ steps.meta.outputs.zip_name }}" --clobber
+
+  release-windows-x64:
+    name: Release Windows x64
+    runs-on: windows-2022
+    needs: release-arm64
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/rust-client/ui/package-lock.json
+
+      - name: Resolve Release Metadata
+        id: meta
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            TAG_NAME="$INPUT_TAG"
+            if [[ -z "$TAG_NAME" ]]; then
+              TAG_NAME="manual-${GITHUB_RUN_NUMBER}"
+            fi
+          else
+            TAG_NAME="$REF_NAME"
+          fi
+
+          echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
+
+      - name: Install Frontend Dependencies
+        working-directory: apps/rust-client/ui
+        run: npm ci
+
+      - name: Build NSIS Installer
+        working-directory: apps/rust-client/ui
+        run: npm run tauri build -- --bundles nsis
+
+      - name: Collect Windows Installer
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find "apps/rust-client/src-tauri/target/release/bundle/nsis" -maxdepth 2 -type f -name "*.exe" -print -exec cp {} dist/ \;
+          test "$(find dist -type f -name "*.exe" | wc -l)" -gt 0
+          find dist -maxdepth 1 -type f -print
+
+      - name: Upload Windows Asset To Existing Release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.meta.outputs.tag_name }}" dist/*.exe --clobber
+
+  release-linux-x64:
+    name: Release Linux x64
+    runs-on: ubuntu-22.04
+    needs: release-arm64
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/rust-client/ui/package-lock.json
+
+      - name: Install Linux System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            libfuse2 \
+            librsvg2-dev
+
+      - name: Resolve Release Metadata
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            TAG_NAME="$INPUT_TAG"
+            if [[ -z "$TAG_NAME" ]]; then
+              TAG_NAME="manual-${GITHUB_RUN_NUMBER}"
+            fi
+          else
+            TAG_NAME="$REF_NAME"
+          fi
+
+          echo "tag_name=$TAG_NAME" >>"$GITHUB_OUTPUT"
+
+      - name: Install Frontend Dependencies
+        working-directory: apps/rust-client/ui
+        run: npm ci
+
+      - name: Build Linux Bundles
+        working-directory: apps/rust-client/ui
+        run: npm run tauri build -- --bundles deb,appimage
+
+      - name: Collect Linux Bundles
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find "apps/rust-client/src-tauri/target/release/bundle/deb" -maxdepth 2 -type f -name "*.deb" -print -exec cp {} dist/ \;
+          find "apps/rust-client/src-tauri/target/release/bundle/appimage" -maxdepth 2 -type f -name "*.AppImage" -print -exec cp {} dist/ \;
+          test "$(find dist -type f | wc -l)" -gt 0
+          find dist -maxdepth 1 -type f -print
+
+      - name: Upload Linux Assets To Existing Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.meta.outputs.tag_name }}" dist/* --clobber

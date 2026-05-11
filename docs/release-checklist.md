@@ -19,4 +19,4 @@
 
 - Confirm Tauri bundle metadata and icons are correct
 - Confirm the output bundle exists at `apps/rust-client/src-tauri/target/release/bundle/macos/Codex Switch.app`
-- Zip and publish the generated `.app` bundle through the release workflow
+- Push a `v*` tag and confirm the Release workflow publishes macOS arm64/x86_64, Windows x64, and Linux x64 assets
